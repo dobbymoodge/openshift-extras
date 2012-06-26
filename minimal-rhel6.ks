@@ -98,7 +98,7 @@ POOL=8a99f981370984da01370986418b0051
 RHSM
 
 # Setup yum repos
-yum-config-manager --enable rhel-6-server-optional-rpms
+echo "yum-config-manager --enable rhel-6-server-optional-rpms" >> /etc/rc.local
 
 # TODO This should be an internal mirror
 rpm -ivh http://mirrors.syringanetworks.net/fedora-epel/6/x86_64/epel-release-6-7.noarch.rpm
