@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# rhsm-register This shell script handles auto subscribing and unsubscribing
+#
+# Author:       Brenton Leanhardt <bleanhar@redhat.com>
+#
+# chkconfig:    345 97 2
+#
+# description:  Enable register/autosubscribe on startup and unregister on shutdown.
+#
+
+# source function library
+. /etc/rc.d/init.d/functions
+. /etc/sysconfig/rhsm-register
+
+PROG=rhsm-register
+LOCK=/var/lock/subsys/$PROG
+
+RETVAL=0
+
+start() {
+  if [ ! -f $LOCK ]; then
+    touch $LOCK
+    [ -x /sbin/restorecon ] && /sbin/restorecon $LOCK
+    echo -n "Registering consumer and subscribing... "
+    /usr/sbin/subscription-manager register --force --username $USERNAME --password $PASSWORD > /dev/null
+    /usr/sbin/subscription-manager subscribe --pool=$POOL > /dev/null
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+      echo_success
+    else
+      echo_failure
+    fi
+    rm -f $LOCK
+  else
+    echo -n "$PROD is in progress"
+  fi
+  echo
+  return $RETVAL
+}
+
+stop() {
+  echo -n "Unregistering consumer... "
+  /usr/sbin/subscription-manager unregister > /dev/null
+  RETVAL=$?
+  if [ $RETVAL -eq 0 ]; then
+    echo_success
+  else
+    echo_failure
+  fi
+  echo
+  return $RETVAL
+}
+
+restart() {
+  stop
+  start
+}
+
+reload() {
+    restart
+}
+
+case "$1" in
+  start)
+  start
+  ;;
+  stop)
+  stop
+  ;;
+  restart)
+  restart
+  ;;
+  reload)
+  reload
+  ;;  
+  condrestart)
+  [ -e $LOCK ] && restart || :
+  ;;
+  status)
+  status $PROG
+  ;;
+  *)
+  echo $"Usage: $0 {start|stop|status|restart|reload|}"
+  exit 1
+esac
+
+exit $RETVAL
