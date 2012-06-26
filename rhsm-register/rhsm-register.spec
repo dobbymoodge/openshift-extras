@@ -40,6 +40,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 /etc/init.d/rhsm-register
+%config(noreplace) /etc/sysconfig/rhsm-register
 
 %changelog
 * Tue Jun 26 2012 Brenton Leanhardt <bleanhar@redhat.com> 0.0.2-1
