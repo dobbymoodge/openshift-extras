@@ -1,6 +1,6 @@
 Summary:        rhsm-register
 Name:           rhsm-register
-Version:        0.0.2
+Version:        0.0.3
 Release:        1%{?dist}
 Group:          Development/System
 License:        ASL 2.0
@@ -43,6 +43,9 @@ rm -rf %{buildroot}
 %config(noreplace) /etc/sysconfig/rhsm-register
 
 %changelog
+* Tue Jun 26 2012 Brenton Leanhardt <bleanhar@redhat.com> 0.0.3-1
+- Adding rhsm-register config file (bleanhar@redhat.com)
+
 * Tue Jun 26 2012 Brenton Leanhardt <bleanhar@redhat.com> 0.0.2-1
 - new package built with tito
 
