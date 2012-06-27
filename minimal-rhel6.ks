@@ -82,7 +82,7 @@ baseurl=http://file.rdu.redhat.com/~bleanhar/openshift/openshift_onpremise_inter
 enabled=1
 gpgcheck=0
 
-[openshift_origin]
+[openshift_origin_public]
 name=OpenShift Origin
 baseurl=http://mirror.openshift.com/pub/crankcase/rhel-6/x86_64
 enabled=1
@@ -91,14 +91,12 @@ YUM
 
 # RHSM
 sed -i -e "s/rhn\./rhn.stage./" /etc/rhsm/rhsm.conf
-cat >> /etc/sysconfig/rhsm-register << RHSM
+cat > /etc/sysconfig/rhsm-register << RHSM
 USERNAME=stage_test_12
 PASSWORD=redhat
 POOL=8a99f981370984da01370986418b0051
+ENABLEREPOS=rhel-6-server-optional-rpms
 RHSM
-
-# Setup yum repos
-echo "yum-config-manager --enable rhel-6-server-optional-rpms" >> /etc/rc.local
 
 # TODO This should be an internal mirror
 rpm -ivh http://mirrors.syringanetworks.net/fedora-epel/6/x86_64/epel-release-6-7.noarch.rpm
