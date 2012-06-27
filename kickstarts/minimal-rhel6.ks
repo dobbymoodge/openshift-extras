@@ -89,6 +89,9 @@ enabled=1
 gpgcheck=0
 YUM
 
+wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key
+
 # RHSM
 sed -i -e "s/rhn\./rhn.stage./" /etc/rhsm/rhsm.conf
 cat > /etc/sysconfig/rhsm-register << RHSM
