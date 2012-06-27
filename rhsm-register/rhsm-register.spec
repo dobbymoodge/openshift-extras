@@ -1,6 +1,6 @@
 Summary:        rhsm-register
 Name:           rhsm-register
-Version:        0.0.3
+Version:        0.0.4
 Release:        1%{?dist}
 Group:          Development/System
 License:        ASL 2.0
@@ -44,6 +44,10 @@ rm -rf %{buildroot}
 %config(noreplace) /etc/sysconfig/rhsm-register
 
 %changelog
+* Wed Jun 27 2012 Brenton Leanhardt <bleanhar@redhat.com> 0.0.4-1
+- Minor fix to rhsm-register (bleanhar@redhat.com)
+- Adding the ability to enable yum repos (bleanhar@redhat.com)
+
 * Tue Jun 26 2012 Brenton Leanhardt <bleanhar@redhat.com> 0.0.3-1
 - Adding rhsm-register config file (bleanhar@redhat.com)
 
