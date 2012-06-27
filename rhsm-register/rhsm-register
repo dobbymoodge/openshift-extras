@@ -25,6 +25,9 @@ start() {
     echo -n "Registering consumer and subscribing... "
     /usr/sbin/subscription-manager register --force --username $USERNAME --password $PASSWORD > /dev/null
     /usr/sbin/subscription-manager subscribe --pool=$POOL > /dev/null
+    for r in $ENABLEREPOS; do
+	    yum-config-manager --enable $r
+    done
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
       echo_success

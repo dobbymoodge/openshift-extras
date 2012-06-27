@@ -30,6 +30,7 @@ cat >> %{buildroot}/etc/sysconfig/rhsm-register << RHSM
 USERNAME=
 PASSWORD=
 POOL=
+ENABLEREPOS=
 RHSM
 
 cp rhsm-register %{buildroot}/etc/init.d
