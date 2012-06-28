@@ -1,0 +1,30 @@
+After going through
+http://libraonprem.etherpad.corp.redhat.com/rhel6-origin-setup you can use this
+document to verify you have a working installation.
+
+== For all cartridges ==
+rhc domain create -ladmin -padmin -n mydomain
+
+== JBoss & Jenkins ==
+Here's how to get up and running using the rhc tool:
+rhc app create -a myjbossapp1 -t jbossas-7 -p admin
+rhc app create -a jenkins -t jenkins-1.4 -p admin
+rhc-ctl-app -a myjbossapp1 -e add-jenkins-client-1.4 -p admin
+
+If you would like to see everything done from a fancy GUI read the following:
+* Download eclipse from http://www.eclipse.org/downloads/packages/eclipse-ide-java-developers/indigosr2
+* Install the JBoss Tools plugin
+  https://openshift.redhat.com/community/faq/how-do-i-install-the-jboss-openshift-tools-plugin-for-eclipse
+* Set libra_server in eclipse.ini according to
+  https://openshift.redhat.com/community/wiki/connect-to-openshift-origin-installation-with-jboss-tools
+* Read/watch https://community.jboss.org/en/tools/blog/2012/06/27/deploy-from-eclipse-to-openshift-in-a-breeze
+
+One thing to note is that the rhc tool will create a set of ssh keys if it
+doesn't find any available.  The eclipse tools will not.  What I've been doing
+is copying the ssh keys that rhc creates locally on my broker over to my laptop
+so that I can test eclipse there.
+
+Another thing is is needed if you want to use either rhc or eclipse outside of
+the broker node is to add the broker's IP to your local system's
+/etc/resolv.conf.  This is a crude workaround until we have a better idea of
+how we should integrate with DNS.
