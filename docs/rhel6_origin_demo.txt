@@ -31,7 +31,10 @@ If you would like to see everything done from a fancy GUI read the following:
 One thing to note is that the rhc tool will create a set of ssh keys if it
 doesn't find any available.  The eclipse tools will not.  What I've been doing
 is copying the ssh keys that rhc creates locally on my broker over to my laptop
-so that I can test eclipse there.
+so that I can test eclipse there.  
+	* Copy the ssh key to an innocuous location, start eclipse, and add the key 
+	location to General/Network Connections/SSH2/Private Keys:	
+	(Example: id_dsa,id_rsa,/tmp/id_rsa)
 
 Another thing is is needed if you want to use either rhc or eclipse outside of
 the broker node is to add the broker's IP to your local system's
