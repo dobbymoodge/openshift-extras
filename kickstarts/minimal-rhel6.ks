@@ -11,7 +11,7 @@ firewall --service=ssh
 authconfig --enableshadow --passalgo=sha512
 selinux --enforcing
 timezone --utc America/New_York
-bootloader --location=mbr --driveorder=vda --append=" rhgb crashkernel=auto quiet"
+bootloader --location=mbr --driveorder=vda --append=" rhgb crashkernel=auto quiet console=ttyS0"
 repo --name=openshift_onpremise_internal --baseurl=http://file.rdu.redhat.com/~bleanhar/openshift/openshift_onpremise_internal/noarch
 
 # The following is the partition information you requested
