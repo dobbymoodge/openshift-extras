@@ -1,0 +1,331 @@
+diff --git a/build/builder.rb b/build/builder.rb
+index 9a78482..bd43f5a 100755
+--- a/build/builder.rb
++++ b/build/builder.rb
+@@ -61,7 +61,9 @@ module StickShift
+     method_option :clean_metadata, :type => :boolean, :desc => "Cleans metadata before running yum commands"
+     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+     method_option :plugin_impl, :type => :string, :desc => "Bulder implementation file"
++    method_option :user, :type => :string, :desc => "Username for ssh"
+     def sync(name)
++      options.user ||= 'ec2-user'
+       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+       require "#{options.plugin_impl}" unless options.plugin_impl.nil?
+       sync_impl(name, options)
+@@ -130,11 +132,13 @@ module StickShift
+     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+     method_option :plugin_impl, :type => :string, :desc => "Bulder implementation file"
++    method_option :user, :type => :string, :desc => "Username for ssh"
+     def sanity_check(tag)
++      options.user ||= 'ec2-user'
+       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+       require "#{options.plugin_impl}" unless options.plugin_impl.nil?
+   
+-      sanity_check_impl(tag, hostname, instance, conn, options)
++      sanity_check_impl(tag, options)
+     end
+   
+     desc "install_local_client", "Builds and installs the local client rpm (uses sudo)"
+@@ -161,4 +165,4 @@ module StickShift
+       end
+     end
+   end
+-end
+\ No newline at end of file
++end
+diff --git a/build/lib/openshift/amz.rb b/build/lib/openshift/amz.rb
+index 07dee8a..82211a0 100644
+--- a/build/lib/openshift/amz.rb
++++ b/build/lib/openshift/amz.rb
+@@ -259,7 +259,7 @@ module OpenShift
+     end
+ 
+     def is_valid?(hostname, ssh_user="root")
+-      @validation_output = ssh(hostname, '/usr/bin/rhc-accept-devenv', 60, false, 1, ssh_user)
++      @validation_output = ssh(hostname, '/usr/bin/ss-accept-broker', 60, false, 1, ssh_user)
+       if @validation_output == "PASS"
+         return true
+       else
+diff --git a/build/lib/openshift/builder_helper.rb b/build/lib/openshift/builder_helper.rb
+index 63ddd88..1ab5d5e 100755
+--- a/build/lib/openshift/builder_helper.rb
++++ b/build/lib/openshift/builder_helper.rb
+@@ -356,7 +356,7 @@ mkdir -p /tmp/rhc/junit
+     def retry_test_failures(hostname, failures, num_retries=1, timeout=@@SSH_TIMEOUT, ssh_user="root")
+       failures.reverse!
+       puts "All Failures: #{failures.pretty_inspect}"
+-      reset_test_dir(hostname, true, ssh_user)
++      reset_test_dir(hostname, true)
+       failures.each do |failure|
+         title = failure[0]
+         cmd = failure[1]
+@@ -367,7 +367,7 @@ mkdir -p /tmp/rhc/junit
+             if i == num_retries
+               exit exit_code
+             else
+-              reset_test_dir(hostname, true, ssh_user)
++              reset_test_dir(hostname, true)
+             end
+           else
+             break
+@@ -377,4 +377,4 @@ mkdir -p /tmp/rhc/junit
+     end
+ 
+   end
+-end
+\ No newline at end of file
++end
+diff --git a/build/lib/openshift/tito.rb b/build/lib/openshift/tito.rb
+index b263eff..b96ba58 100644
+--- a/build/lib/openshift/tito.rb
++++ b/build/lib/openshift/tito.rb
+@@ -5,7 +5,7 @@ SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '.
+                  'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', '/var/lib/jenkins/jobs/rhc/workspace']}
+   
+ PACKAGE_REGEX = /^([\w\.-]*)-\d+\.\d+\.\d+-\d+\.\..*:$/
+-IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'stickshift-broker', 'rubygem-gearchanger-oddjob-plugin', 'rubygem-swingshift-mongo-plugin', 'rubygem-uplift-bind-plugin', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node']
++IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'stickshift-broker', 'rubygem-gearchanger-oddjob-plugin', 'rubygem-swingshift-mongo-plugin', 'rubygem-uplift-bind-plugin', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node', 'rubygem-swingshift-kerberos']
+ 
+ module OpenShift
+   module Tito
+diff --git a/build/origin b/build/origin
+index 6fde7ad..26d9d17 100755
+--- a/build/origin
++++ b/build/origin
+@@ -87,9 +87,148 @@ module Origin
+         scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage")
+         puts "Done"
+       end
++
++    def reset_test_dir(hostname, backup=false)
++      ssh(hostname, %{
++if [ -d /tmp/rhc ]
++then
++    if #{backup}
++    then
++        if `ls /tmp/rhc/run_* > /dev/null 2>&1`
++        then
++            rm -rf /tmp/rhc_previous_runs
++            mkdir -p /tmp/rhc_previous_runs
++            mv /tmp/rhc/run_* /tmp/rhc_previous_runs
++        fi
++        if `ls /tmp/rhc/* > /dev/null 2>&1`
++        then
++            for i in {1..100}
++            do
++                if ! [ -d /tmp/rhc_previous_runs/run_$i ]
++                then
++                    mkdir -p /tmp/rhc_previous_runs/run_$i
++                    mv /tmp/rhc/* /tmp/rhc_previous_runs/run_$i
++                    break
++                fi
++            done
++        fi
++        if `ls /tmp/rhc_previous_runs/run_* > /dev/null 2>&1`
++        then
++            mv /tmp/rhc_previous_runs/run_* /tmp/rhc/
++            rm -rf /tmp/rhc_previous_runs
++        fi
++    else
++        rm -rf /tmp/rhc
++    fi
++fi
++mkdir -p /tmp/rhc/junit
++}, 120, true)
++    end
++
++    def validate_instance(hostname, num_tries=1)
++      # Validate the node installation
++      print "Validating instance..."
++      (1..num_tries).each do |i|
++        unless is_valid?(hostname)
++          if i == num_tries
++            puts "ERROR - instance is not valid"
++            exit 1
++          elsif i == 2
++            ssh(hostname, "service stickshift-broker restart; service httpd restart", 60)
++          end
++          sleep 5
++        else
++          break
++        end
++      end
++      puts "Done"
++    end
+       
+       def test_impl(tag, hostname, instance, conn, options, image_id=nil)
+-        puts "test_impl - Not yet implemented"
++      begin
++        
++        #validate_instance(hostname, 4)
++
++        disable_charlie(hostname) if options.disable_charlie?
++        
++        reset_test_dir(hostname)
++
++        test_queues = [[], [], [], []]
++
++        test_queues[1] << ["StickShift Broker Functional", "cd li-test/stickshift/broker; rake test:functionals"]
++        test_queues[0] << ["StickShift Broker Integration", "cd li-test/stickshift/broker; rake test:integration"]
++
++        test_queues[2] << ["StickShift Broker Unit 1", "cd li-test/stickshift/broker; rake test:ss_unit1"]
++        test_queues[2] << ["StickShift Broker Unit 2", "cd li-test/stickshift/broker; rake test:ss_unit2"]
++        test_queues[3] << ["Broker Cucumber", "cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker li-test/tests"]
++
++        test_queues[0] << ["Runtime Unit", "cd li-test/stickshift/node; rake unit_test"]
++        (1..4).each do |i|
++          test_queues[i-1] << ["Runtime Group #{i.to_s}", "cucumber #{@@CUCUMBER_OPTIONS} -t @runtime#{i.to_s} li-test/tests"]
++        end
++
++        threads = []
++        failures = []
++
++        retry_threshold = 0
++        test_queues.each do |test_queue|
++          titles = []
++          cmds = []
++          retry_individually = []
++          timeouts = []
++          test_queue.each do |test|
++            titles << test[0]
++            cmds << test[1]
++            opts = test[2] || {}
++            retry_individually << opts[:retry_individually] ? true : false
++            timeouts << opts[:timeout] ? opts[:timeout] : @@SSH_TIMEOUT
++            retry_threshold += 8
++          end
++          add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, retry_individually, timeouts)
++        end
++
++        threads.each do |t|
++          t[0].join
++        end
++
++        failures.uniq!
++
++        if failures.length > 0 && failures.length <= retry_threshold 
++          retry_test_failures(hostname, failures, 2)
++        elsif failures.length > retry_threshold
++          exit 1
++        end
++
++        # These are special tests that cannot be written to work concurrently
++        if options.include_extended
++          extended_tests.each do |extended_test|
++            case extended_test
++            when 'broker'
++            when 'runtime'
++              singleton_queue = ['Singletons', "cucumber #{@@CUCUMBER_OPTIONS} -t @singleton li-test/tests"]
++              output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1])
++              retry_test_failures(hostname, [singleton_queue], 2) if 0 != exit_code
++            when 'site'
++            when 'rhc'
++            else
++              puts "Not supported for extended: #{extended_test}"
++              exit 1
++            end
++          end
++        end
++
++        #validate_instance(hostname, 4)
++
++        puts "Done"
++
++      ensure
++        if options.terminate? || options.official?
++          download_artifacts(hostname)
++        end
++        if options.terminate?
++          terminate_instance(instance)
++        end
++      end
+       end
+       
+       def update_impl(options)
+@@ -99,17 +238,19 @@ module Origin
+       def sync_impl(name, options)
+         # Get the hostname from a tag lookup or assume it's SSH accessible directly
+         conn = connect(options.region)
+-        hostname = options.tag? ? find_instance(conn, name, true, true, "ec2-user").dns_name : name
++        hostname = options.tag? ? find_instance(conn, name, true, true, options.user).dns_name : name
+     
+         ssh_path=File.expand_path(File.dirname(__FILE__)) + "/ssh-override"
+     
+         puts "Creating mount"
+-        out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, "ec2-user") 
++        # does not work for EBS backed AMIs
++        #out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R #{options.user}:#{options.user} /data/\"", 60 * 10, true, 1, options.user) 
++        out, ret = ssh(hostname, "su -c \"rm -rf /data && mkdir /data && chown -R #{options.user}:#{options.user} /data/\"", 60 * 10, true, 1, options.user) 
+     
+         avail_sibling_repo_names = []
+         SIBLING_REPOS.each do |repo_name, repo_dirs|
+           repo_dirs.each do |repo_dir|
+-            if sync_sibling_repo(repo_name, repo_dir, hostname, ssh_path, "/data", "ec2-user")
++            if sync_sibling_repo(repo_name, repo_dir, hostname, ssh_path, "/data", options.user)
+               avail_sibling_repo_names.push(repo_name)
+               break
+             end
+@@ -126,16 +267,18 @@ module Origin
+         # This is not required since we have already synced the crankcase repository
+         # Instead we can just create a symlink for the tests in li-test/tests
+         #update_remote_tests(hostname)
+-        out, ret = ssh(hostname, "cd /data; #{clone_commands}", 60 * 5, true, 2, "ec2-user") if ret == 0
+-        out, ret = ssh(hostname, "mkdir -p ~/li-test; cd ~/li-test; ln -s /data/crankcase-working/stickshift/controller/test/cucumber tests; ln -s /data/crankcase-working/stickshift stickshift", 60, true, 1, "ec2-user")
++        puts "CLONE COMMANDS" + clone_commands
++
++        out, ret = ssh(hostname, "cd /data; #{clone_commands}", 60 * 5, true, 2, options.user) if ret == 0
++        out, ret = ssh(hostname, "mkdir -p ~/li-test; cd ~/li-test; ln -s /data/crankcase-working/stickshift/controller/test/cucumber tests; ln -s /data/crankcase-working/stickshift stickshift", 60, true, 1, options.user)
+     
+         if !options.skip_build?
+           puts "Performing remote install...."
+     
+-          out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake devbroker", 60 * 20, true, 1, "ec2-user") if ret == 0
+-          out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user *\"", 60 * 2, true, 1, "ec2-user") if ret == 0
++          out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake devbroker", 60 * 20, true, 1, options.user) if ret == 0
++          out, ret = ssh(hostname, "su -c \"cd /data && chown -R #{options.user}:#{options.user} *\"", 60 * 2, true, 1, options.user) if ret == 0
+           puts "Restarting services..."
+-          out, ret = ssh(hostname, "su -c \"/usr/bin/ss-setup-broker\"", 60 * 2, true, 2, "ec2-user") if ret == 0
++          out, ret = ssh(hostname, "su -c \"/usr/bin/ss-setup-broker\"", 60 * 2, true, 2, options.user) if ret == 0
+       
+           if ret != 0
+             puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+@@ -299,16 +442,19 @@ module Origin
+         puts "Done"
+       end
+ 
+-      def sanity_check_impl(tag, hostname, instance, conn, options, image_id=nil)
++      def sanity_check_impl(name, options)
++        conn = connect(options.region)
++        hostname = options.tag? ? find_instance(conn, name, true, true, options.user).dns_name : name
++
+         threads = []
+         failures = []
+         titles = ["StickShift Broker Sanity",
+                   "StickShift Node Unit"]
+     
+-        cmds = ["cd li-test/stickshift/broker; su -c \"rake test:sanity\"",
+-                "cd li-test/stickshift/node; su -c \"rake unit_test\""]
+-        add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, "ec2-user")
+-        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{@@CUCUMBER_OPTIONS} -t @sanity li-test/tests/", false, @@SSH_TIMEOUT, "ec2-user")
++        cmds = ["cd li-test/stickshift/broker; rake test:sanity",
++                "cd li-test/stickshift/node; rake unit_test"]
++        add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, options.user)
++        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{@@CUCUMBER_OPTIONS} -t @sanity li-test/tests/", false, @@SSH_TIMEOUT, options.user)
+     
+         threads.each do |t|
+           t[0].join
+@@ -316,10 +462,10 @@ module Origin
+     
+         unless failures.empty?
+           failures.uniq!
+-          retry_test_failures(hostname, failures, 1, @@SSH_TIMEOUT, "ec2-user")
++          retry_test_failures(hostname, failures, 1, @@SSH_TIMEOUT, options.user)
+         end
+       end
+     end # no_tasks end
+   end # class end
+ end # module end
+-Origin::BuilderPlugin.start
+\ No newline at end of file
++Origin::BuilderPlugin.start

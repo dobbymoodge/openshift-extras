@@ -1,0 +1,31 @@
+This is a brain dump of what it would take right now to stand up another
+jenkins instance.  This will be automated asap.
+
+* rhc app create -l admin -p admin -t jenkins-1.4 -a $YOUR_JENKINS
+* modify
+/var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/config.xml and
+change the slave configuration.  Be sure to replace $YOUR_JENKINS-$YOUR_DOMAIN
+
+  <slaves>
+    <slave>
+      <name>master</name>
+      <description></description>
+      <remoteFS>/var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/</remoteFS>
+      <numExecutors>1</numExecutors>
+      <mode>NORMAL</mode>
+      <retentionStrategy class="hudson.slaves.RetentionStrategy$Always"/>
+      <launcher class="hudson.slaves.CommandLauncher">
+        <agentCommand>java -jar /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/war/WEB-INF/slave.jar</agentCommand>
+      </launcher>
+      <label></label>
+      <nodeProperties/>
+    </slave>
+
+* Put the .awscred in /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/
+* Put libra.pem in /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/.ssh
+* Create a new job
+** You can use jobs/build_origin/config.xml as an example
+** in order for launch to work you need to have a RHEL AMI with the build_setup
+   deps already installed.
+** You also need to have a li repo fork from abhishek, then apply the patch in
+   this dir
