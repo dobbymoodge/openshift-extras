@@ -43,9 +43,9 @@ if [ -z $PRIV_NET_NAME ]; then
 fi
 
 # Keystone token and password
-ADM_TOKEN=
-OS_PASS=
-SERVICE_PASS=
+ADM_TOKEN=7de15fa819f7879f5c05
+OS_PASS=0972ef53
+SERVICE_PASS=c30b73e0
 
 # If the above token/password are not set, let's set them, here.
 if [ -z $ADM_TOKEN ]; then
@@ -287,7 +287,7 @@ yum -y -q install openstack-dashboard
 chkconfig httpd on
 service httpd restart
 setsebool -P httpd_can_network_connect=on
-iptables -I INPUT 1 -p tcp -m tcp --dport 80 -j ACCEPT
+iptables -I INPUT 1 -p tcp -m tcp --dport 80 -j ACCEPT 
 
 }
 
@@ -837,16 +837,16 @@ fi
 controller_install() {
 
     #install_epel_repo
-    enable_ntp
-    keystone_install_config
-    controller_install_basics
-    keystone_nova_config
-    keystone_glance_config
-    nova_network_config
-    image_register
-    image_launch
-    image_add_ip
-#    dashboard_install_config
+#    enable_ntp
+#    keystone_install_config
+#    controller_install_basics
+#    keystone_nova_config
+#    keystone_glance_config
+#    nova_network_config
+#    image_register
+#    image_launch
+#    image_add_ip
+    dashboard_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
