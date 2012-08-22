@@ -5,11 +5,6 @@ Quick OpenStack Users Guide: How to create a VM
 *) Install python-novaclient:
     sudo yum -y install python-novaclient
 
-*) Create an ssh keypair to use to log into the new VM:
-
-    nova keypair-add mykey > oskey.priv
-    chmod 600 oskey.priv
-
 *) Create (and source) the ~/.novarc file with the following contents:
 
     export OS_USERNAME=yocum
@@ -17,6 +12,11 @@ Quick OpenStack Users Guide: How to create a VM
     export OS_TENANT_NAME=osop
     export OS_AUTH_URL=http://stor01.osop.rhcloud.com:5000/v2.0
     export NOVA_VERSION=1.1
+
+*) Create an ssh keypair to use to log into the new VM:
+
+    nova keypair-add mykey > oskey.priv
+    chmod 600 oskey.priv
 
 *) Test that you can connect to OpenStack:
 
