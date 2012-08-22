@@ -20,14 +20,25 @@ setenforce permissive
 # Head controller node hostname
 CONTROLLER=stor01.osop.rhcloud.com
 
+# Virtual network name and range
+
+VIRT_NET_NAME=osop-virt
+VIRT_NET_NET=192.168.179.0
+VIRT_NET_MASK=24
+
+if [ -z $VIRT_NET_NAME ]; then
+    echo "VIRT_NET_NAME not set.  Please set it.  Aborting..."
+    exit 1
+fi
+
 # Public network name and range
 
 PUB_NET_NAME=osop-pub
 PUB_NET_NET=209.132.179.0
 PUB_NET_MASK=24
 
-if [ -z $PUB_NET_NAME ]; then
-    echo "PUB_NET_NAME not set.  Please set it.  Aborting..."
+if [ -z $VIRT_NET_NAME ]; then
+    echo "VIRT_NET_NAME not set.  Please set it.  Aborting..."
     exit 1
 fi
 
@@ -129,6 +140,11 @@ check_it
 openstack-db --service glance --init
 check_it
 
+# Open the MySQL ports for the local network, only
+iptables -I INPUT 1 -s ${VIRT_NET_NET}/${VIRT_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+iptables -I INPUT 2 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+iptables -I INPUT 3 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+
 # Enable and Start services
 for svc in qpidd libvirtd openstack-glance-api openstack-glance-registry
 do
@@ -217,16 +233,19 @@ nova_network_config() {
 
 source_keystonerc
 
-nova-manage network create $PUB_NET_NAME ${PUB_NET_NET}/${PUB_NET_MASK} 1 256 --bridge=${PUB_NET_NAME}br0
+nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_NAME}br0
 nova-manage network list
 check_it
 
 # Add the floating IP range
 
-nova-manage floating create ${PUB_NET_NET}/${PUB_NET_MASK}
+nova-manage floating create ${VIRT_NET_NET}/${VIRT_NET_MASK}
 nova floating-ip-create
 nova floating-ip-list
 check_it
+
+# Add the virtual bridge for compute nodes
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface eth0
 }
 
 # Register a test image to run
@@ -235,7 +254,7 @@ image_register() {
 
 source_keystonerc
 
-# glance add name=f16-jeos is_public=true disk_format=qcow2 container_format=bare copy_from=http://berrange.fedorapeople.org/images/2012-02-29/f16-x86_64-openstack-sda.qcow2
+glance add name=f16-jeos is_public=true disk_format=qcow2 container_format=bare copy_from=http://berrange.fedorapeople.org/images/2012-02-29/f16-x86_64-openstack-sda.qcow2
 glance add name=F16-x86_64-cfntools-openshift is_public=true disk_format=qcow2 container_format=bare copy_from=https://github.com/downloads/heat-api/prebuilt-jeos-images/F16-x86_64-cfntools-openshift.qcow2
 
 glance index
@@ -249,15 +268,17 @@ image_launch() {
 source_keystonerc
 
 # verify that nbd is loaded in the kernel
-    modprobe nbd
+#    modprobe nbd
 
 # create ssh keypair for new image
+if [ ! -e ~/oskey.priv ]; then
     nova keypair-add mykey > oskey.priv
     chmod 600 oskey.priv
+fi
 
 # Launch the instance
-#nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep f16-jeos | awk '{print $1}')
-nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep F16-x86_64-cfntools-openshift | awk '{print $1}')
+nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep f16-jeos | awk '{print $1}')
+#nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep F16-x86_64-cfntools-openshift | awk '{print $1}')
 
 # Verify if the image launches
 echo " Verifying that image launches..."
@@ -276,8 +297,8 @@ fi
 # Attempt to log in to the VM...
 echo "Attempting to log in to the instance..."
 echo ""
-VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
-ssh -i oskey.priv root@${VM_IP} "hostname;date"
+VM_IP=`nova list | grep $VIRT_NET_NAME | awk -F"$VIRT_NET_NAME=" '{print $2}' | awk '{print $1}'`
+ssh -i oskey.priv ec2-user${VM_IP} "hostname;date"
 nova console-log myserver
 
 # Delete the instance
@@ -294,7 +315,7 @@ yum -y -q install openstack-dashboard
 chkconfig httpd on
 service httpd restart
 setsebool -P httpd_can_network_connect=on
-iptables -I INPUT 1 -p tcp -m tcp --dport 80 -j ACCEPT 
+iptables -I INPUT 4 -p tcp -m tcp --dport 80 -j ACCEPT 
 
 }
 
@@ -493,7 +514,7 @@ iscsi_volumes_config() {
 # Re-start the previously terminated instance
 
     INSTANCE=$(euca-run-instances f16-jeos -k mykey | grep INSTANCE | awk '{print $2}')
-    VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
+    VM_IP=`nova list | grep $VIRT_NET_NAME | awk -F"$VIRT_NET_NAME=" '{print $2}' | awk '{print $1}'`
 
 # Make the storage available to the instance
 
@@ -502,22 +523,22 @@ euca-attach-volume -i $INSTANCE -d /dev/vdc $VOLUME
 # ssh to the instance and verify that the vdc device is listed in
 # /proc/partitions
 
-ssh -i oskey.priv root@${VM_IP} 'cat /proc/partitions'
+ssh -i oskey.priv ec2-user${VM_IP} 'cat /proc/partitions'
 
 # Now mount it
 
-ssh -i oskey.priv root@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+ssh -i oskey.priv ec2-user${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
 
 # Create a tmp file:
 
-ssh -i oskey.priv root@${VM_IP} 'echo foo > /mnt/nova-volume/bar'
+ssh -i oskey.priv ec2-user${VM_IP} 'echo foo > /mnt/nova-volume/bar'
 
 # Restart the instance to verify file 'bar' exists
 euca-terminate-instances i-00000001
 euca-run-instances f16-jeos -k mykey
-ssh -i oskey.priv root@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
-ssh -i oskey.priv root@${VM_IP} 'cat /mnt/nova-volume/bar'
-ssh -i oskey.priv root@${VM_IP} 'umount /mnt/nova-volume'
+ssh -i oskey.priv ec2-user${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+ssh -i oskey.priv ec2-user${VM_IP} 'cat /mnt/nova-volume/bar'
+ssh -i oskey.priv ec2-user${VM_IP} 'umount /mnt/nova-volume'
 
 # Detach and delete the volume
 
@@ -537,7 +558,7 @@ source_keystonerc
 VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
 VM_ID=`nova list | grep $PUB_NET_NAME | awk -F\| '{print $2}'`
 
-# nova-manage floating create ${PUB_NET_NET}/${PUB_NET_MASK}
+# nova-manage floating create ${VIRT_NET_NET}/${VIRT_NET_MASK}
 # nova floating-ip-create
 # nova floating-ip_list
 # check_it
@@ -548,7 +569,7 @@ sleep 30
 #euca# euca-allocate-address
 #euca# euca-associate-address -i i-00000012 ${VM_IP}
 
-ssh -i nova_key.priv root@${VM_IP} 'hostname; date'
+ssh -i nova_key.priv ec2-user${VM_IP} 'hostname; date'
 
 #euca# euca-disassociate-address ${VM_IP}
 #euca# euca-release-address ${VM_IP}
@@ -618,7 +639,7 @@ controller_create_nova_key() {
 
 # On compute node, get nova ssh keys
 compute_get_nova_key() {
-    scp root@${CONTROLLER}:/var/lib/nova/.ssh/id_rsa.pub /var/lib/nova/.ssh/authorized_keys
+    scp ec2-user${CONTROLLER}:/var/lib/nova/.ssh/id_rsa.pub /var/lib/nova/.ssh/authorized_keys
     chown nova.nova ~nova/.ssh/authorized_keys
     semanage permissive -a sshd_t
 }
@@ -656,6 +677,11 @@ compute_install_basics() {
     openstack-config --set /etc/nova/nova.conf DEFAULT sql_connection mysql://nova:nova@${CONTROLLER}/nova
     openstack-config --set /etc/nova/nova.conf DEFAULT glance_api_servers ${CONTROLLER}:9292
     openstack-config --set /etc/nova/nova.conf DEFAULT iscsi_ip_prefix ${CONTROLLER_IP}
+    openstack-config --set /etc/nova/nova.conf DEFAULT auth_strategy keystone
+
+# Configure the network interfaces
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_network_bridge ${VIRT_NET_NAME}br0
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface eth0
 
 # Enable the compute service
     for svc in compute network
@@ -665,7 +691,7 @@ compute_install_basics() {
     done
 
 # Configure the physical bridge interface
-    nova-manage network create $PUB_NET_NAME ${PUB_NET_NET}/${PUB_NET_MASK} --bridge=${PUB_NET_NAME}br0 --bridge_interface=em1
+#    nova-manage network create $PIUB_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} --bridge=${PIUB_NET_NAME}br0 --bridge_interface=em1
 }
 
 
@@ -848,17 +874,17 @@ fi
 controller_install() {
 
     #install_epel_repo
-#    enable_ntp
-#    keystone_install_config
-#    controller_install_basics
-#    keystone_nova_config
-#    keystone_glance_config
-#    nova_network_config
-#    image_register
+    enable_ntp
+    keystone_install_config
+    controller_install_basics
+    keystone_nova_config
+    keystone_glance_config
+    nova_network_config
+    image_register
     image_launch
     image_add_ip
-#    dashboard_install_config
-#    controller_vnc_install_config
+    dashboard_install_config
+    controller_vnc_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
