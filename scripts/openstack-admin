@@ -43,9 +43,9 @@ if [ -z $PRIV_NET_NAME ]; then
 fi
 
 # Keystone token and password
-ADM_TOKEN=
-OS_PASS=
-SERVICE_PASS=
+ADM_TOKEN=7de15fa819f7879f5c05
+OS_PASS=0972ef53
+SERVICE_PASS=c30b73e0
 
 # If the above token/password are not set, let's set them, here.
 if [ -z $ADM_TOKEN ]; then
@@ -168,7 +168,12 @@ openstack-config --set /etc/nova/nova.conf DEFAULT auth_strategy keystone
 
 # Restart the nova services
 
-for svc in api compute; do service openstack-nova-$svc restart; done
+for svc in api compute
+do 
+	service openstack-nova-$svc restart
+done
+
+sleep 10 
 
 # Check that nova can communicate with keystone
     echo "Testing Nova <-> Keystone authorization..."
@@ -230,9 +235,10 @@ image_register() {
 
 source_keystonerc
 
-glance add name=f16-jeos is_public=true disk_format=qcow2 container_format=bare copy_from=http://berrange.fedorapeople.org/images/2012-02-29/f16-x86_64-openstack-sda.qcow2
+# glance add name=f16-jeos is_public=true disk_format=qcow2 container_format=bare copy_from=http://berrange.fedorapeople.org/images/2012-02-29/f16-x86_64-openstack-sda.qcow2
+glance add name=F16-x86_64-cfntools-openshift is_public=true disk_format=qcow2 container_format=bare copy_from=https://github.com/downloads/heat-api/prebuilt-jeos-images/F16-x86_64-cfntools-openshift.qcow2
 
-glance_index
+glance index
 check_it
 }
 
@@ -250,7 +256,8 @@ source_keystonerc
     chmod 600 oskey.priv
 
 # Launch the instance
-nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep f16-jeos | awk '{print $1}')
+#nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep f16-jeos | awk '{print $1}')
+nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep F16-x86_64-cfntools-openshift | awk '{print $1}')
 
 # Verify if the image launches
 echo " Verifying that image launches..."
@@ -287,7 +294,7 @@ yum -y -q install openstack-dashboard
 chkconfig httpd on
 service httpd restart
 setsebool -P httpd_can_network_connect=on
-iptables -I INPUT 1 -p tcp -m tcp --dport 80 -j ACCEPT
+iptables -I INPUT 1 -p tcp -m tcp --dport 80 -j ACCEPT 
 
 }
 
@@ -528,7 +535,7 @@ source_keystonerc
 #euca# service openstack-nova-network restart
 
 VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
-VM_ID=`nova list | grep $PUB_NET_NAME | awk -F| '{print $2}'`
+VM_ID=`nova list | grep $PUB_NET_NAME | awk -F\| '{print $2}'`
 
 # nova-manage floating create ${PUB_NET_NET}/${PUB_NET_MASK}
 # nova floating-ip-create
@@ -559,10 +566,14 @@ source_keystonerc
 
 # Enable VNC in the controller
     echo "novncproxy_host = 0.0.0.0
-novncproxy_port = 6080" >> /etc/nova/nova.conf
+novncproxy_port = 6080
+novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
+vnc_enabled=true
+vncserver_listen=127.0.0.1
+vncserver_proxyclient_address=127.0.0.1" >> /etc/nova/nova.conf
 
 # Restart the services
-for svc in consoleauth novncproxy
+for svc in consoleauth novncproxy compute
 do
     chkconfig openstack-nova-$svc on
     service openstack-nova-$svc restart
@@ -572,10 +583,10 @@ done
 
 compute_vnc_install_config() {
     yum -y -q install openstack-nova-novncproxy
-    echo "novncproxy_base_url=http://NOVNCPROXY_FQDN:6080/vnc_auto.html
+    echo "novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
 vnc_enabled=true
-vncserver_listen=COMPUTE_FQDN
-vncserver_proxyclient_address=COMPUTE_FQDN" >> /etc/nova/nova.conf
+vncserver_listen=`hostname`
+vncserver_proxyclient_address=`hostname`" >> /etc/nova/nova.conf
 
 # Restart the services
 for svc in consoleauth novncproxy
@@ -837,21 +848,21 @@ fi
 controller_install() {
 
     #install_epel_repo
-    enable_ntp
-    keystone_install_config
-    controller_install_basics
-    keystone_nova_config
-    keystone_glance_config
-    nova_network_config
-    image_register
+#    enable_ntp
+#    keystone_install_config
+#    controller_install_basics
+#    keystone_nova_config
+#    keystone_glance_config
+#    nova_network_config
+#    image_register
     image_launch
     image_add_ip
 #    dashboard_install_config
+#    controller_vnc_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
 #    iscsi_volumes_config
-#    controller_vnc_install_config
 #    controller_open_ports
 #    controller_create_nova_key
 }
