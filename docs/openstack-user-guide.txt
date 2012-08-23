@@ -1,0 +1,43 @@
+Quick OpenStack Users Guide: How to create a VM
+
+*) Request user access on OpenStack and the project to be assigned to, if you know it.
+
+*) Install python-novaclient:
+    sudo yum -y install python-novaclient
+
+*) Create (and source) the ~/.novarc file with the following contents:
+
+    export OS_USERNAME=yocum
+    export OS_PASSWORD=supersecret
+    export OS_TENANT_NAME=osop
+    export OS_AUTH_URL=http://stor01.osop.rhcloud.com:5000/v2.0
+    export NOVA_VERSION=1.1
+
+*) Create an ssh keypair to use to log into the new VM:
+
+    nova keypair-add mykey > oskey.priv
+    chmod 600 oskey.priv
+
+*) Test that you can connect to OpenStack:
+
+    nova list
+
+*) Check to see what VM images are available:
+
+    glance index
+
+*) Start a VM.  Choose the f16-jeos image.
+
+    nova boot myserver --flavor 2 --key_name mykey --image 8dfb6747-66e2-49f5-bde3-788a5ff951e3
+
+*) Monitor that it's starting and make a note of the IP:
+
+    nova list
+
+*) After the Status turns to "ACTIVE" login:
+
+    ssh -i oskey.priv ec2-user@192.168.179.NN
+
+*) su to root - no password required.
+
+

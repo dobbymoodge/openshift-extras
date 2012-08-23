@@ -1,0 +1,15 @@
+**** Red Hat Internal Getting Started Guide:
+
+http://documentation-devel.engineering.redhat.com/docs/en-US/Red_Hat_OpenStack_Preview/1/html/Getting_Started_Guide/pref-Getting_Started_Guide-Preface.html
+
+**** OpenStack Documentation:
+
+http://docs.openstack.org/trunk/openstack-compute/admin/content/ch_getting-started-with-openstack.html
+
+**** Getting started with OpenStack on EPEL (openstack-admin script is based on this guide):
+
+https://fedoraproject.org/wiki/Getting_started_with_OpenStack_EPEL
+
+**** Internal Red Hat OpenStack RPMs
+
+http://porkchop.devel.redhat.com/rel-eng/OpenStack/Essex/
