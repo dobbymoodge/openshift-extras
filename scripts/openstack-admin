@@ -20,6 +20,12 @@ setenforce permissive
 # Head controller node hostname
 CONTROLLER=stor01.osop.rhcloud.com
 
+# Public bridged interface
+PUB_NIC=br4
+
+# Private bridged interface
+PRIV_NIC=br5
+
 # Virtual network name and range
 
 VIRT_NET_NAME=osop-virt
@@ -103,12 +109,20 @@ export OS_TENANT_NAME=admin
 export OS_AUTH_URL=http://127.0.0.1:5000/v2.0/" > ~/.keystonerc
     . ~/.keystonerc
 
+# Let's source .keystonerc when we log in.
+
+echo '
+# Source OpenStack rc file(s)
+if [ -f ~/.keystonerc ]; then
+	. ~/.keystonerc
+fi' >> ~/.bashrc
+
 # Config the admin token
     openstack-config --set /etc/keystone/keystone.conf DEFAULT admin_token $ADMIN_TOKEN
     check_it
 
 # Enable and start Keystone
-for svc in openstack-keystone
+for svc in openstack-keystone mysqld
     do
     chkconfig $svc on
     service $svc start
@@ -127,6 +141,9 @@ done
     keystone user-list
     check_it
 
+# Open the port for nova-client
+
+iptables -I INPUT 6 -p tcp -m tcp --dport 5000 -j ACCEPT 
 }
 
 controller_install_basics() {
@@ -239,13 +256,13 @@ check_it
 
 # Add the floating IP range
 
-nova-manage floating create ${VIRT_NET_NET}/${VIRT_NET_MASK}
+nova-manage floating create ${PUB_NET_NET}/${PUB_NET_MASK}
 nova floating-ip-create
 nova floating-ip-list
 check_it
 
 # Add the virtual bridge for compute nodes
-openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface eth0
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface $PUB_NIC
 }
 
 # Register a test image to run
@@ -495,6 +512,11 @@ euca-run-instances f16-jeos -k mykey
 euca-describe-instances
 euca-get-console-output i-00000001
 euca-terminate-instances i-00000001
+
+# Open the port for euca auth
+
+# iptables -I INPUT 6 -p tcp -m tcp --dport 5000 -j ACCEPT 
+
 }
 
 # Create iSCSI volumes
@@ -523,7 +545,7 @@ euca-attach-volume -i $INSTANCE -d /dev/vdc $VOLUME
 # ssh to the instance and verify that the vdc device is listed in
 # /proc/partitions
 
-ssh -i oskey.priv ec2-user${VM_IP} 'cat /proc/partitions'
+ssh -i oskey.priv ec2-user@${VM_IP} 'cat /proc/partitions'
 
 # Now mount it
 
@@ -592,6 +614,10 @@ novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
 vnc_enabled=true
 vncserver_listen=127.0.0.1
 vncserver_proxyclient_address=127.0.0.1" >> /etc/nova/nova.conf
+
+# Open the port for VNC
+
+iptables -I INPUT 5 -p tcp -m tcp --dport 6080 -j ACCEPT 
 
 # Restart the services
 for svc in consoleauth novncproxy compute
