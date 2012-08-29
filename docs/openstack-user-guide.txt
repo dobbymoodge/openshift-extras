@@ -1,11 +1,13 @@
 Quick OpenStack Users Guide: How to create a VM
 
-*) Request user access on OpenStack and the project to be assigned to, if you know it.
+*) Request an OpenStack user account and the project to be assigned to, if you know it.
 
-*) Install python-novaclient:
+*) On your personal desktop/laptop, either enable the EPEL yum repository, or subscribe to the OpenStack tech preview.  Alternatively, log into stor01.osop.rhcloud.com
+
+*) Install python-novaclient (this is not necessary if you're logged into stor01):
     sudo yum -y install python-novaclient
 
-*) Create (and source) the ~/.novarc file with the following contents:
+*) Create and source the ~/.novarc file with the following contents:
 
     export OS_USERNAME=yocum
     export OS_PASSWORD=supersecret
@@ -39,5 +41,3 @@ Quick OpenStack Users Guide: How to create a VM
     ssh -i oskey.priv ec2-user@192.168.179.NN
 
 *) su to root - no password required.
-
-
