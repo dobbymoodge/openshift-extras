@@ -13,3 +13,7 @@ https://fedoraproject.org/wiki/Getting_started_with_OpenStack_EPEL
 **** Internal Red Hat OpenStack RPMs
 
 http://porkchop.devel.redhat.com/rel-eng/OpenStack/Essex/
+
+**** Installation of OpenStack nova tools on various platforms (including OSX)
+
+http://www.rackspace.com/knowledge_center/article/installing-python-novaclient-on-linux-and-mac-os
