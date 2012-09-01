@@ -20,14 +20,13 @@ setenforce permissive
 # Head controller node hostname
 CONTROLLER=stor01.osop.rhcloud.com
 
-# Public bridged interface
-PUB_NIC=br4
+# Public physical interface
+PUB_NIC=eth4
 
-# Private bridged interface
-PRIV_NIC=br5
+# Private physical interface
+PRIV_NIC=eth5
 
-# Virtual network name and range
-
+# Nova internal virtual network name and range
 VIRT_NET_NAME=osop-virt
 VIRT_NET_NET=192.168.179.0
 VIRT_NET_MASK=24
@@ -37,9 +36,10 @@ if [ -z $VIRT_NET_NAME ]; then
     exit 1
 fi
 
-# Public network name and range
+# Public/Floating network name and range
 
 PUB_NET_NAME=osop-pub
+PUB_NET_NIC=eth4
 PUB_NET_NET=209.132.179.0
 PUB_NET_MASK=24
 
@@ -48,9 +48,10 @@ if [ -z $VIRT_NET_NAME ]; then
     exit 1
 fi
 
-# Private network name and range
+# Flat, Private network name and range
 
 PRIV_NET_NAME=osop-priv
+PRIV_NET_NIC=eth5
 PRIV_NET_NET=10.4.59.0
 PRIV_NET_MASK=24
 
@@ -93,7 +94,7 @@ rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-7.noar
 
 keystone_install_config() {
 
-yum -y -q install openstack-utils dnsmasq-utils openstack-keystone mysql-server mysql 
+yum -y -q install openstack-utils dnsmasq-utils openstack-keystone mysql-server mysql policycoreutils-python
 check_it
 
 # Config Keystone database
@@ -250,7 +251,7 @@ nova_network_config() {
 
 source_keystonerc
 
-nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_NAME}br0
+nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_NAME}br --bridge_interface=${PRIV_NIC}
 nova-manage network list
 check_it
 
@@ -262,7 +263,7 @@ nova floating-ip-list
 check_it
 
 # Add the virtual bridge for compute nodes
-openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface $PUB_NIC
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NIC}
 }
 
 # Register a test image to run
@@ -315,7 +316,7 @@ fi
 echo "Attempting to log in to the instance..."
 echo ""
 VM_IP=`nova list | grep $VIRT_NET_NAME | awk -F"$VIRT_NET_NAME=" '{print $2}' | awk '{print $1}'`
-ssh -i oskey.priv ec2-user${VM_IP} "hostname;date"
+ssh -i oskey.priv ec2-user@${VM_IP} "hostname;date"
 nova console-log myserver
 
 # Delete the instance
@@ -549,18 +550,18 @@ ssh -i oskey.priv ec2-user@${VM_IP} 'cat /proc/partitions'
 
 # Now mount it
 
-ssh -i oskey.priv ec2-user${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+ssh -i oskey.priv ec2-user@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
 
 # Create a tmp file:
 
-ssh -i oskey.priv ec2-user${VM_IP} 'echo foo > /mnt/nova-volume/bar'
+ssh -i oskey.priv ec2-user@${VM_IP} 'echo foo > /mnt/nova-volume/bar'
 
 # Restart the instance to verify file 'bar' exists
 euca-terminate-instances i-00000001
 euca-run-instances f16-jeos -k mykey
-ssh -i oskey.priv ec2-user${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
-ssh -i oskey.priv ec2-user${VM_IP} 'cat /mnt/nova-volume/bar'
-ssh -i oskey.priv ec2-user${VM_IP} 'umount /mnt/nova-volume'
+ssh -i oskey.priv ec2-user@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+ssh -i oskey.priv ec2-user@${VM_IP} 'cat /mnt/nova-volume/bar'
+ssh -i oskey.priv ec2-user@${VM_IP} 'umount /mnt/nova-volume'
 
 # Detach and delete the volume
 
@@ -574,7 +575,7 @@ image_add_ip() {
 
 source_keystonerc
 
-#euca# openstack-config --set /etc/nova/nova.conf DEFAULT public_interface em1
+#euca# openstack-config --set /etc/nova/nova.conf DEFAULT public_interface ${PUB_NIC}
 #euca# service openstack-nova-network restart
 
 VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
@@ -591,7 +592,7 @@ sleep 30
 #euca# euca-allocate-address
 #euca# euca-associate-address -i i-00000012 ${VM_IP}
 
-ssh -i nova_key.priv ec2-user${VM_IP} 'hostname; date'
+ssh -i nova_key.priv ec2-user@${VM_IP} 'hostname; date'
 
 #euca# euca-disassociate-address ${VM_IP}
 #euca# euca-release-address ${VM_IP}
@@ -608,7 +609,8 @@ source_keystonerc
     yum -y -q install openstack-nova-novncproxy
 
 # Enable VNC in the controller
-    echo "novncproxy_host = 0.0.0.0
+    echo "# Adding VNC support
+novncproxy_host = 0.0.0.0
 novncproxy_port = 6080
 novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
 vnc_enabled=true
@@ -630,7 +632,8 @@ done
 
 compute_vnc_install_config() {
     yum -y -q install openstack-nova-novncproxy
-    echo "novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
+    echo "# Adding VNC support
+novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
 vnc_enabled=true
 vncserver_listen=`hostname`
 vncserver_proxyclient_address=`hostname`" >> /etc/nova/nova.conf
@@ -665,7 +668,7 @@ controller_create_nova_key() {
 
 # On compute node, get nova ssh keys
 compute_get_nova_key() {
-    scp ec2-user${CONTROLLER}:/var/lib/nova/.ssh/id_rsa.pub /var/lib/nova/.ssh/authorized_keys
+    scp root@${CONTROLLER}:/var/lib/nova/.ssh/id_rsa.pub /var/lib/nova/.ssh/authorized_keys
     chown nova.nova ~nova/.ssh/authorized_keys
     semanage permissive -a sshd_t
 }
@@ -693,7 +696,7 @@ enable_ntp() {
 }
 
 compute_install_basics() {
-    yum -y -q install openstack-nova dnsmasq-utils
+    yum -y -q install openstack-nova openstack-nova-compute openstack-nova-network openstack-nova-api dnsmasq-utils policycoreutils-python
     chkconfig libvirtd on
     service libvirtd start
     setenforce 0
@@ -706,24 +709,23 @@ compute_install_basics() {
     openstack-config --set /etc/nova/nova.conf DEFAULT auth_strategy keystone
 
 # Configure the network interfaces
-openstack-config --set /etc/nova/nova.conf DEFAULT flat_network_bridge ${VIRT_NET_NAME}br0
-openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface eth0
+    openstack-config --set /etc/nova/nova.conf DEFAULT flat_network_bridge ${VIRT_NET_NAME}br
+    openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NIC}
 
 # Enable the compute service
-    for svc in compute network
+    for svc in compute network api
     do 
         chkconfig openstack-nova-$svc on
         service openstack-nova-$svc start
     done
 
 # Configure the physical bridge interface
-#    nova-manage network create $PIUB_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} --bridge=${PIUB_NET_NAME}br0 --bridge_interface=em1
+#    nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} --bridge=${VIRT_NET_NAME}br --bridge_interface=${PRIV_NIC}
 }
 
 
 clean_openstack() {
-    service mysqld stop
-    rm -rf /var/lib/mysql/*
+    mysql -B -e "drop database glance; drop database keystone; drop database nova; drop database swift; drop user 'glance'@'%'; drop user 'keystone'@'%'; drop user 'nova'@'%'; drop user 'swift'@'%'; drop user 'glance'@'localhost'; drop user 'keystone'@'localhost'; drop user 'nova'@'localhost'; drop user 'swift'@'localhost'"
 
     PACKAGES="
 	python-setuptools \
