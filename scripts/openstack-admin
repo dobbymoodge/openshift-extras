@@ -663,7 +663,11 @@ nova_user_enable_login() {
 
 # On controller node, create ssh keys
 controller_create_nova_key() {
-    ssh-keygen -f id_rsa -b 1024 -P
+    cd ~nova
+    mkdir .ssh
+    chmod 700 .ssh
+    ssh-keygen -f .ssh/id_rsa -b 1024 -P ""
+    chown nova.nova id_rsa*
 }
 
 # On compute node, get nova ssh keys
@@ -918,7 +922,7 @@ controller_install() {
 #    euca_tools_install_config
 #    iscsi_volumes_config
 #    controller_open_ports
-#    controller_create_nova_key
+    controller_create_nova_key
 }
 
 
