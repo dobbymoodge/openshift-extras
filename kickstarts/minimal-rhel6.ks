@@ -97,7 +97,7 @@ sed -i -e "s/rhn\./rhn.stage./" /etc/rhsm/rhsm.conf
 cat > /etc/sysconfig/rhsm-register << RHSM
 USERNAME=stage_test_12
 PASSWORD=redhat
-POOL=8a99f981370984da01370986418b0051
+POOL=8a99f9873870e0ae01387c9404b40f1b
 ENABLEREPOS=rhel-6-server-optional-rpms
 RHSM
 

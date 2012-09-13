@@ -12,7 +12,6 @@ authconfig --enableshadow --passalgo=sha512
 selinux --enforcing
 timezone --utc America/New_York
 bootloader --location=mbr --driveorder=vda --append=" rhgb crashkernel=auto quiet"
-repo --name=openshift_onpremise_internal --baseurl=http://file.rdu.redhat.com/~bleanhar/openshift/openshift_onpremise_internal/noarch
 
 # The following is the partition information you requested
 # Note that any partitions you deleted are not expressed
@@ -31,10 +30,10 @@ logvol / --fstype=ext4 --name=lv_root --vgname=vg_vm1 --grow --size=1024 --maxsi
 logvol swap --name=lv_swap --vgname=vg_vm1 --grow --size=2016 --maxsize=4032
 
 %packages
-@core
-@server-policy
-ntp
+@Base
+@Core
 git
+%end
 
 %post
 
@@ -65,7 +64,7 @@ KEYS
 cat >> /etc/yum.repos.d/openshift_onpremise.repo << YUM
 [openshift_origin_public]
 name=OpenShift Origin
-baseurl=http://mirror.openshift.com/pub/crankcase/rhel-6/x86_64
+baseurl=http://mirror.openshift.com/pub/crankcase/fedora-16/x86_64
 enabled=1
 gpgcheck=0
 YUM

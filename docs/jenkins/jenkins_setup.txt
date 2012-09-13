@@ -1,6 +1,3 @@
-This is a brain dump of what it would take right now to stand up another
-jenkins instance.  This will be automated asap.
-
 * rhc app create -l admin -p admin -t jenkins-1.4 -a $YOUR_JENKINS
 * modify
 /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/config.xml and
@@ -20,12 +17,12 @@ change the slave configuration.  Be sure to replace $YOUR_JENKINS-$YOUR_DOMAIN
       <label></label>
       <nodeProperties/>
     </slave>
+   </slaves>
 
+* setup ssh-override
 * Put the .awscred in /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/
 * Put libra.pem in /var/lib/stickshift/$YOUR_JENKINS-$YOUR_DOMAIN/app-root/data/.ssh
-* Create a new job
-** You can use jobs/build_origin/config.xml as an example
+* Create a new job similar to the hosted ones only without the li parts
 ** in order for launch to work you need to have a RHEL AMI with the build_setup
    deps already installed.
-** You also need to have a li repo fork from abhishek, then apply the patch in
    this dir
