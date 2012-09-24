@@ -17,8 +17,12 @@ setenforce permissive
 
 # VARIABLES
 
+DATE=`date +%Y-%m-%d-%H%M`
+
 # Head controller node hostname
 CONTROLLER=stor01.osop.rhcloud.com
+CONTROLLER_PUB_IP=209.132.179.6
+CONTROLLER_PRIV_IP=10.4.59.6
 
 # Public/Floating network settings
 
@@ -85,24 +89,31 @@ fi
 
 controller_iptables_config() {
 
+    # Save the iptables
+    cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
+
     # Open the MySQL ports for the local network, only
     iptables -I INPUT 2 -s ${VIRT_NET_NET}/${VIRT_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
     iptables -I INPUT 3 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
     iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
-    # Open httpd 
+    # Open http/https 
     iptables -I INPUT 5 -p tcp -m tcp --dport 80 -j ACCEPT 
+    iptables -I INPUT 5 -p tcp -m tcp --dport 443 -j ACCEPT 
     # Open the port for VNC
     iptables -I INPUT 6 -p tcp -m tcp --dport 6080 -j ACCEPT 
     # Open the Keystone port for the local networks, only
     iptables -I INPUT 7 -s ${VIRT_NET_NET}/${VIRT_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
-    iptables -I INPUT 7 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
-    iptables -I INPUT 7 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+    iptables -I INPUT 8 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+    iptables -I INPUT 9 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+
+    iptables-save > /etc/sysconfig/iptables
 }
 
 compute_iptables_config() {
 
     # Open the port for VNC
     iptables -I INPUT 2 -p tcp -m tcp --dport 6080 -j ACCEPT 
+    iptables -I INPUT 3 -s ${CONTROLLER_PUB_IP}/32 -p tcp -m tcp --dport 5900:5950 -j ACCEPT
 }
 
 # Install EPEL yum repo
@@ -175,6 +186,23 @@ openstack-db --service nova --init
 check_it
 openstack-db --service glance --init
 check_it
+
+# Nova networking doesn't like the default libvirtd bridge, so let's remove it
+
+rm -f /var/lib/libvirt/network/default.xml /etc/libvirt/qemu/networks/autostart/default.xml
+
+# ip_forwarding needs to be enabled
+
+grep ip_forward /etc/sysctl.conf &> /dev/null
+if [ $? -eq 0 ]; then
+    perl -pe 's/net.ipv4.ip_forward.*$/net.ipv4.ip_forward = 1 /g;' -i /etc/sysctl.conf
+    else
+    echo "
+Controls IP packet forwarding
+net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+fi
+
+sysctl -p
 
 # Enable and Start services
 for svc in qpidd libvirtd openstack-glance-api openstack-glance-registry
@@ -264,7 +292,7 @@ nova_network_config() {
 
 source_keystonerc
 
-nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
+nova-manage network create --multi_host=T $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
 nova-manage network list
 check_it
 
@@ -281,8 +309,8 @@ openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NET_NIC
 
 # Modify security groups to allow ssh and icmp
 
-    nova secgroup-add-rule default tcp 22 22 ${VIRT_NET_NET}/0
-    nova secgroup-add-rule default icmp -1 -1 ${VIRT_NET_NET}/0
+    nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
+    nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
 }
 
 # Register a test image to run
@@ -650,6 +678,9 @@ compute_vnc_install_config() {
 #vncserver_listen=`hostname`
 #vncserver_proxyclient_address=`hostname`" >> /etc/nova/nova.conf
 
+openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen `hostname`
+openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_proxyclient_address `hostname`
+
 # Restart the services
 for svc in consoleauth novncproxy
 do
@@ -703,7 +734,10 @@ controller_open_ports() {
 # Enable ntp
 
 enable_ntp() {
-    yum -y -q install ntp
+    rpm -q ntp &> /dev/null
+    if [ $? -ne 0 ]; then
+        yum -y -q install ntp
+    fi
     chkconfig ntpdate on
     chkconfig ntpd on
     service ntpd stop
@@ -723,6 +757,7 @@ compute_install_basics() {
 #    scp root@${CONTROLLER}:/etc/nova/api-paste.ini /etc/nova/
 
 openstack-config --set /etc/nova/nova.conf DEFAULT my_ip `ifconfig ${PRIV_NET_BRIDGE} | grep "inet addr" | awk -F"[ :]" '{print $13}'`
+openstack-config --set /etc/nova/nova.conf DEFAULT network_host `ifconfig ${PRIV_NET_BRIDGE} | grep "inet addr" | awk -F"[ :]" '{print $13}'`
 
 #    openstack-config --set /etc/nova/nova.conf DEFAULT qpid_hostname $CONTROLLER
 #    openstack-config --set /etc/nova/nova.conf DEFAULT sql_connection mysql://nova:nova@${CONTROLLER}/nova
@@ -743,6 +778,13 @@ openstack-config --set /etc/nova/nova.conf DEFAULT my_ip `ifconfig ${PRIV_NET_BR
 
 # Configure the physical bridge interface
 #    nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
+}
+
+
+backup_openstack() {
+    DATE=`date +%Y-%m-%d-%H%M`
+    service mysqld stop
+    tar -cvzf /var/tmp/openstack-backup.$DATE /var/lib/mysql/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
 }
 
 
@@ -948,8 +990,8 @@ controller_install() {
     keystone_glance_config
     nova_network_config
     image_register
-    image_launch
-    image_add_ip
+#    image_launch
+#    image_add_ip
     dashboard_install_config
     controller_vnc_install_config
 #    keystone_swift_install_config
@@ -982,6 +1024,7 @@ case $1 in
            restart_openstack
            ;;
     clean)
+           backup_openstack
            clean_openstack
            ;;
     install)
