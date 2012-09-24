@@ -589,6 +589,7 @@ qpid_port=5672
 ####  configuration options for quotas
 ##############################################################################
 
+quota_cores=120
 # quota_cores=20
 #### (IntOpt) number of instance cores allowed per project (tenant)
 
