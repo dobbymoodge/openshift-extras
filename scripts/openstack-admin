@@ -52,7 +52,7 @@ fi
 # Nova internal, virtual network settings
 
 VIRT_NET_NAME=osop-virt
-VIRT_NET_BRIDGE=${VIRT_NET_NAME}br
+VIRT_NET_BRIDGE=$PRIV_NET_BRIDGE
 VIRT_NET_NET=192.168.179.0
 VIRT_NET_MASK=24
 
