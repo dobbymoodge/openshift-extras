@@ -112,10 +112,12 @@ controller_iptables_config() {
     iptables -I INPUT 11 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 9292 -j ACCEPT 
 # ??
     iptables -I INPUT 12 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3260 -j ACCEPT 
-# novncproxy
-    iptables -I INPUT 13 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 6080 -j ACCEPT 
+# novncproxy available to outside clients
+    iptables -I INPUT 13 -p tcp -m tcp --dport 6080 -j ACCEPT 
+# xvpvncproxy available to outside clients
+    iptables -I INPUT 14 -p tcp -m tcp --dport 6081 -j ACCEPT 
 # Zabbix
-#    iptables -I INPUT 14 -p tcp -m tcp --dport 10050 -j ACCEPT 
+#    iptables -I INPUT 15 -p tcp -m tcp --dport 10050 -j ACCEPT 
 
     iptables-save > /etc/sysconfig/iptables
 }
@@ -125,8 +127,10 @@ compute_iptables_config() {
     # Save the iptables
     cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
 
-    # Open the port for VNC
-    iptables -I INPUT 2 -s ${PRIV_NET_NET}/${PRIV_NET_MASK}-p tcp -m tcp --dport 6080 -j ACCEPT 
+    # Open the port for novnc
+    iptables -I INPUT 2 -p tcp -m tcp --dport 6080 -j ACCEPT 
+    # Open the port for xvpvnc
+    iptables -I INPUT 2 -p tcp -m tcp --dport 6081 -j ACCEPT 
     iptables -I INPUT 3 -s ${CONTROLLER_PUB_IP}/32 -p tcp -m tcp --dport 5900:5950 -j ACCEPT
 # libvirt port for VM migration
     iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
