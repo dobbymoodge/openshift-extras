@@ -19,6 +19,9 @@ setenforce permissive
 
 DATE=`date +%Y-%m-%d-%H%M`
 
+# Domainname this system lives on
+DOMAIN_NAME=osop.rhcloud.com
+
 # Head controller node hostname
 CONTROLLER=stor01.osop.rhcloud.com
 CONTROLLER_PUB_IP=209.132.179.6
@@ -92,28 +95,45 @@ controller_iptables_config() {
     # Save the iptables
     cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
 
-    # Open the MySQL ports for the local network, only
-    iptables -I INPUT 2 -s ${VIRT_NET_NET}/${VIRT_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
-    iptables -I INPUT 3 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
-    iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+    # Open everything to the private network
+    iptables -I INPUT -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -j ACCEPT
+
     # Open http/https 
     iptables -I INPUT 5 -p tcp -m tcp --dport 80 -j ACCEPT 
-    iptables -I INPUT 5 -p tcp -m tcp --dport 443 -j ACCEPT 
-    # Open the port for VNC
-    iptables -I INPUT 6 -p tcp -m tcp --dport 6080 -j ACCEPT 
-    # Open the Keystone port for the local networks, only
-    iptables -I INPUT 7 -s ${VIRT_NET_NET}/${VIRT_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
-    iptables -I INPUT 8 -s ${PUB_NET_NET}/${PUB_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+    iptables -I INPUT 6 -p tcp -m tcp --dport 443 -j ACCEPT 
+    iptables -I INPUT 7 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 2049 -j ACCEPT 
+# Mysql
+    iptables -I INPUT 8 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+# Keystone
     iptables -I INPUT 9 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+#qpidd
+    iptables -I INPUT 10 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5672 -j ACCEPT 
+#glance
+    iptables -I INPUT 11 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 9292 -j ACCEPT 
+# ??
+    iptables -I INPUT 12 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3260 -j ACCEPT 
+# novncproxy
+    iptables -I INPUT 13 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 6080 -j ACCEPT 
+# Zabbix
+#    iptables -I INPUT 14 -p tcp -m tcp --dport 10050 -j ACCEPT 
 
     iptables-save > /etc/sysconfig/iptables
 }
 
 compute_iptables_config() {
 
+    # Save the iptables
+    cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
+
     # Open the port for VNC
-    iptables -I INPUT 2 -p tcp -m tcp --dport 6080 -j ACCEPT 
+    iptables -I INPUT 2 -s ${PRIV_NET_NET}/${PRIV_NET_MASK}-p tcp -m tcp --dport 6080 -j ACCEPT 
     iptables -I INPUT 3 -s ${CONTROLLER_PUB_IP}/32 -p tcp -m tcp --dport 5900:5950 -j ACCEPT
+# libvirt port for VM migration
+    iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
+# KVM
+    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261-j ACCEPT 
+
+    iptables-save > /etc/sysconfig/iptables
 }
 
 # Install EPEL yum repo
@@ -176,7 +196,7 @@ done
 
 }
 
-controller_install_basics() {
+controller_install_base() {
 # Install Nova packages
 yum -y -q install openstack-nova openstack-glance openstack-dashboard qpid-cpp-server
 check_it
@@ -309,8 +329,8 @@ openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NET_NIC
 
 # Modify security groups to allow ssh and icmp
 
-    nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
-    nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
+nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
+nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
 }
 
 # Register a test image to run
@@ -613,43 +633,13 @@ euca-delete-volume $VOLUME
 
 }
 
-# Add a floating IP to the new VM
-image_add_ip() {
-
-source_keystonerc
-
-#euca# openstack-config --set /etc/nova/nova.conf DEFAULT public_interface ${PUB_NET_NIC}
-#euca# service openstack-nova-network restart
-
-VM_IP=`nova list | grep $PUB_NET_NAME | awk -F"$PUB_NET_NAME=" '{print $2}' | awk '{print $1}'`
-VM_ID=`nova list | grep $PUB_NET_NAME | awk -F\| '{print $2}'`
-
-# nova-manage floating create ${VIRT_NET_NET}/${VIRT_NET_MASK}
-# nova floating-ip-create
-# nova floating-ip_list
-# check_it
-
-nova add-floating-ip $VM_ID $VM_IP
-sleep 30
-
-#euca# euca-allocate-address
-#euca# euca-associate-address -i i-00000012 ${VM_IP}
-
-ssh -i nova_key.priv ec2-user@${VM_IP} 'hostname; date'
-
-#euca# euca-disassociate-address ${VM_IP}
-#euca# euca-release-address ${VM_IP}
-
-nova remove-floating-ip $VM_ID $VM_IP
-}
-
 # Configure VNC access to guests through the dashboard
 
 controller_vnc_install_config() {
 
 source_keystonerc
 
-    yum -y -q install openstack-nova-novncproxy
+yum -y -q install openstack-nova-novncproxy
 
 # Enable VNC in the controller
 #     echo "# Adding VNC support
@@ -720,15 +710,13 @@ compute_get_nova_key() {
     semanage permissive -a sshd_t
 }
 
-# Adding a compute node
+# Install package
 
-# Open ports for services on the controller
-controller_open_ports() {
-    lokkit -p 3306:tcp
-    lokkit -p 5672:tcp
-    lokkit -p 9292:tcp
-    lokkit -p 3260:tcp
-    service libvirtd reload
+install_package() {
+    rpm -q $1 &> /dev/null
+    if [ $? -ne 0 ]; then
+        yum -y -q install $1
+    fi
 }
 
 # Enable ntp
@@ -745,7 +733,55 @@ enable_ntp() {
     service ntpd start
 }
 
-compute_install_basics() {
+# Live migrate config on controller (NFS)
+
+controller_live_migration_config() {
+
+# Enable jumbo frames
+echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+
+install_package nfs-utils
+
+grep '/var/lib/nova/instances' /etc/exports &> /dev/null
+  if [ $? -ne 0 ]; then
+      echo "/var/lib/nova/instances ${PRIV_NET_NET}/${PRIV_NET_MASK}(rw,sync,fsid=0,no_root_squash)" >> /etc/exports
+  fi
+  chmod o+x /var/lib/nova/instances
+  echo "rpcbind: ${PRIV_NET_NET}/${PRIV_NET_MASK}" >> /etc/hosts.allow
+  perl -pe "s/#Domain =.*$/Domain = ${DOMAIN_NAME}/g;" -i /etc/idmapd.conf
+  perl -pe "s/#LIBVIRTD_ARGS=.*$/LIBVIRTD_ARGS="--listen"/g;" -i /etc/sysconfig/libvirtd
+  perl -pe 's/#listen_tls = 0/listen_tls = 0/g;s/#listen_tcp = 1/listen_tcp = 1/g;s/#auth_tcp = "sasl"/auth_tcp = "none"/g;' -i /etc/libvirt/libvirtd.conf 
+
+  for svc in nfs nfslock rpcidmapd rpcgssd libvirtd
+      do 
+          chkconfig $svc on
+          service $svc restart
+      done
+}
+
+# Live migrate config on compute (NFS)
+
+compute_live_migrate_config() {
+
+# Enable jumbo frames
+echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+
+install_package nfs-utils autofs
+
+echo "/nova /etc/auto.nova proto=tcp,noac,hard,intr,timeo=60,retrans=3,rsize=32768,wsize=32768" >> /etc/auto.master
+echo "instances ${CONTROLLER_PRIV_IP}:/var/lib/nova/instances" >> /etc/auto.nova
+mkdir /nova
+cd /var/lib/nova/
+mv instances instances.bak
+ln -s /nova/instances instances
+
+chkconfig autofs on
+service autofs start
+}
+
+# Adding a compute node
+
+compute_install_base() {
     yum -y -q install openstack-nova openstack-nova-compute openstack-nova-network openstack-nova-api python-keystone openstack-utils dnsmasq-utils policycoreutils-python
     chkconfig libvirtd on
     service libvirtd start
@@ -784,7 +820,7 @@ openstack-config --set /etc/nova/nova.conf DEFAULT network_host `ifconfig ${PRIV
 backup_openstack() {
     DATE=`date +%Y-%m-%d-%H%M`
     service mysqld stop
-    tar -cvzf /var/tmp/openstack-backup.$DATE /var/lib/mysql/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
+    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/lib/mysql/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
 }
 
 
@@ -954,20 +990,27 @@ clean_openstack() {
     rm -rf keystone nova swift glance
 }
 
-restart_openstack() {
+start_openstack() {
     cd /etc/rc3.d/; 
-    for svc in `ls S*open* S*iptables` ; 
-    do 
-        ./$svc stop; 
-    done; 
-
-    /etc/init.d/dnsmasq stop; 
-    
     for svc in `ls S*open* S*iptables` ; 
     do 
         ./$svc start; 
     done; 
-    cd -
+    cd - &> /dev/null
+}
+
+stop_openstack() {
+    cd /etc/rc3.d/; 
+    for svc in `ls S*open* S*iptables *dnsmasq` ; 
+    do 
+        ./$svc stop; 
+    done; 
+    cd - &> /dev/null
+}
+
+restart_openstack() {
+    stop_openstack
+    start_openstack
 }
 
 source_keystonerc() {
@@ -975,6 +1018,10 @@ source_keystonerc() {
 if [ -e ~/.keystonerc ]; then
     . ~/.keystonerc
 fi
+}
+
+echo_usage() {
+    echo $"$0: Usage: [ start|stop|restart ] [ clean ] [ install {controller|compute} ]"
 }
 
 # Install the controller 
@@ -985,20 +1032,18 @@ controller_install() {
     controller_iptables_config
     enable_ntp
     keystone_install_config
-    controller_install_basics
+    controller_install_base
     keystone_nova_config
     keystone_glance_config
     nova_network_config
     image_register
 #    image_launch
-#    image_add_ip
     dashboard_install_config
     controller_vnc_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
 #    iscsi_volumes_config
-#    controller_open_ports
     controller_create_nova_key
 }
 
@@ -1009,7 +1054,7 @@ compute_install() {
     #install_epel_repo
     compute_iptables_config
     enable_ntp
-    compute_install_basics
+    compute_install_base
     compute_vnc_install_config
     nova_user_enable_login
     compute_get_nova_key
@@ -1020,12 +1065,30 @@ compute_install() {
 # Install on the controller
 
 case $1 in
+    start)
+           start_openstack
+           ;;
+    stop)
+           stop_openstack
+           ;;
     restart)
            restart_openstack
            ;;
     clean)
-           backup_openstack
-           clean_openstack
+           echo "This will remove all trace of OpenStack from your system."
+           echo "Are you sure you want to continue? [y|n]"
+           read CONT_ANS
+           if [ $CONT_ANS = "y" -o $CONT_ANS = "Y" ]; then
+               echo "Do you want to make a backup?  This will be placed in"
+               echo "/var/tmp/openstack-backup.<today's date>.tgz [y|n]"
+               read BACK_ANS
+               if [ $BACK_ANS = "y" -o $BACK_ANS = "Y" ]; then
+                    backup_openstack
+                    clean_openstack
+               else
+                    clean_openstack
+               fi
+           fi
            ;;
     install)
            if [ "$2" = "controller" ]; then
@@ -1033,10 +1096,11 @@ case $1 in
            elif [ "$2" = "compute" ]; then
                  compute_install
            else
-                 echo $"$0: Usage: [ restart ] [ clean ] [ install {controller|compute} ]"
+                echo_usage
            fi
            ;;
-    *)    echo $"$0: Usage: [ restart ] [ clean ] [ install {controller|compute} ]"
+    *)    
+           echo_usage
            exit 1
            ;;
 esac
