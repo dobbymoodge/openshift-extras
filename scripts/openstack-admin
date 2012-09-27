@@ -668,11 +668,13 @@ compute_vnc_install_config() {
 #vncserver_listen=`hostname`
 #vncserver_proxyclient_address=`hostname`" >> /etc/nova/nova.conf
 
-openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen `hostname`
+openstack-config --set /etc/nova/nova.conf DEFAULT novncproxy_base_url http://${CONTROLLER}:6080/vnc_auto.html
+#openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen `hostname`
+openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen 0.0.0.0
 openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_proxyclient_address `hostname`
 
 # Restart the services
-for svc in consoleauth novncproxy
+for svc in novncproxy
 do
     chkconfig openstack-nova-$svc on
     service openstack-nova-$svc restart
@@ -1036,6 +1038,7 @@ controller_install() {
     keystone_nova_config
     keystone_glance_config
     nova_network_config
+    controller_live_migration_config
     image_register
 #    image_launch
     dashboard_install_config
@@ -1055,6 +1058,7 @@ compute_install() {
     compute_iptables_config
     enable_ntp
     compute_install_base
+    compute_live_migration_config
     compute_vnc_install_config
     nova_user_enable_login
     compute_get_nova_key
