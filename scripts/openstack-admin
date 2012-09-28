@@ -839,7 +839,7 @@ backup_openstack() {
             done
     done
 
-    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/tmp/openstack-db-${DATE}/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
+    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/tmp/openstack-db-${DATE}/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/lib/{keystone,nova,swift,glance}
 }
 
 clean_openstack() {
