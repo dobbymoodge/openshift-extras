@@ -829,12 +829,24 @@ openstack-config --set /etc/nova/nova.conf DEFAULT network_host `ifconfig ${PRIV
 
 backup_openstack() {
     DATE=`date +%Y-%m-%d-%H%M`
+
+    mkdir -p /var/tmp/openstack-db-${DATE}
+    for db in nova glance keystone swift
+    do
+            for table in `mysql -ss -B -e "use $db; show tables;"
+            do
+                    mysqldump $db $table > /var/tmp/openstack-db-${DATE}/${db}-${table}.sql
+            done
+    done
+
     service mysqld stop
-    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/lib/mysql/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
+
+    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/tmp/openstack-db-${DATE}/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/{keystone,nova,swift,glance}
 }
 
 
 clean_openstack() {
+
     mysql -B -e "drop database glance; drop database keystone; drop database nova; drop database swift; drop user 'glance'@'%'; drop user 'keystone'@'%'; drop user 'nova'@'%'; drop user 'swift'@'%'; drop user 'glance'@'localhost'; drop user 'keystone'@'localhost'; drop user 'nova'@'localhost'; drop user 'swift'@'localhost'"
 
     PACKAGES="
