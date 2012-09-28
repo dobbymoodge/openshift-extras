@@ -998,7 +998,7 @@ clean_openstack() {
 
 start_openstack() {
     cd /etc/rc3.d/; 
-    for svc in `ls S*open* S*iptables` ; 
+    for svc in `ls S*open* S*iptables S*qpidd 2> /dev/null` ; 
     do 
         ./$svc start; 
     done; 
@@ -1007,7 +1007,7 @@ start_openstack() {
 
 stop_openstack() {
     cd /etc/rc3.d/; 
-    for svc in `ls S*open* S*iptables *dnsmasq` ; 
+    for svc in `ls S*open* S*iptables *dnsmasq S*qpidd 2> /dev/null` ; 
     do 
         ./$svc stop; 
     done; 
