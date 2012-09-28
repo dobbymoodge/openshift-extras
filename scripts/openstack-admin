@@ -228,6 +228,10 @@ fi
 
 sysctl -p
 
+# Disable authentication for qpidd
+
+perl -pe 's/^auth=.*$/auth=no/;g' -i /etc/qpidd.conf
+
 # Enable and Start services
 for svc in qpidd libvirtd openstack-glance-api openstack-glance-registry
 do
