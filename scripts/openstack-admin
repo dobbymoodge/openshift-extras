@@ -833,7 +833,7 @@ backup_openstack() {
     mkdir -p /var/tmp/openstack-db-${DATE}
     for db in nova glance keystone swift
     do
-            for table in `mysql -ss -B -e "use $db; show tables;"
+            for table in `mysql -ss -B -e "use $db; show tables;"`
             do
                     mysqldump $db $table > /var/tmp/openstack-db-${DATE}/${db}-${table}.sql
             done
