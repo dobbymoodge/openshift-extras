@@ -1037,7 +1037,7 @@ stop_openstack() {
 
 status_openstack() {
     cd /etc/rc3.d/; 
-    for svc in `ls S*open* S*iptables *dnsmasq S*qpidd 2> /dev/null` ; 
+    for svc in `ls S*open*` ; 
     do 
         ./$svc status; 
     done; 
@@ -1057,7 +1057,7 @@ fi
 }
 
 echo_usage() {
-    echo $"$0: Usage: [ start|stop|restart ] [ clean ] [ install {controller|compute} ]"
+    echo $"$0: Usage: [ start|stop|restart|status ] [ clean ] [ install {controller|compute} ]"
 }
 
 # Install the controller 
