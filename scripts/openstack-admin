@@ -1035,6 +1035,15 @@ stop_openstack() {
     cd - &> /dev/null
 }
 
+status_openstack() {
+    cd /etc/rc3.d/; 
+    for svc in `ls S*open* S*iptables *dnsmasq S*qpidd 2> /dev/null` ; 
+    do 
+        ./$svc status; 
+    done; 
+    cd - &> /dev/null
+}
+
 restart_openstack() {
     stop_openstack
     start_openstack
@@ -1102,6 +1111,9 @@ case $1 in
            ;;
     restart)
            restart_openstack
+           ;;
+    status)
+           status_openstack
            ;;
     clean)
            echo "This will remove all trace of OpenStack from your system."
