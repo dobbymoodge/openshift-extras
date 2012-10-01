@@ -246,7 +246,7 @@ vgcreate nova-volumes $(losetup --show -f /var/lib/nova/nova-volumes.img)
 check_it
 
 # Start the various Nova services
-for svc in api objectstore compute network volume scheduler cert; 
+for svc in api objectstore network volume scheduler cert; 
 do 
     chkconfig openstack-nova-$svc on
     service openstack-nova-$svc start
@@ -844,7 +844,15 @@ backup_openstack() {
 
 clean_openstack() {
 
-    mysql -B -e "drop database glance; drop database keystone; drop database nova; drop database swift; drop user 'glance'@'%'; drop user 'keystone'@'%'; drop user 'nova'@'%'; drop user 'swift'@'%'; drop user 'glance'@'localhost'; drop user 'keystone'@'localhost'; drop user 'nova'@'localhost'; drop user 'swift'@'localhost'"
+    mysql -B -e "
+        drop database glance; \
+        drop database keystone;\ 
+        drop database nova; \
+        drop database swift; \
+        delete from mysq.user where user='glance'; \
+        delete from mysq.user where user='keystone'; \
+        delete from mysq.user where user='nova'; \
+        delete from mysq.user where user='swift';"
 
     PACKAGES="
 	python-setuptools \
