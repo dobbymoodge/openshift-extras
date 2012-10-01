@@ -326,7 +326,7 @@ check_it
 
 # Add the floating IP range
 
-nova-manage floating create ${PUB_NET_NET}/${PUB_NET_MASK}
+nova-manage floating create --pool $PUB_NET_NAME ${PUB_NET_NET}/${PUB_NET_MASK}
 nova floating-ip-create
 nova floating-ip-list
 check_it
