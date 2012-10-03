@@ -26,6 +26,8 @@ DOMAIN_NAME=osop.rhcloud.com
 CONTROLLER=stor01.osop.rhcloud.com
 CONTROLLER_PUB_IP=209.132.179.6
 CONTROLLER_PRIV_IP=10.4.59.6
+# Block device that contains the NFS volume where VM instances are stored
+NFS_DEVICE=sda
 
 # Public/Floating network settings
 
@@ -756,13 +758,34 @@ install_package nfs-utils
 
 grep '/var/lib/nova/instances' /etc/exports &> /dev/null
   if [ $? -ne 0 ]; then
-      echo "/var/lib/nova/instances ${PRIV_NET_NET}/${PRIV_NET_MASK}(rw,sync,fsid=0,no_root_squash)" >> /etc/exports
+      echo "/var/lib/nova/instances ${PRIV_NET_NET}/${PRIV_NET_MASK}(rw,async,fsid=0,no_root_squash)" >> /etc/exports
   fi
   chmod o+x /var/lib/nova/instances
   echo "rpcbind: ${PRIV_NET_NET}/${PRIV_NET_MASK}" >> /etc/hosts.allow
   perl -pe "s/#Domain =.*$/Domain = ${DOMAIN_NAME}/g;" -i /etc/idmapd.conf
   perl -pe "s/#LIBVIRTD_ARGS=.*$/LIBVIRTD_ARGS="--listen"/g;" -i /etc/sysconfig/libvirtd
   perl -pe 's/#listen_tls = 0/listen_tls = 0/g;s/#listen_tcp = 1/listen_tcp = 1/g;s/#auth_tcp = "sasl"/auth_tcp = "none"/g;' -i /etc/libvirt/libvirtd.conf 
+  perl -pe 's/#RPCNFSDCOUNT=8/RPCNFSDCOUNT=64/;' -i /etc/sysconfig/nfs
+
+  echo "
+# Tune for NFS
+net.core.wmem_max = 8388608
+net.core.rmem_max = 8388608
+net.ipv4.tcp_wmem = 4096 65536 8388608
+net.ipv4.tcp_rmem = 4096 87380 8388608
+net.ipv4.tcp_default_win_scale = 7
+net.ipv4.tcp_moderate_rcvbuf = 0" >> /etc/sysctl.conf
+
+  sysctl -p
+
+  echo "
+# Tune for NFS
+echo deadline > /sys/block/$NFS_DEVICE/queue/scheduler 
+echo 150 /sys/block/$NFS_DEVICE/queue/iosched/read_expire 
+echo 150  > /sys/block/$NFS_DEVICE/queue/iosched/read_expire 
+echo 1500 > /sys/block/$NFS_DEVICE/queue/iosched/write_expire" >> /etc/rc.local
+
+  perl -pe 's/LANG=en_US.UTF-8/elevator=deadline LANG=en_US.UTF-8/g;' -i /boot/grub/grub.conf
 
   for svc in nfs nfslock rpcidmapd rpcgssd libvirtd
       do 
@@ -773,7 +796,7 @@ grep '/var/lib/nova/instances' /etc/exports &> /dev/null
 
 # Live migrate config on compute (NFS)
 
-compute_live_migrate_config() {
+compute_live_migration_config() {
 
 # Enable jumbo frames
 grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
@@ -783,7 +806,7 @@ fi
 
 install_package nfs-utils autofs
 
-echo "/nova /etc/auto.nova proto=tcp,noac,hard,intr,timeo=60,retrans=3,rsize=32768,wsize=32768" >> /etc/auto.master
+echo "/nova /etc/auto.nova proto=tcp,noac,hard,intr,timeo=60,retrans=3,rsize=65536,wsize=65536" >> /etc/auto.master
 echo "instances ${CONTROLLER_PRIV_IP}:/var/lib/nova/instances" >> /etc/auto.nova
 mkdir /nova
 cd /var/lib/nova/
