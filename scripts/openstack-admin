@@ -320,7 +320,7 @@ nova_network_config() {
 
 source_keystonerc
 
-nova-manage network create --multi_host=T $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 256 --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
+nova-manage network create --multi_host=T $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 254 --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
 nova-manage network list
 check_it
 
@@ -748,8 +748,10 @@ enable_ntp() {
 controller_live_migration_config() {
 
 # Enable jumbo frames
-echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
-
+grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
 install_package nfs-utils
 
 grep '/var/lib/nova/instances' /etc/exports &> /dev/null
@@ -774,7 +776,10 @@ grep '/var/lib/nova/instances' /etc/exports &> /dev/null
 compute_live_migrate_config() {
 
 # Enable jumbo frames
-echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
 
 install_package nfs-utils autofs
 
@@ -1033,6 +1038,7 @@ stop_openstack() {
         ./$svc stop; 
     done; 
     cd - &> /dev/null
+    brctl delbr ${VIRT_NET_BRIDGE}
 }
 
 status_openstack() {
