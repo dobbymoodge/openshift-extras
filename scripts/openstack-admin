@@ -1112,7 +1112,7 @@ controller_install() {
     keystone_nova_config
     keystone_glance_config
     nova_network_config
-    controller_live_migration_config
+#    controller_live_migration_config
     image_register
 #    image_launch
     dashboard_install_config
@@ -1132,7 +1132,7 @@ compute_install() {
     compute_iptables_config
     enable_ntp
     compute_install_base
-    compute_live_migration_config
+#    compute_live_migration_config
     compute_vnc_install_config
     nova_user_enable_login
     compute_get_nova_key
