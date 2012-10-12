@@ -749,11 +749,18 @@ enable_ntp() {
 
 controller_live_migration_config() {
 
+# Enable promiscuous mode on the private NIC
+grep PROMISC=yes  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo PROMISC=yes >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
+
 # Enable jumbo frames
 grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
 if [ $? -eq 1 ]; then
     echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
 fi
+
 install_package nfs-utils
 
 grep '/var/lib/nova/instances' /etc/exports &> /dev/null
@@ -772,9 +779,7 @@ grep '/var/lib/nova/instances' /etc/exports &> /dev/null
 net.core.wmem_max = 8388608
 net.core.rmem_max = 8388608
 net.ipv4.tcp_wmem = 4096 65536 8388608
-net.ipv4.tcp_rmem = 4096 87380 8388608
-net.ipv4.tcp_default_win_scale = 7
-net.ipv4.tcp_moderate_rcvbuf = 0" >> /etc/sysctl.conf
+net.ipv4.tcp_rmem = 4096 87380 8388608" >> /etc/sysctl.conf
 
   sysctl -p
 
@@ -798,6 +803,12 @@ echo 1500 > /sys/block/$NFS_DEVICE/queue/iosched/write_expire" >> /etc/rc.local
 
 compute_live_migration_config() {
 
+# Enable promiscuous mode on the private NIC
+grep PROMISC=yes  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo PROMISC=yes >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
+
 # Enable jumbo frames
 grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
 if [ $? -eq 1 ]; then
@@ -806,7 +817,7 @@ fi
 
 install_package nfs-utils autofs
 
-echo "/nova /etc/auto.nova proto=tcp,noac,hard,intr,timeo=60,retrans=3,rsize=65536,wsize=65536" >> /etc/auto.master
+echo "/nova /etc/auto.nova proto=tcp,hard,intr,timeo=60,retrans=3,rsize=65536,wsize=65536" >> /etc/auto.master
 echo "instances ${CONTROLLER_PRIV_IP}:/var/lib/nova/instances" >> /etc/auto.nova
 mkdir /nova
 cd /var/lib/nova/
