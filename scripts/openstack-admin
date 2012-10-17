@@ -10,31 +10,30 @@ if [ $UID -ne 0 ]; then
     exit 1
 fi
 
-# Set SELinux policy to permissive 
-# see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
-
-setenforce permissive
-
+#############################################################################
 # VARIABLES
+#############################################################################
 
 DATE=`date +%Y-%m-%d-%H%M`
+
+# Project name
+PROJECT=osop
 
 # Domainname this system lives on
 DOMAIN_NAME=osop.rhcloud.com
 
-# Head controller node hostname
-CONTROLLER=stor01.osop.rhcloud.com
-CONTROLLER_PUB_IP=209.132.179.6
-CONTROLLER_PRIV_IP=10.4.59.6
+# Head controller hostname and IPs
+CONTROLLER=10.4.59.6
+CONTROLLER_PUB_IP=10.4.59.6
+CONTROLLER_PRIV_IP=192.168.59.6
 # Block device that contains the NFS volume where VM instances are stored
 NFS_DEVICE=sda
 
 # Public/Floating network settings
-
-PUB_NET_NAME=osop-pub
-PUB_NET_NIC=eth4
-PUB_NET_NET=209.132.179.0
-PUB_NET_MASK=24
+PUB_NET_NAME=${PROJECT}-pub
+PUB_NET_NIC=eth5
+PUB_NET_NET=10.4.59.128
+PUB_NET_MASK=25
 
 if [ -z $PUB_NET_NAME ]; then
     echo "PUB_NET_NAME not set.  Please set it.  Aborting..."
@@ -42,24 +41,23 @@ if [ -z $PUB_NET_NAME ]; then
 fi
 
 # Flat, Private network settings
+PRIV_NET_NIC=eth4
+PRIV_NET_BRIDGE=br4
+PRIV_NET_NET=192.168.59.0
+PRIV_NET_MASK=25
 
-PRIV_NET_NAME=osop-priv
-PRIV_NET_NIC=eth5
-PRIV_NET_BRIDGE=br5
-PRIV_NET_NET=10.4.59.0
-PRIV_NET_MASK=24
-
-if [ -z $PRIV_NET_NAME ]; then
-    echo "PRIV_NET_NAME not set.  Please set it.  Aborting..."
+if [ -z $PRIV_NET_NIC ]; then
+    echo "PRIV_NET_NIC not set.  Please set it.  Aborting..."
     exit 1
 fi
 
 # Nova internal, virtual network settings
-
-VIRT_NET_NAME=osop-virt
+VIRT_NET_NAME=${PROJECT}-virt
 VIRT_NET_BRIDGE=$PRIV_NET_BRIDGE
-VIRT_NET_NET=192.168.179.0
-VIRT_NET_MASK=24
+VIRT_NET_NET=192.168.59.128
+VIRT_NET_MASK=25
+NUM_VIRT_NETS=129
+VIRT_NET_SIZE=254
 
 if [ -z $VIRT_NET_NAME ]; then
     echo "VIRT_NET_NAME not set.  Please set it.  Aborting..."
@@ -81,8 +79,9 @@ if [ -z $ADM_TOKEN ]; then
     perl -pe "s/^SERVICE_PASS=.*$/SERVICE_PASS=$TMP_SVC_PASS/;" -i $0
 fi
 
-
+#############################################################################
 # FUNCTIONS
+#############################################################################
 
 check_it() {
 # Check if the previous command completed, exit if not
@@ -322,15 +321,16 @@ nova_network_config() {
 
 source_keystonerc
 
-nova-manage network create --multi_host=T $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} 1 254 --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
+nova-manage network create --multi_host=T --label=$VIRT_NET_NAME --fixed_range_v4=${VIRT_NET_NET}/${VIRT_NET_MASK} --num_networks=${NUM_VIRT_NETS} --network_size=${VIRT_NET_SIZE} --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC} --dns1=${DNS1} --dns2=${DNS2} --project_id=${PROJECT} --priority=1
+
 nova-manage network list
 check_it
 
 # Add the floating IP range
 
-nova-manage floating create --pool $PUB_NET_NAME ${PUB_NET_NET}/${PUB_NET_MASK}
-nova floating-ip-create
-nova floating-ip-list
+nova-manage floating create --pool=$PUB_NET_NAME --ip_range=${PUB_NET_NET}/${PUB_NET_MASK} --interface=${PUB_NET_NIC}
+
+nova-manage floating list
 check_it
 
 # Add the virtual bridge for compute nodes
@@ -861,8 +861,6 @@ openstack-config --set /etc/nova/nova.conf DEFAULT network_host `ifconfig ${PRIV
         service openstack-nova-$svc start
     done
 
-# Configure the physical bridge interface
-#    nova-manage network create $VIRT_NET_NAME ${VIRT_NET_NET}/${VIRT_NET_MASK} --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC}
 }
 
 
@@ -1104,43 +1102,53 @@ echo_usage() {
 
 controller_install() {
 
-    #install_epel_repo
+    # Set SELinux policy to permissive 
+    # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
+
+##    setenforce permissive
+
+#    install_epel_repo
     controller_iptables_config
-    enable_ntp
-    keystone_install_config
-    controller_install_base
-    keystone_nova_config
-    keystone_glance_config
+##    enable_ntp
+##    keystone_install_config
+##    controller_install_base
+##    keystone_nova_config
+##    keystone_glance_config
     nova_network_config
 #    controller_live_migration_config
-    image_register
+##    image_register
 #    image_launch
-    dashboard_install_config
-    controller_vnc_install_config
+##    dashboard_install_config
+##    controller_vnc_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
 #    iscsi_volumes_config
-    controller_create_nova_key
+##    controller_create_nova_key
 }
 
 
 # Install the compute node
 
 compute_install() {
+    # Set SELinux policy to permissive 
+    # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
+
+##    setenforce permissive
+
     #install_epel_repo
     compute_iptables_config
-    enable_ntp
-    compute_install_base
+##    enable_ntp
+##    compute_install_base
 #    compute_live_migration_config
-    compute_vnc_install_config
-    nova_user_enable_login
-    compute_get_nova_key
+##    compute_vnc_install_config
+##    nova_user_enable_login
+##    compute_get_nova_key
 }
 
+#############################################################################
 # MAIN
-
-# Install on the controller
+#############################################################################
 
 case $1 in
     start)
