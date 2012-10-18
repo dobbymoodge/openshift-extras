@@ -1,8 +1,23 @@
 #!/bin/bash
-
-# Todo: 
-#   Add cleanup options for controller and compute
+#   Copyright 2012 Red Hat Inc.
 #
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# Owner: Dan Yocum <yocum@redhat.com>
+# Creation Date: 2012-10-18
+# Purpose:  A utility to manage OpenStack installation, de-installation, 
+#           backup, and control services in a non-puppet environment.
+
 
 # Check if we're root
 if [ $UID -ne 0 ]; then
@@ -56,8 +71,8 @@ VIRT_NET_NAME=${PROJECT}-virt
 VIRT_NET_BRIDGE=$PRIV_NET_BRIDGE
 VIRT_NET_NET=192.168.59.128
 VIRT_NET_MASK=25
-NUM_VIRT_NETS=129
-VIRT_NET_SIZE=254
+NUM_VIRT_NETS=1
+VIRT_NET_SIZE=127
 
 if [ -z $VIRT_NET_NAME ]; then
     echo "VIRT_NET_NAME not set.  Please set it.  Aborting..."
@@ -136,7 +151,7 @@ compute_iptables_config() {
 # libvirt port for VM migration
     iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
 # KVM
-    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261-j ACCEPT 
+    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
 
     iptables-save > /etc/sysconfig/iptables
 }
@@ -750,9 +765,11 @@ enable_ntp() {
 controller_live_migration_config() {
 
 # Enable promiscuous mode on the private NIC
-grep PROMISC=yes  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+grep promisc /etc/rc.local &> /dev/null
 if [ $? -eq 1 ]; then
-    echo PROMISC=yes >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+    echo "" >> /etc/rc.local
+    echo "/sbin/ifconfig ${PRIV_NET_NIC} promisc" >> /etc/rc.local
+    ifconfig ${PRIV_NET_NIC} promisc
 fi
 
 # Enable jumbo frames
