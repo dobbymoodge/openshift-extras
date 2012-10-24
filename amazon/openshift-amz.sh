@@ -1,7 +1,6 @@
 CONF_INSTALL_BROKER=true
 CONF_INSTALL_NODE=true
 
-
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
 #    tailf /mnt/sysimage/root/anaconda-post.log
@@ -44,17 +43,7 @@ KEYS
 configure_rhel_repo()
 {
   # Enable the optional channel.
-  #yum-config-manager --enable rhel-6-server-optional-rpms
-
-  # Enable internal RHEL repos (main + extras).
-  cat >> /etc/yum.repos.d/rhel.repo << RHEL
-[rhel63]
-name=rhel63
-baseurl=http://cdn-internal.rcm-test.redhat.com/content/dist/rhel/server/6/6Server/x86_64/os/
-enabled=1
-gpgcheck=0
-
-RHEL
+  yum-config-manager --enable rhel-6-server-optional-rpms
 }
 
 configure_client_tools_repo()
@@ -63,7 +52,7 @@ configure_client_tools_repo()
   cat >> /etc/yum.repos.d/openshift-client.repo << YUM
 [openshift_client]
 name=OpenShift Client
-baseurl=http://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Client/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Client/x86_64/os/
 enabled=1
 gpgcheck=0
 sslverify=false
@@ -77,7 +66,7 @@ configure_broker_repo()
   cat >> /etc/yum.repos.d/openshift-infrastructure.repo << YUM
 [openshift_infrastructure]
 name=OpenShift Infrastructure
-baseurl=http://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Infrastructure/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Infrastructure/x86_64/os/
 enabled=1
 gpgcheck=0
 sslverify=false
@@ -91,7 +80,7 @@ configure_node_repo()
   cat >> /etc/yum.repos.d/openshift-node.repo << YUM
 [openshift_node]
 name=OpenShift Node
-baseurl=http://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Node/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Node/x86_64/os/
 enabled=1
 gpgcheck=0
 sslverify=false
@@ -105,7 +94,7 @@ configure_jboss_cartridge_repo()
   cat >> /etc/yum.repos.d/openshift-jboss.repo << YUM
 [openshift_jbosseap]
 name=OpenShift JBossEAP
-baseurl=http://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/JBoss_EAP6_Cartridge/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/JBoss_EAP6_Cartridge/x86_64/os/
 enabled=1
 gpgcheck=0
 sslverify=false
@@ -139,6 +128,9 @@ install_node_pkgs()
   pkgs="rubygem-openshift-origin-node rubygem-passenger-native"
   pkgs="$pkgs openshift-origin-port-proxy"
   pkgs="$pkgs openshift-origin-node-util"
+  # We use semanage in this kickstart script, so we need to install
+  # policycoreutils-python.
+  pkgs="$pkgs policycoreutils-python"
 
   yum install -y $pkgs
 }
@@ -213,11 +205,7 @@ configure_selinux_policy_on_broker()
     echo boolean -m --on httpd_run_stickshift
     #echo boolean -m --on httpd_run_openshift
 
-    # Allow the broker to configure DNS.
-    echo boolean -m --on named_write_master_zones
-
-    # Allow ypbind so that the broker can communicate directly with the name
-    # server.
+    # Allow the broker to communicate with the named service.
     echo boolean -m --on allow_ypbind
   ) | semanage -i -
 
@@ -225,18 +213,12 @@ configure_selinux_policy_on_broker()
   fixfiles -R mod_passenger restore
 
   restorecon -R -v /var/run
-  restorecon -rv /usr/lib/ruby/gems/1.8/gems/passenger-*
+  restorecon -rv /usr/share/rubygems/gems/passenger-* 
 }
 
 # Fix up SELinux policy on the node.
 configure_selinux_policy_on_node()
 {
-  # This is a temporary measure until selinux-policy is updated.
-  pushd /usr/share/selinux/targeted
-  wget https://gist.github.com/raw/3901379/ce907e7a4bd6f586f8e313c2b95d6cdaa7bcb830/pam_openshift.pp
-  semodule -i pam_openshift.pp
-  popd
-
   # We combine these setsebool commands into a single semanage command
   # because separate commands take a long time to run.
   (
@@ -265,7 +247,7 @@ configure_selinux_policy_on_node()
   fixfiles -R mod_passenger restore
 
   restorecon -rv /var/run
-  restorecon -rv /usr/lib/ruby/gems/1.8/gems/passenger-*
+  restorecon -rv /usr/share/rubygems/gems/passenger-* 
   restorecon -rv /usr/sbin/mcollectived /var/log/mcollective.log /var/run/mcollectived.pid
   restorecon -rv /var/lib/openshift /etc/openshift/node.conf /etc/httpd/conf.d/openshift
 }
@@ -274,20 +256,19 @@ configure_pam_on_node()
 {
   sed -i -e 's|pam_selinux|pam_openshift|g' /etc/pam.d/sshd
 
-  # The pam_namespace work is not ready to be enabled yet.
-  #for f in "runuser" "runuser-l" "sshd" "su" "system-auth-ac"
-  #do
-  #  t="/etc/pam.d/$f"
-  #  if ! grep -q "pam_namespace.so" "$t"
-  #  then
-  #    echo -e "session\t\trequired\tpam_namespace.so no_unmount_on_close" >> "$t"
-  #  fi
-  #done
+  for f in "runuser" "runuser-l" "sshd" "su" "system-auth-ac"
+  do
+    t="/etc/pam.d/$f"
+    if ! grep -q "pam_namespace.so" "$t"
+    then
+      echo -e "session\t\trequired\tpam_namespace.so no_unmount_on_close" >> "$t"
+    fi
+  done
 }
 
 configure_cgroups_on_node()
 {
-  cp /usr/share/doc/*/cgconfig.conf /etc/cgconfig.conf
+  cp -vf /usr/share/doc/*/cgconfig.conf /etc/cgconfig.conf
   restorecon -v /etc/cgconfig.conf
   mkdir /cgroup
   restorecon -v /cgroup
@@ -343,6 +324,23 @@ configure_datastore()
     echo 'smallfiles=true' >> /etc/mongodb.conf
   fi
 
+  # Iff mongod is running on a separate host from the broker, open up
+  # the firewall to allow the broker host to connect.
+  if broker
+  then
+    echo 'The broker and data store are on the same host.'
+    echo 'Skipping firewall and mongod configuration;'
+    echo 'mongod will only be accessible over localhost).'
+  else
+    echo 'The broker and data store are on separate hosts.'
+
+    echo 'Configuring the firewall to allow connections to mongod...'
+    lokkit --nostart --port=27017:tcp
+
+    echo 'Configuring mongod to listen on external interfaces...'
+    perl -p -i -e "s/^bind_ip = .*$/bind_ip = 0.0.0.0/" /etc/mongodb.conf
+  fi
+
   # Configure mongod to start on boot.
   chkconfig mongod on
 
@@ -357,6 +355,12 @@ configure_port_proxy()
   lokkit --nostart --port=35531-65535:tcp
 
   chkconfig openshift-port-proxy on
+}
+
+configure_gears()
+{
+  # Make sure that gears are restarted on reboot.
+  chkconfig openshift-gears on
 }
 
 
@@ -473,7 +477,7 @@ securityprovider=psk
 plugin.psk=unset
 
 connector = stomp
-plugin.stomp.host = localhost
+plugin.stomp.host = ${activemq_hostname}.${domain}
 plugin.stomp.port = 61613
 plugin.stomp.user = mcollective
 plugin.stomp.password = marionette
@@ -501,7 +505,7 @@ securityprovider = psk
 plugin.psk = unset
 
 connector = stomp
-plugin.stomp.host = ${broker_hostname}.${domain}
+plugin.stomp.host = ${activemq_hostname}.${domain}
 plugin.stomp.port = 61613
 plugin.stomp.user = mcollective
 plugin.stomp.password = marionette
@@ -555,7 +559,7 @@ configure_activemq()
     <!--
         The <broker> element is used to configure the ActiveMQ broker.
     -->
-    <broker xmlns="http://activemq.apache.org/schema/core" brokerName="${broker_hostname}.${domain}" dataDirectory="\${activemq.data}">
+    <broker xmlns="http://activemq.apache.org/schema/core" brokerName="${activemq_hostname}.${domain}" dataDirectory="\${activemq.data}">
 
         <!--
             For better performances use VM cursor and small memory limit.
@@ -850,33 +854,21 @@ EOF
   # Tell BIND about the broker.
   nsupdate -k ${keyfile} <<EOF
 server 127.0.0.1
-update delete ${broker_hostname}.${domain} A
-update add ${broker_hostname}.${domain} 180 A ${broker_ip_addr}
+update delete ${named_hostname}.${domain} A
+update add ${named_hostname}.${domain} 180 A ${named_ip_addr}
 send
 EOF
 }
 
 
-# Make resolv.conf point to localhost to use the newly configured named
-# on the broker.
-update_resolv_conf_on_broker()
+# Make resolv.conf point to our named service, which will resolve the
+# host names used in this installation of OpenShift.  Our named service
+# will forward other requests to some other DNS servers.
+update_resolv_conf()
 {
-  # Update resolv.conf to use the local BIND instance.
+  # Update resolv.conf to use our named.
   cat <<EOF > /etc/resolv.conf
-nameserver 127.0.0.1
-EOF
-}
-
-
-# Make resolv.conf point to the broker, which will resolve the host
-# names used in this installation of OpenShift.  The broker will forward
-# other requests to some other DNS servers.
-# on the broker.
-update_resolv_conf_on_node()
-{
-  # Update resolv.conf to use the broker.
-  cat <<EOF > /etc/resolv.conf
-nameserver ${broker_ip_addr}
+nameserver ${named_ip_addr}
 EOF
 }
 
@@ -884,9 +876,19 @@ EOF
 # Update the controller configuration.
 configure_controller()
 {
+  # Configure the broker with the correct hostname.
   perl -p -i -e "s/.*:domain_suffix.*/    :domain_suffix => \"${domain}\",/" /var/www/openshift/broker/config/environments/*.rb
   # */ # What the heck, VIM syntax highlighting? Kickstart scripts do not use
   #  C-style comments.
+
+  # Point the broker to the data store (mongod service).
+  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}.${domain}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
+  # */
+
+  # Configure the broker with the correct password for the data store.
+  # If you change the MongoDB password of "mooo" to something else, be
+  # sure to edit and enable the following line:
+  #sed -i -e '/:password => "mooo"/s/mooo/<password>/' /var/www/openshift/broker/config/environments/development.rb
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
@@ -908,10 +910,6 @@ configure_mongo_password()
   echo "MongoDB is ready! ($(date +%H:%M:%S))"
 
   mongo openshift_broker_dev --eval 'db.addUser("openshift", "mooo")'
-
-  # If you change the above password of "mooo" to something else, be
-  # sure to edit and enable the following line:
-  #sed -i -e '/:password => "mooo"/s/mooo/<password>/' /var/www/openshift/broker/config/environments/development.rb
 }
 
 # Configure the broker to use the remote-user authentication plugin.
@@ -930,7 +928,7 @@ configure_dns_plugin()
 {
   mkdir -p /etc/openshift/plugins.d
   cat <<EOF > /etc/openshift/plugins.d/openshift-origin-dns-bind.conf
-BIND_SERVER="127.0.0.1"
+BIND_SERVER="${named_ip_addr}"
 BIND_PORT=53
 BIND_KEYNAME="${domain}"
 BIND_KEYVALUE="${KEY}"
@@ -968,7 +966,7 @@ configure_network()
   # Append some stuff to the DHCP configuration.
   cat <<EOF >> /etc/dhcp/dhclient-eth0.conf
 
-prepend domain-name-servers ${broker_ip_addr};
+prepend domain-name-servers ${named_ip_addr};
 supersede host-name "${hostname}";
 supersede domain-name "${domain}";
 EOF
@@ -1006,6 +1004,8 @@ update_openshift_facts_on_node()
 # configuring the host as a broker or as a node.
 #
 
+# Parse /proc/cmdline so that from, e.g., "foo=bar baz" we get
+# CONF_FOO=bar and CONF_BAZ=true in the environment.
 for word in $(cat /proc/cmdline)
 do
   key="${word%%\=*}"
@@ -1013,50 +1013,128 @@ do
     (*=*) val="${word#*\=}" ;;
     (*) val=true ;;
   esac
-  export CONF_${key^^}="$val"
+  eval "CONF_${key^^}"'="$val"'
 done
 
-# Define broker and node functions which return true or false as
-# appropriate based on whether we are configuring the host as a broker
-# or as a node.
-[[ $CONF_INSTALL_BROKER =~ (1|true) ]] && broker() { :; } || broker() { false; }
+is_true()
+{
+  for arg
+  do
+    [[ x$arg =~ x(1|true) ]] || return 1
+  done
 
-[[ $CONF_INSTALL_NODE =~ (1|true) ]] && node() { :; } || node() { false; }
+  return 0
+}
 
-# If neither node nor broker is specified, define both broker and node
-# to true so we install everything.
-node || broker || { broker() { :; }; node() { :; }; }
+is_false()
+{
+  for arg
+  do
+    [[ x$arg =~ x(1|true) ]] || return 0
+  done
 
-node && echo Installing node components.
-broker && echo Installing broker components.
+  return 1
+}
 
-#
+# Following are the different components that can be installed:
+components='broker node named activemq datastore'
+
+# For each component, will define a constant function that return either
+# true or false.  For example, there will be a named function.  We can
+# then use 'if named; then ...; fi' or just 'named && ...' to run the
+# given commands if, and only if, named is enabled.
+
+# By default, each component is _not_ installed.
+for component in $components
+do
+  eval "$component() { false; }"
+done
+
+# But any or all components may be explicity enabled.
+for component in ${CONF_INSTALL_COMPONENTS// }
+do
+  eval "$component() { :; }"
+done
+
+# If nothing is explicitly enabled, enable everything.
+installing_something=0
+for component in $components
+do
+  if eval $component
+  then
+    installing_something=1
+    break
+  fi
+done
+if [ $installing_something = 0 ]
+then
+  for component in $components
+  do
+    eval "$component() { :; }"
+  done
+fi
+
 # Following are some settings used in subsequent steps.
-#
 
-# The domain name for this OpenShift Enterprise installation.
+# The domain name for the OpenShift Enterprise installation.
 domain="${CONF_DOMAIN:-example.com}"
 
-# The hostname of the broker.
 broker_hostname="${CONF_BROKER_HOSTNAME:-broker}"
-
-# The hostname of the node.
 node_hostname="${CONF_NODE_HOSTNAME:-node}"
+named_hostname="${CONF_NAMED_HOSTNAME:-ns}"
+activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq}"
+datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore}"
 
 # The hostname name for this host.
-node && hostname="$node_hostname"
-broker && hostname="$broker_hostname"
+# Note: If this host is, e.g., both a broker and a datastore, we want to
+# go with the broker hostname and not the datastore hostname.
+if broker
+then hostname="$broker_hostname"
+elif node
+then hostname="$node_hostname"
+elif named
+then hostname="$named_hostname"
+elif activemq
+then hostname="$activemq_hostname"
+elif datastore
+then hostname="$datastore_hostname"
+fi
 
-# The IP address of the broker.  If no IP address is given on the kernel
-# command-line, the IP address of the current host is used.
-broker_ip_addr="${CONF_BROKER_IP_ADDR:-$(/sbin/ip addr show dev eth0 | awk '/inet / { split($2,a,"/"); print a[1]; }')}"
+# Grab the IP address set during installation.
+cur_ip_addr="$(/sbin/ip addr show dev eth0 | awk '/inet / { split($2,a,"/"); print a[1]; }')"
 
-# The IP address of the node.  If no IP address is given on the kernel
-# command-line, the IP address of the current host is used.
-node_ip_addr="${CONF_NODE_IP_ADDR:-$(/sbin/ip addr show dev eth0 | awk '/inet / { split($2,a,"/"); print a[1]; }')}"
+# Unless otherwise specified, the broker is assumed to be the current
+# host.
+broker_ip_addr="${CONF_BROKER_IP_ADDR:-$cur_ip_addr}"
 
-broker && ip_addr="$broker_ip_addr"
-ip_addr=${ip_addr:-$node_ip_addr}
+# Unless otherwise specified, the node is assumed to be the current
+# host.
+node_ip_addr="${CONF_NODE_IP_ADDR:-$cur_ip_addr}"
+
+# Unless otherwise specified, the named service, data store, and
+# ActiveMQ service are assumed to be the current host if we are
+# installing the component now or the broker host otherwise.
+if named
+then
+  named_ip_addr="${CONF_NAMED_IP_ADDR:-$cur_ip_addr}"
+else
+  named_ip_addr="${CONF_NAMED_IP_ADDR:-$broker_ip_addr}"
+fi
+
+echo "The following components will be installed:"
+for component in $components
+do
+  if eval $component
+  then
+    printf '\t%s.\n' $component
+  fi
+done
+
+echo "Configuring with broker with hostname ${broker_hostname}.${domain}."
+node && echo "Configuring with node with hostname ${node_hostname}.${domain}."
+echo "Configuring with named with IP address ${named_ip_addr}."
+echo "Configuring with datastore with hostname ${datastore_hostname}.${domain}."
+echo "Configuring with activemq with hostname ${activemq_hostname}.${domain}."
 
 # The nameservers to which named on the broker will forward requests.
 # This should be a list of IP addresses with a semicolon after each.
@@ -1065,39 +1143,30 @@ nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
 
 ########################################################################
 
-#
-# Execute the high-level steps to install a broker or node.
-#
-
-if [[ ! x$CONF_NO_NTP =~ x(1|true) ]]
-then
-  synchronize_clock
-fi
-
-if [[ ! x$CONF_NO_SSH_KEYS =~ x(1|true) ]]
-then
-  install_ssh_keys
-fi
+is_false "$CONF_NO_NTP" && synchronize_clock
+is_false "$CONF_NO_SSH_KEYS" && install_ssh_keys
 
 #configure_rhel_repo
-broker && configure_broker_repo
+if activemq || broker || datastore
+then
+  configure_broker_repo
+fi
 node && configure_node_repo
 node && configure_jboss_cartridge_repo
-configure_client_tools_repo
+broker && configure_client_tools_repo
 
 yum update -y
 
-broker && configure_named
+named && configure_named
 
-broker && update_resolv_conf_on_broker
-node && update_resolv_conf_on_node
+update_resolv_conf
 
 configure_network
 
-broker && configure_datastore
+datastore && configure_datastore
 
 #broker && configure_qpid
-broker && configure_activemq
+activemq && configure_activemq
 
 #broker && configure_mcollective_for_qpid_on_broker
 broker && configure_mcollective_for_activemq_on_broker
@@ -1108,7 +1177,7 @@ node && configure_mcollective_for_activemq_on_node
 broker && install_broker_pkgs
 node && install_node_pkgs
 node && install_cartridges
-install_rhc_pkg
+broker && install_rhc_pkg
 
 broker && enable_services_on_broker
 node && enable_services_on_node
@@ -1127,9 +1196,11 @@ broker && configure_auth_plugin
 broker && configure_messaging_plugin
 broker && configure_dns_plugin
 broker && configure_httpd_auth
-broker && configure_mongo_password
+
+datastore && configure_mongo_password
 
 node && configure_port_proxy
+node && configure_gears
 node && configure_node
 node && update_openshift_facts_on_node
 
