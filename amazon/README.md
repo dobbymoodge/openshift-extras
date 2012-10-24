@@ -21,7 +21,7 @@ is as follows.
 
 1. Download the public gist kickstart
 
-    wget https://raw.github.com/gist/3901379/45782dc6b168282823a87bb15f9bb81c0d0773bc/gist-raw-perm-HEAD.openshift.ks
+    wget https://raw.github.com/gist/3901379/openshift.ks
 
 1. Convert the kickstart to a script and delete the download
 
