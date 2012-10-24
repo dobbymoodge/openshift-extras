@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wget https://raw.github.com/gist/3901379/45782dc6b168282823a87bb15f9bb81c0d0773bc/openshift.ks openshift.ks
+wget https://raw.github.com/gist/3901379/45782dc6b168282823a87bb15f9bb81c0d0773bc/gist-raw-perm-HEAD.openshift.ks openshift.ks
 sed -e '0,/^%post/d;/^%end/,$d' openshift.ks > openshift-amz.sh
 rm openshift.ks
 sed -i -e 's/2012-10-22/2012-10-23/g' openshift-amz.sh
