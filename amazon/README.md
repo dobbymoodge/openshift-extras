@@ -43,3 +43,7 @@ is as follows.
 5. Setup script to configure the node and broker
 
     sed -i "1i CONF_INSTALL_COMPONENTS=\"broker node activemq datastore\"" openshift-amz.sh
+
+6. Setup nameserver host to point to same machine
+
+    sed -i "1i CONF_NAMED_IP_ADDR=\"127.0.0.1\"" openshift-amz.sh

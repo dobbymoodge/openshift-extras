@@ -1,4 +1,5 @@
-CONF_INSTALL_COMPONENTS=broker,node,activemq,datastore
+CONF_NAMED_IP_ADDR="127.0.0.1"
+CONF_INSTALL_COMPONENTS="broker node activemq datastore"
 
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
