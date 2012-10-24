@@ -1,5 +1,4 @@
-CONF_INSTALL_BROKER=true
-CONF_INSTALL_NODE=true
+CONF_INSTALL_COMPONENTS=broker,node,activemq,datastore
 
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
