@@ -1,0 +1,62 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "AWS CloudFormation for setting up an OpenShift environment",
+
+  "Parameters" : {
+    "HostedZone" : {
+      "Type" : "String",
+      "Default" : "cloudydemo.com",
+      "Description" : "The DNS name of an existing Amazon Route 53 hosted zone"
+    }
+  },
+
+  "Mappings" : {
+    "RegionMap" : {
+      "us-east-1"      : { "AMI" : "ami-7ebe1917" }
+    }
+  },
+
+  "Resources" : {
+    "BrokerInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "InstanceType" : "m1.large",
+        "KeyName" : "libra",
+        "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}]
+      }
+    },
+    "NodeInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "InstanceType" : "m1.large",
+        "KeyName" : "libra",
+        "Tags" : [{"Key" : "Name", "Value" : "openshift-node"}]
+      }
+    },
+    "NodeDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Node DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["node", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "CNAME",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Fn::GetAtt" : [ "NodeInstance", "PublicDnsName" ] } ]
+      }
+    },
+    "BrokerDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Broker DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "CNAME",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Fn::GetAtt" : [ "BrokerInstance", "PublicDnsName" ] } ]
+      }
+    }
+  }
+}
