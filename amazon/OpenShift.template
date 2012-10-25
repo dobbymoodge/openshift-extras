@@ -23,6 +23,72 @@
   },
 
   "Resources" : {
+    "NamedInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "InstanceType" : "m1.small",
+        "KeyName" : "libra",
+        "SecurityGroups" : [ { "Ref" : "NamedSecurityGroup" } ],
+        "Tags" : [{"Key" : "Name", "Value" : "openshift-named"}],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
+            "#!/bin/bash -ex","\n",
+            "cd ~/","\n",
+            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
+            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
+            "export CONF_INSTALL_COMPONENTS='named'","\n",
+            "sh openshift-amz.sh &> kickstart.log","\n",
+            "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
+                                                           "\"Reason\" : \"Kickstart Complete\",",
+                                                           "\"UniqueId\" : \"named-kickstart\",",
+                                                           "\"Data\" : \"Done\"}' ",
+                  "\"", {"Ref" : "NamedWaitForInstanceWaitHandle"},"\"\n" ]]}}
+      }
+    },
+
+    "NamedSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Named firewall rules",
+        "SecurityGroupIngress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "22",
+          "ToPort" : "22",
+          "CidrIp" : "0.0.0.0/0"
+        }, {
+          "IpProtocol" : "tcp",
+          "FromPort" : "53",
+          "ToPort" : "53",
+          "CidrIp" : "0.0.0.0/0"
+        } ]
+      }
+    },
+
+    "NamedEIP" : {
+        "Type" : "AWS::EC2::EIP",
+        "Properties" : {
+            "InstanceId" : { "Ref" : "NamedInstance" }
+        }
+    },
+
+    "NamedWaitForInstanceWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle",
+      "Properties" : {
+      }
+    },
+
+    "WaitForNamed" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "BrokerInstance",
+      "Properties" : {
+        "Handle" : {"Ref" : "NamedWaitForInstanceWaitHandle"},
+        "Timeout" : "900"
+      }
+    },
+
+
+
+
     "BrokerInstance" : {
       "Type" : "AWS::EC2::Instance",
       "Properties" : {
@@ -33,8 +99,10 @@
         "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
             "#!/bin/bash -ex","\n",
+            "cd ~/","\n",
             "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
+            "export CONF_NAMED_IP_ADDR='", { "Ref" : "NamedEIP" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='broker'","\n",
             "sh openshift-amz.sh > kickstart.log","\n",
             "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
@@ -42,7 +110,8 @@
                                                            "\"UniqueId\" : \"broker-kickstart\",",
                                                            "\"Data\" : \"Done\"}' ",
                   "\"", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"\"\n" ]]}}
-      }
+      },
+      "DependsOn" : "NamedEIP"
     },
     "BrokerSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
