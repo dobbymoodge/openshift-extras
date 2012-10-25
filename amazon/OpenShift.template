@@ -38,15 +38,27 @@
         "Tags" : [{"Key" : "Name", "Value" : "openshift-node"}]
       }
     },
+    "BrokerEIP" : {
+        "Type" : "AWS::EC2::EIP",
+        "Properties" : {
+            "InstanceId" : { "Ref" : "BrokerInstance" }
+        }
+    },
+    "NodeEIP" : {
+        "Type" : "AWS::EC2::EIP",
+        "Properties" : {
+            "InstanceId" : { "Ref" : "NodeInstance" }
+        }
+    },
     "NodeDNSRecord" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Node DNS Name",
         "Name" : { "Fn::Join" : [ "", ["node", ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "CNAME",
+        "Type" : "A",
         "TTL" : "60",
-        "ResourceRecords" : [ { "Fn::GetAtt" : [ "NodeInstance", "PublicDnsName" ] } ]
+        "ResourceRecords" : [ { "Ref" : "NodeEIP" } ]
       }
     },
     "BrokerDNSRecord" : {
@@ -55,9 +67,9 @@
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Broker DNS Name",
         "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "CNAME",
+        "Type" : "A",
         "TTL" : "60",
-        "ResourceRecords" : [ { "Fn::GetAtt" : [ "BrokerInstance", "PublicDnsName" ] } ]
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     }
   }
