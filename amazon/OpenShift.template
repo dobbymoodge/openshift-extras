@@ -39,8 +39,8 @@
             "export CONF_INSTALL_COMPONENTS='named'","\n",
             "sh openshift-amz.sh &> kickstart.log","\n",
             "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
-                                                           "\"Reason\" : \"Kickstart Complete\",",
-                                                           "\"UniqueId\" : \"named-kickstart\",",
+                                                           "\"Reason\" : \"Configuration Complete\",",
+                                                           "\"UniqueId\" : \"ID1\",",
                                                            "\"Data\" : \"Done\"}' ",
                   "\"", {"Ref" : "NamedWaitForInstanceWaitHandle"},"\"\n" ]]}}
       }
@@ -79,7 +79,7 @@
 
     "WaitForNamed" : {
       "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "BrokerInstance",
+      "DependsOn" : "NamedInstance",
       "Properties" : {
         "Handle" : {"Ref" : "NamedWaitForInstanceWaitHandle"},
         "Timeout" : "900"
@@ -106,8 +106,8 @@
             "export CONF_INSTALL_COMPONENTS='broker'","\n",
             "sh openshift-amz.sh > kickstart.log","\n",
             "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
-                                                           "\"Reason\" : \"Kickstart Complete\",",
-                                                           "\"UniqueId\" : \"broker-kickstart\",",
+                                                           "\"Reason\" : \"Configuration Complete\",",
+                                                           "\"UniqueId\" : \"ID2\",",
                                                            "\"Data\" : \"Done\"}' ",
                   "\"", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"\"\n" ]]}}
       },
