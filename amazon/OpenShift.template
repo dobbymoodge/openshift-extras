@@ -13,7 +13,7 @@
 
   "Mappings" : {
     "RegionMap" : {
-      "us-east-1"      : { "AMI" : "ami-12d26a7b" }
+      "us-east-1"      : { "AMI" : "ami-eaa91183" }
     }
   },
 
@@ -24,8 +24,40 @@
         "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
         "InstanceType" : "m1.large",
         "KeyName" : "libra",
-        "SecurityGroups" : ["public"],
-        "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}]
+        "SecurityGroups" : [ { "Ref" : "BrokerSecurityGroup" } ],
+        "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
+            "#!/bin/bash -ex","\n",
+            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
+            "export CONF_INSTALL_COMPONENTS='broker'","\n",
+            "sh openshift-amz.sh > kickstart.log","\n",
+            "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
+                                                           "\"Reason\" : \"Kickstart Complete\",",
+                                                           "\"UniqueId\" : \"broker-kickstart\",",
+                                                           "\"Data\" : \"Done\"}' ",
+                  "\"", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"\"\n" ]]}}
+      }
+    },
+    "BrokerSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Broker firewall rules",
+        "SecurityGroupIngress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "22",
+          "ToPort" : "22",
+          "CidrIp" : "0.0.0.0/0"
+        }, {
+          "IpProtocol" : "tcp",
+          "FromPort" : "80",
+          "ToPort" : "80",
+          "CidrIp" : "0.0.0.0/0"
+        }, {
+          "IpProtocol" : "tcp",
+          "FromPort" : "443",
+          "ToPort" : "443",
+          "CidrIp" : "0.0.0.0/0"
+        } ]
       }
     },
     "BrokerEIP" : {
@@ -34,6 +66,22 @@
             "InstanceId" : { "Ref" : "BrokerInstance" }
         }
     },
+    "BrokerWaitForInstanceWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle",
+      "Properties" : {
+      }
+    },
+
+    "WaitForBroker" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "BrokerInstance",
+      "Properties" : {
+        "Handle" : {"Ref" : "BrokerWaitForInstanceWaitHandle"},
+        "Timeout" : "1800"
+      }
+    },
+
+
     "NodeDNSRecord" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {

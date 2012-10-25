@@ -1,15 +1,39 @@
 Amazon Installation
 ==================
 
+Background
+----------
+
+For this CloudFormation template to work, we are using init.d scripts
+that will run a script embedded in the UserData for the image.  The
+image build process is as follows:
+
+    # Download the user data run scripts
+    # Based on the following thread - https://forums.aws.amazon.com/thread.jspa?threadID=87599
+    cd /etc/init.d/
+    wget https://forums.aws.amazon.com/servlet/JiveServlet/download/92-87599-322826-6150/ec2-ssh-host-key-gen
+    wget https://forums.aws.amazon.com/servlet/JiveServlet/download/92-87599-322826-6169/ec2-run-user-data
+    chmod 755 ec2-*
+
+    # Start those services on boot
+    chkconfig ec2-ssh-host-key-gen on
+    chkconfig ec2-run-user-data on
+
+    # Install some base packages
+    yum install -y gcc ruby ruby-devel python python-devel
+
+    # Update the remainder of the packages
+    yum update -y
+
+The resulting image is saved as the AMI:
+
+    rhel6.3-openshift-cloud-init
+
 Running
 -------
-*Important:* These AMI's won't have charlie so make sure to turn it off when you are done.
 
-1. Create an AMI instance from ami-ee0eaf87 (RHEL-6.3-Starter-x86_64-1-Access2).
-2. Upload the openshift-amz.sh script to your instance
-3. Run it
-    CONF_PREFIX="myprefix" && sh openshift-amz.sh
-
+1. Upload the OpenShift.template as your CloudFormation Stack
+2. Watch it run...
 
 Updating from the source kickstart
 ----------------------------------
