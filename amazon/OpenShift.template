@@ -28,26 +28,10 @@
         "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}]
       }
     },
-    "NodeInstance" : {
-      "Type" : "AWS::EC2::Instance",
-      "Properties" : {
-        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
-        "InstanceType" : "m1.large",
-        "KeyName" : "libra",
-        "SecurityGroups" : ["public"],
-        "Tags" : [{"Key" : "Name", "Value" : "openshift-node"}]
-      }
-    },
     "BrokerEIP" : {
         "Type" : "AWS::EC2::EIP",
         "Properties" : {
             "InstanceId" : { "Ref" : "BrokerInstance" }
-        }
-    },
-    "NodeEIP" : {
-        "Type" : "AWS::EC2::EIP",
-        "Properties" : {
-            "InstanceId" : { "Ref" : "NodeInstance" }
         }
     },
     "NodeDNSRecord" : {
@@ -57,8 +41,8 @@
         "Comment" : "Node DNS Name",
         "Name" : { "Fn::Join" : [ "", ["node", ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
-        "TTL" : "60",
-        "ResourceRecords" : [ { "Ref" : "NodeEIP" } ]
+        "TTL" : "30",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
     "BrokerDNSRecord" : {
@@ -68,7 +52,7 @@
         "Comment" : "Broker DNS Name",
         "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
-        "TTL" : "60",
+        "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
@@ -79,7 +63,7 @@
         "Comment" : "ActiveMQ DNS Name",
         "Name" : { "Fn::Join" : [ "", ["activemq", ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
-        "TTL" : "60",
+        "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
@@ -90,7 +74,18 @@
         "Comment" : "Datastore DNS Name",
         "Name" : { "Fn::Join" : [ "", ["mongo", ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
-        "TTL" : "60",
+        "TTL" : "30",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
+      }
+    },
+   "NamedDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Named DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
@@ -101,19 +96,8 @@
         "Comment" : "Apps Subdomain DNS Delegation",
         "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "NS",
-        "TTL" : "60",
+        "TTL" : "30",
         "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]} ]
-      }
-    },
-    "NamedDNSRecord" : {
-      "Type" : "AWS::Route53::RecordSet",
-      "Properties" : {
-        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
-        "Comment" : "Named DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "A",
-        "TTL" : "60",
-        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     }
   }
