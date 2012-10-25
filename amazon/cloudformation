@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+
+$: << File.expand_path(File.dirname(__FILE__))
+
+require 'rubygems'
+require 'thor'
+require 'fileutils'
+require File.join('lib', '..', '..', '..', 'origin-dev-tools', 'build', 'origin_constants')
+require File.join('lib', '..', '..', '..', 'origin-dev-tools', 'build', 'lib', 'openshift')
+require 'pp'
+
+include FileUtils
+
+module Origin
+  class CloudFormationPlugin < Thor
+    include Thor::Actions
+    include OpenShift::Tito
+    include OpenShift::SSH
+    include OpenShift::Amazon
+
+    desc "build_amis NAME", "Builds a set of AMIs for the CloudFormation"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :region, :default => "us-east-1", :desc => "Amazon region override (default us-east-1)"
+    method_option :ami, :default => "ami-ee0eaf87", :desc => "The base image from which to build (default ami-ee0eaf87)"
+    method_option :terminate, :type => :boolean, :default => false, :desc => "Terminate the instance on exit"
+    def build_amis(name)
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+
+      conn = connect(options.region)
+      image = conn.images[options.ami]
+
+      puts "Launch base images for kickstarts"
+      broker_instance = launch_instance(image, name + "-broker")
+      #node_instance = launch_instance(image, name + "-node")
+      #activemq_instance = launch_instance(image, name + "-activemq")
+      #mongo_instance = launch_instance(image, name + "-mongo")
+
+      broker_hostname = broker_instance.dns_name
+      #node_hostname = node_instance.dns_name
+      #activemq_hostname = activemq_instance.dns_name
+      #mongo_hostname = mongo_instance.dns_name
+      puts "Done"
+      puts "Broker Hostname: #{broker_hostname}"
+  
+      begin
+        puts "Copying kickstart script..."
+        kickstart = File.join(File.dirname(__FILE__), "openshift-amz.sh")
+        scp_to(broker_hostname, kickstart, "~/")
+        puts "Done"
+
+        puts "Executing kickstart script"
+        out, ret = ssh(broker_hostname, "CONF_INSTALL_COMPONENTS='broker' && sh openshift-amz.sh >> kickstart.log", 60 * 30, true)
+        pp out
+        puts "Done (Return code: #{ret})"
+      ensure
+        terminate_instance(broker_instance) if options.terminate?
+        #terminate_instance(node_instance) if options.terminate?
+        #terminate_instance(activemq_instance) if options.terminate?
+        #terminate_instance(mongo_instance) if options.terminate?
+      end
+    end
+  end # class end
+end # module end
+Origin::CloudFormationPlugin.start
