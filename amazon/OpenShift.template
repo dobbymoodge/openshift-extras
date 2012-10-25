@@ -38,11 +38,8 @@
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='named'","\n",
             "sh openshift-amz.sh &> kickstart.log","\n",
-            "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
-                                                           "\"Reason\" : \"Configuration Complete\",",
-                                                           "\"UniqueId\" : \"ID1\",",
-                                                           "\"Data\" : \"Done\"}' ",
-                  "\"", {"Ref" : "NamedWaitForInstanceWaitHandle"},"\"\n" ]]}}
+            "echo '{\"Status\":\"SUCCESS\",\"Reason\":\"Configuration Complete\",\"UniqueId\":\"ID1\",\"Data\":\"Done\"}' > /tmp/waitsuccess","\n",
+            "curl -T /tmp/waitsuccess \"", {"Ref" : "NamedWaitForInstanceWaitHandle"},"\"\n" ]]}}
       }
     },
 
@@ -69,6 +66,30 @@
         "Properties" : {
             "InstanceId" : { "Ref" : "NamedInstance" }
         }
+    },
+
+    "NamedDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Named DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "30",
+        "ResourceRecords" : [ { "Ref" : "NamedEIP" } ]
+      }
+    },
+
+    "AppsDelegationDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Apps Subdomain DNS Delegation",
+        "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "NS",
+        "TTL" : "30",
+        "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]} ]
+      }
     },
 
     "NamedWaitForInstanceWaitHandle" : {
@@ -105,11 +126,8 @@
             "export CONF_NAMED_IP_ADDR='", { "Ref" : "NamedEIP" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='broker'","\n",
             "sh openshift-amz.sh > kickstart.log","\n",
-            "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
-                                                           "\"Reason\" : \"Configuration Complete\",",
-                                                           "\"UniqueId\" : \"ID2\",",
-                                                           "\"Data\" : \"Done\"}' ",
-                  "\"", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"\"\n" ]]}}
+            "echo '{\"Status\":\"SUCCESS\",\"Reason\":\"Configuration Complete\",\"UniqueId\":\"ID2\",\"Data\":\"Done\"}' > /tmp/waitsuccess","\n",
+            "curl -T /tmp/waitsuccess \"", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"\"\n" ]]}}
       },
       "DependsOn" : "NamedEIP"
     },
@@ -135,12 +153,26 @@
         } ]
       }
     },
+
     "BrokerEIP" : {
         "Type" : "AWS::EC2::EIP",
         "Properties" : {
             "InstanceId" : { "Ref" : "BrokerInstance" }
         }
     },
+
+    "BrokerDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Broker DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "30",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
+      }
+    },
+
     "BrokerWaitForInstanceWaitHandle" : {
       "Type" : "AWS::CloudFormation::WaitConditionHandle",
       "Properties" : {
@@ -168,17 +200,6 @@
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
-    "BrokerDNSRecord" : {
-      "Type" : "AWS::Route53::RecordSet",
-      "Properties" : {
-        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
-        "Comment" : "Broker DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "A",
-        "TTL" : "30",
-        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
-      }
-    },
     "ActiveMQDNSRecord" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
@@ -199,28 +220,6 @@
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
-      }
-    },
-   "NamedDNSRecord" : {
-      "Type" : "AWS::Route53::RecordSet",
-      "Properties" : {
-        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
-        "Comment" : "Named DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "A",
-        "TTL" : "30",
-        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
-      }
-    },
-    "AppsDelegationDNSRecord" : {
-      "Type" : "AWS::Route53::RecordSet",
-      "Properties" : {
-        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
-        "Comment" : "Apps Subdomain DNS Delegation",
-        "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
-        "Type" : "NS",
-        "TTL" : "30",
-        "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]} ]
       }
     }
   }
