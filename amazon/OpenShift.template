@@ -38,8 +38,9 @@
             "wget http://files-oncloud.rhcloud.com/success-handler.sh","\n",
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='named'","\n",
-            "sh openshift-amz.sh &> kickstart.log","\n",
-            "sh success-handler.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"' &> handler.log", "\n"]]}}
+            "sh openshift-amz.sh", "\n",
+            "sh success-handler.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"'", "\n",
+            "echo 'NAMED SUCCESS'", "\n"]]}}
       }
     },
 
@@ -125,9 +126,10 @@
             "wget http://files-oncloud.rhcloud.com/success-handler.sh","\n",
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_NAMED_IP_ADDR='", { "Ref" : "NamedEIP" } , "'\n",
-            "export CONF_INSTALL_COMPONENTS='broker'","\n",
-            "sh openshift-amz.sh > kickstart.log","\n",
-            "sh success-handler.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"} ,"' &> handler.log", "\n"]]}}
+            "export CONF_INSTALL_COMPONENTS='broker'", "\n",
+            "sh openshift-amz.sh", "\n",
+            "sh success-handler.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"} ,"'", "\n",
+            "echo 'BROKER SUCCESS'", "\n"]]}}
       },
       "DependsOn" : "NamedEIP"
     },
