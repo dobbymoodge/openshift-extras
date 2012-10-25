@@ -505,6 +505,7 @@ logfile = /var/log/mcollective.log
 loglevel = debug
 daemonize = 1
 direct_addressing = n
+registerinterval = 30
 
 # Plugins
 securityprovider = psk
@@ -779,7 +780,7 @@ ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 			NS	${named_hostname}.
 			MX	10 mail.${domain}.
 \$ORIGIN ${domain}.
-ns1			A	127.0.0.1
+${named_hostname%.${domain}}			A	127.0.0.1
 
 EOF
 
