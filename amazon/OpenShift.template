@@ -30,7 +30,7 @@
         "InstanceType" : "m1.small",
         "KeyName" : "libra",
         "SecurityGroups" : [ { "Ref" : "NamedSecurityGroup" } ],
-        "Tags" : [{"Key" : "Name", "Value" : "openshift-named"}],
+        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "named"]]}}],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
             "#!/bin/bash -ex","\n",
             "cd ~/","\n",
@@ -118,7 +118,7 @@
         "InstanceType" : "m1.large",
         "KeyName" : "libra",
         "SecurityGroups" : [ { "Ref" : "BrokerSecurityGroup" } ],
-        "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}],
+        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "broker"]]}}],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
             "#!/bin/bash -ex","\n",
             "cd ~/","\n",
