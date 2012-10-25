@@ -24,6 +24,7 @@
         "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
         "InstanceType" : "m1.large",
         "KeyName" : "libra",
+        "SecurityGroups" : ["public"],
         "Tags" : [{"Key" : "Name", "Value" : "openshift-broker"}]
       }
     },
@@ -33,6 +34,7 @@
         "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
         "InstanceType" : "m1.large",
         "KeyName" : "libra",
+        "SecurityGroups" : ["public"],
         "Tags" : [{"Key" : "Name", "Value" : "openshift-node"}]
       }
     },
