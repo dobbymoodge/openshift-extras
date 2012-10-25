@@ -13,7 +13,7 @@
 
   "Mappings" : {
     "RegionMap" : {
-      "us-east-1"      : { "AMI" : "ami-7ebe1917" }
+      "us-east-1"      : { "AMI" : "ami-12d26a7b" }
     }
   },
 
