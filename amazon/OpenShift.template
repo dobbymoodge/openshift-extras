@@ -4,10 +4,15 @@
   "Description" : "AWS CloudFormation for setting up an OpenShift environment",
 
   "Parameters" : {
+    "Prefix" : {
+      "Type" : "String",
+      "Default" : "demo",
+      "Description" : "Your DNS Prefix"
+    },
     "HostedZone" : {
       "Type" : "String",
       "Default" : "cloudydemo.com",
-      "Description" : "Your Hosted Zone for DNS"
+      "Description" : "Your Route53 Zone"
     }
   },
 
@@ -29,6 +34,7 @@
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
             "#!/bin/bash -ex","\n",
             "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
+            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='broker'","\n",
             "sh openshift-amz.sh > kickstart.log","\n",
             "curl -X PUT -H 'Content-Type:' --data-binary '{\"Status\" : \"SUCCESS\",",
@@ -87,7 +93,7 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Node DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["node", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["node", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
@@ -98,7 +104,7 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Broker DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["broker", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
@@ -109,7 +115,7 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "ActiveMQ DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["activemq", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["activemq", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
@@ -120,7 +126,7 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Datastore DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["mongo", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["mongo", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
@@ -131,7 +137,7 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Named DNS Name",
-        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "A",
         "TTL" : "30",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
@@ -142,10 +148,10 @@
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
         "Comment" : "Apps Subdomain DNS Delegation",
-        "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]},
         "Type" : "NS",
         "TTL" : "30",
-        "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]} ]
+        "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "Prefix"}, ".", {"Ref" : "HostedZone"}, "."]]} ]
       }
     }
   }

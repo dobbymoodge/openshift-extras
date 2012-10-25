@@ -1,10 +1,10 @@
-CONF_DOMAIN="apps.cloudydemo.com"
-CONF_NAMED_HOSTNAME="ns.cloudydemo.com"
-CONF_BROKER_HOSTNAME="broker.cloudydemo.com"
-CONF_NODE_HOSTNAME="node.cloudydemo.com"
-CONF_ACTIVEMQ_HOSTNAME="activemq.cloudydemo.com"
-CONF_DATASTORE_HOSTNAME="mongo.cloudydemo.com"
-CONF_NAMED_IP_ADDR="127.0.0.1"
+CONF_PREFIX="${CONF_PREFIX:-demo}"
+CONF_DOMAIN="apps.${CONF_PREFIX}.cloudydemo.com"
+CONF_NAMED_HOSTNAME="ns.${CONF_PREFIX}.cloudydemo.com"
+CONF_BROKER_HOSTNAME="broker.${CONF_PREFIX}.cloudydemo.com"
+CONF_NODE_HOSTNAME="node.${CONF_PREFIX}.cloudydemo.com"
+CONF_ACTIVEMQ_HOSTNAME="activemq.${CONF_PREFIX}.cloudydemo.com"
+CONF_DATASTORE_HOSTNAME="mongo.${CONF_PREFIX}.cloudydemo.com"
 
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
