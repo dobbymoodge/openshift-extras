@@ -8,7 +8,7 @@ Running
 1. Create an AMI instance from ami-ee0eaf87 (RHEL-6.3-Starter-x86_64-1-Access2).
 2. Upload the openshift-amz.sh script to your instance
 3. Run it
-    sh openshift-amz.sh
+    CONF_PREFIX="myprefix" && sh openshift-amz.sh
 
 
 Updating from the source kickstart
@@ -19,31 +19,12 @@ is as follows.
 
 *Note:* This is automated in the build.sh file
 
-1. Download the public gist kickstart
+1. Download the latest kickstart into the root directory as
+   'openshift.ks'
 
     wget https://raw.github.com/gist/3901379/openshift.ks
 
-1. Convert the kickstart to a script and delete the download
+2. Run the build script
 
-    sed -e '0,/^%post/d;/^%end/,$d' openshift.ks > openshift-amz.sh
-    rm openshift.ks
-
-2. Note: You might need to replace the dates to the latest
-
-    sed -i -e 's/2012-10-22/2012-10-23/g' openshift-amz.sh
-
-3. Comment out the internal RHEL repository
-
-    sed -i -e 's/^configure_rhel_repo$/#&/' openshift-amz.sh
-
-4. Disable SSL verification for all OpenShift repos
-
-    sed -i -e 's/^gpgcheck=0/gpgcheck=0\nsslverify=false/g' openshift-amz.sh
-
-5. Setup script to configure the node and broker
-
-    sed -i "1i CONF_INSTALL_COMPONENTS=\"broker node activemq datastore\"" openshift-amz.sh
-
-6. Setup nameserver host to point to same machine
-
-    sed -i "1i CONF_NAMED_IP_ADDR=\"127.0.0.1\"" openshift-amz.sh
+    cd amazon
+    ./build.sh

@@ -1,5 +1,11 @@
+CONF_PREFIX="${CONF_PREFIX:-demo}"
+CONF_DOMAIN="apps.${CONF_PREFIX}.cloudydemo.com"
+CONF_NAMED_HOSTNAME="ns.${CONF_PREFIX}.cloudydemo.com"
+CONF_BROKER_HOSTNAME="broker.${CONF_PREFIX}.cloudydemo.com"
+CONF_NODE_HOSTNAME="node.${CONF_PREFIX}.cloudydemo.com"
+CONF_ACTIVEMQ_HOSTNAME="activemq.${CONF_PREFIX}.cloudydemo.com"
+CONF_DATASTORE_HOSTNAME="mongo.${CONF_PREFIX}.cloudydemo.com"
 CONF_NAMED_IP_ADDR="127.0.0.1"
-CONF_INSTALL_COMPONENTS="broker node activemq datastore"
 
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
@@ -416,7 +422,7 @@ logfile = /var/log/mcollective-client.log
 securityprovider = psk
 plugin.psk = unset
 connector = qpid
-plugin.qpid.host = ${broker_hostname}.${domain}
+plugin.qpid.host = ${broker_hostname}
 plugin.qpid.secure = false
 plugin.qpid.timeout = 5
 
@@ -446,7 +452,7 @@ direct_addressing = n
 securityprovider = psk
 plugin.psk = unset
 connector = qpid
-plugin.qpid.host = ${broker_hostname}.${domain}
+plugin.qpid.host = ${broker_hostname}
 plugin.qpid.secure = false
 plugin.qpid.timeout = 5
 
@@ -477,7 +483,7 @@ securityprovider=psk
 plugin.psk=unset
 
 connector = stomp
-plugin.stomp.host = ${activemq_hostname}.${domain}
+plugin.stomp.host = ${activemq_hostname}
 plugin.stomp.port = 61613
 plugin.stomp.user = mcollective
 plugin.stomp.password = marionette
@@ -505,7 +511,7 @@ securityprovider = psk
 plugin.psk = unset
 
 connector = stomp
-plugin.stomp.host = ${activemq_hostname}.${domain}
+plugin.stomp.host = ${activemq_hostname}
 plugin.stomp.port = 61613
 plugin.stomp.user = mcollective
 plugin.stomp.password = marionette
@@ -559,7 +565,7 @@ configure_activemq()
     <!--
         The <broker> element is used to configure the ActiveMQ broker.
     -->
-    <broker xmlns="http://activemq.apache.org/schema/core" brokerName="${activemq_hostname}.${domain}" dataDirectory="\${activemq.data}">
+    <broker xmlns="http://activemq.apache.org/schema/core" brokerName="${activemq_hostname}" dataDirectory="\${activemq.data}">
 
         <!--
             For better performances use VM cursor and small memory limit.
@@ -763,14 +769,14 @@ EOF
   cat <<EOF > /var/named/dynamic/${domain}.db
 \$ORIGIN .
 \$TTL 1	; 1 seconds (for testing only)
-${domain}		IN SOA	ns1.${domain}. hostmaster.${domain}. (
+${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 				2011112904 ; serial
 				60         ; refresh (1 minute)
 				15         ; retry (15 seconds)
 				1800       ; expire (30 minutes)
 				10         ; minimum (10 seconds)
 				)
-			NS	ns1.${domain}.
+			NS	${named_hostname}.
 			MX	10 mail.${domain}.
 \$ORIGIN ${domain}.
 ns1			A	127.0.0.1
@@ -854,8 +860,8 @@ EOF
   # Tell BIND about the broker.
   nsupdate -k ${keyfile} <<EOF
 server 127.0.0.1
-update delete ${named_hostname}.${domain} A
-update add ${named_hostname}.${domain} 180 A ${named_ip_addr}
+update delete ${named_hostname} A
+update add ${named_hostname} 180 A ${named_ip_addr}
 send
 EOF
 }
@@ -882,7 +888,7 @@ configure_controller()
   #  C-style comments.
 
   # Point the broker to the data store (mongod service).
-  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}.${domain}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
+  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
   # */
 
   # Configure the broker with the correct password for the data store.
@@ -970,12 +976,14 @@ prepend domain-name-servers ${named_ip_addr};
 supersede host-name "${hostname}";
 supersede domain-name "${domain}";
 EOF
+}
 
-  # Set the hostname.
+# Set the hostname
+configure_hostname()
+{
   sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}.${domain}/" /etc/sysconfig/network
   hostname "${hostname}"
 }
-
 
 # Set some parameters in the OpenShift node configuration file.
 configure_node()
@@ -1079,11 +1087,11 @@ fi
 # The domain name for the OpenShift Enterprise installation.
 domain="${CONF_DOMAIN:-example.com}"
 
-broker_hostname="${CONF_BROKER_HOSTNAME:-broker}"
-node_hostname="${CONF_NODE_HOSTNAME:-node}"
-named_hostname="${CONF_NAMED_HOSTNAME:-ns}"
-activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq}"
-datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore}"
+broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
+node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
+named_hostname="${CONF_NAMED_HOSTNAME:-ns.${domain}}"
+activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq.${domain}}"
+datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore.${domain}}"
 
 # The hostname name for this host.
 # Note: If this host is, e.g., both a broker and a datastore, we want to
@@ -1130,11 +1138,11 @@ do
   fi
 done
 
-echo "Configuring with broker with hostname ${broker_hostname}.${domain}."
-node && echo "Configuring with node with hostname ${node_hostname}.${domain}."
+echo "Configuring with broker with hostname ${broker_hostname}."
+node && echo "Configuring with node with hostname ${node_hostname}."
 echo "Configuring with named with IP address ${named_ip_addr}."
-echo "Configuring with datastore with hostname ${datastore_hostname}.${domain}."
-echo "Configuring with activemq with hostname ${activemq_hostname}.${domain}."
+echo "Configuring with datastore with hostname ${datastore_hostname}."
+echo "Configuring with activemq with hostname ${activemq_hostname}."
 
 # The nameservers to which named on the broker will forward requests.
 # This should be a list of IP addresses with a semicolon after each.
@@ -1162,6 +1170,7 @@ named && configure_named
 update_resolv_conf
 
 configure_network
+#configure_hostname
 
 datastore && configure_datastore
 

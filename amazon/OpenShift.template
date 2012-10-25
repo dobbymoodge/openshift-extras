@@ -6,8 +6,8 @@
   "Parameters" : {
     "HostedZone" : {
       "Type" : "String",
-      "Default" : "cloudydemo.com",
-      "Description" : "The DNS name of an existing Amazon Route 53 hosted zone"
+      "Default" : "demo.cloudydemo.com",
+      "Description" : "Your prefixed DNS entry (must be within cloudydemo.com)"
     }
   },
 

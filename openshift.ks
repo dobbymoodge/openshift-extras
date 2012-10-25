@@ -1,12 +1,42 @@
-CONF_INSTALL_COMPONENTS="broker node activemq datastore"
-CONF_NAMED_IP_ADDR="127.0.0.1"
-CONF_DOMAIN="apps.cloudydemo.com"
+# This kickstart script configures a system that acts as either a node or
+# a broker.
 
-CONF_NAMED_HOSTNAME="ns.cloudydemo.com"
-CONF_BROKER_HOSTNAME="broker.cloudydemo.com"
-CONF_NODE_HOSTNAME="node.cloudydemo.com"
-CONF_ACTIVEMQ_HOSTNAME="activemq.cloudydemo.com"
-CONF_DATASTORE_HOSTNAME="mongo.cloudydemo.com"
+install
+text
+skipx
+
+# NB: Be sure to change the password before running this kickstart script.
+rootpw  --iscrypted $6$QgevUVWY7.dTjKz6$jugejKU4YTngbFpfNlqrPsiE4sLJSj/ahcfqK8fE5lO0jxDhvdg59Qjk9Qn3vNPAUTWXOp9mchQDy6EV9.XBW1
+
+lang en_US.UTF-8
+keyboard us
+timezone --utc America/New_York
+
+services --enabled=ypbind,ntpd,network,logwatch
+network --onboot yes --device eth0
+firewall --service=ssh
+authconfig --enableshadow --passalgo=sha512
+selinux --enforcing
+
+bootloader --location=mbr --driveorder=vda --append=" rhgb crashkernel=auto quiet console=ttyS0"
+
+clearpart --all --initlabel
+firstboot --disable
+reboot
+
+part /boot --fstype=ext4 --size=500
+part pv.253002 --grow --size=1
+volgroup vg_vm1 --pesize=4096 pv.253002
+logvol / --fstype=ext4 --name=lv_root --vgname=vg_vm1 --grow --size=1024 --maxsize=51200
+logvol swap --name=lv_swap --vgname=vg_vm1 --grow --size=2016 --maxsize=4032
+
+%packages
+@core
+@server-policy
+ntp
+git
+
+%post --log=/root/anaconda-post.log
 
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
@@ -59,10 +89,9 @@ configure_client_tools_repo()
   cat >> /etc/yum.repos.d/openshift-client.repo << YUM
 [openshift_client]
 name=OpenShift Client
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Client/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Client/x86_64/os/
 enabled=1
 gpgcheck=0
-sslverify=false
 
 YUM
 }
@@ -73,10 +102,9 @@ configure_broker_repo()
   cat >> /etc/yum.repos.d/openshift-infrastructure.repo << YUM
 [openshift_infrastructure]
 name=OpenShift Infrastructure
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Infrastructure/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Infrastructure/x86_64/os/
 enabled=1
 gpgcheck=0
-sslverify=false
 
 YUM
 }
@@ -87,10 +115,9 @@ configure_node_repo()
   cat >> /etc/yum.repos.d/openshift-node.repo << YUM
 [openshift_node]
 name=OpenShift Node
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/Node/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Node/x86_64/os/
 enabled=1
 gpgcheck=0
-sslverify=false
 
 YUM
 }
@@ -101,10 +128,9 @@ configure_jboss_cartridge_repo()
   cat >> /etc/yum.repos.d/openshift-jboss.repo << YUM
 [openshift_jbosseap]
 name=OpenShift JBossEAP
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23/JBoss_EAP6_Cartridge/x86_64/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/JBoss_EAP6_Cartridge/x86_64/os/
 enabled=1
 gpgcheck=0
-sslverify=false
 
 YUM
 }
@@ -889,7 +915,7 @@ configure_controller()
   #  C-style comments.
 
   # Point the broker to the data store (mongod service).
-  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}.${domain}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
+  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
   # */
 
   # Configure the broker with the correct password for the data store.
@@ -977,12 +1003,14 @@ prepend domain-name-servers ${named_ip_addr};
 supersede host-name "${hostname}";
 supersede domain-name "${domain}";
 EOF
+}
 
-  # Set the hostname.
+# Set the hostname
+configure_hostname()
+{
   sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}.${domain}/" /etc/sysconfig/network
   hostname "${hostname}"
 }
-
 
 # Set some parameters in the OpenShift node configuration file.
 configure_node()
@@ -1153,7 +1181,7 @@ nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
 is_false "$CONF_NO_NTP" && synchronize_clock
 is_false "$CONF_NO_SSH_KEYS" && install_ssh_keys
 
-#configure_rhel_repo
+configure_rhel_repo
 if activemq || broker || datastore
 then
   configure_broker_repo
@@ -1169,6 +1197,7 @@ named && configure_named
 update_resolv_conf
 
 configure_network
+configure_hostname
 
 datastore && configure_datastore
 
@@ -1211,3 +1240,4 @@ node && configure_gears
 node && configure_node
 node && update_openshift_facts_on_node
 
+%end
