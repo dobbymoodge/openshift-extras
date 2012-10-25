@@ -94,6 +94,17 @@
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
     },
+    "AppsDelegationDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Apps Subdomain DNS Delegation",
+        "Name" : { "Fn::Join" : [ "", ["apps", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "NS",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]} ]
+      }
+    },
     "NamedDNSRecord" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
