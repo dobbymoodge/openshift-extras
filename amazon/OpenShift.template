@@ -6,8 +6,8 @@
   "Parameters" : {
     "HostedZone" : {
       "Type" : "String",
-      "Default" : "demo.cloudydemo.com",
-      "Description" : "Your prefixed DNS entry (must be within cloudydemo.com)"
+      "Default" : "cloudydemo.com",
+      "Description" : "Your Hosted Zone for DNS"
     }
   },
 
