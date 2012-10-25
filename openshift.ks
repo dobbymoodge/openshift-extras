@@ -532,6 +532,7 @@ logfile = /var/log/mcollective.log
 loglevel = debug
 daemonize = 1
 direct_addressing = n
+registerinterval = 30
 
 # Plugins
 securityprovider = psk
