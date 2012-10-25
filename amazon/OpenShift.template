@@ -71,6 +71,39 @@
         "TTL" : "60",
         "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
       }
+    },
+    "ActiveMQDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "ActiveMQ DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["activemq", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
+      }
+    },
+    "DatastoreDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Datastore DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["mongo", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
+      }
+    },
+    "NamedDNSRecord" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "HostedZone"}, "." ]]},
+        "Comment" : "Named DNS Name",
+        "Name" : { "Fn::Join" : [ "", ["ns", ".", {"Ref" : "HostedZone"}, "."]]},
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [ { "Ref" : "BrokerEIP" } ]
+      }
     }
   }
 }
