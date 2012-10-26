@@ -73,6 +73,12 @@ configure_named_amz()
   sed -i -e "s/A 127.0.0.1/A ${IP}/" /var/named/dynamic/${domain}.db
 }
 
+# Configures the LIBRA_SERVER variable for convenience
+configure_libra_server()
+{
+  echo "LIBRA_SERVER='${broker_hostname}'" >> /root/.bashrc
+}
+
 # This configures an authorized key to allow the broker to be
 # able to obtain the DNS key
 named && configure_authorized_key
@@ -87,6 +93,10 @@ named && configure_named_amz
 broker && configure_private_key
 broker && set_dns_key
 broker && configure_dns_plugin
+
+# This sets up the LIBRA_SERVER on the broker machine
+# for convenience of running 'rhc' on it
+broker && configure_libra_server
 
 # Setup a default user on the broker (demo / changeme)
 broker && configure_default_user
