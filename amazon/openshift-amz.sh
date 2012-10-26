@@ -385,6 +385,7 @@ enable_services_on_node()
   chkconfig httpd on
   chkconfig network on
   chkconfig sshd on
+  chkconfig oddjobd on
 }
 
 
