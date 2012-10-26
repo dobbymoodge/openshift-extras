@@ -858,6 +858,7 @@ EOF
 
   # Start named so we can perform some updates immediately.
   service named start
+  service iptables restart
 }
 
 
