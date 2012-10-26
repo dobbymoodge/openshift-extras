@@ -17,4 +17,5 @@ amazon/openshift-amz.sh: openshift.ks amazon/openshift-amz.sh.conf
 	sed -i -e 's/^gpgcheck=0/gpgcheck=0\nsslverify=false/g' $@
 	sed -i -e '1r amazon/openshift-amz.sh.conf' $@
 	sed -i -e '1d' $@
+	cat amazon/openshift-amz-ext.sh >> $@
 	cat amazon/success-handler.sh >> $@
