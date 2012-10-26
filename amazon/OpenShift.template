@@ -18,7 +18,7 @@
 
   "Mappings" : {
     "RegionMap" : {
-      "us-east-1"      : { "AMI" : "ami-eaa91183" }
+      "us-east-1"      : { "AMI" : "ami-e068d089" }
     }
   },
 

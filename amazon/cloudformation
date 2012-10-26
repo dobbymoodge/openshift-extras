@@ -11,6 +11,9 @@ require 'pp'
 
 include FileUtils
 
+# Note, you must have the origin-dev-tools checked out in a sibling directory
+# for this script to work (https://github.com/openshift/origin-dev-tools)
+# Also, you must have the Thor rubygem installed.
 module Origin
   class CloudFormationPlugin < Thor
     include Thor::Actions
@@ -18,45 +21,48 @@ module Origin
     include OpenShift::SSH
     include OpenShift::Amazon
 
-    desc "build_amis NAME", "Builds a set of AMIs for the CloudFormation"
+    desc "build_base_ami", "Build AMI that will execute UserData"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :default => "us-east-1", :desc => "Amazon region override (default us-east-1)"
     method_option :ami, :default => "ami-ee0eaf87", :desc => "The base image from which to build (default ami-ee0eaf87)"
-    method_option :terminate, :type => :boolean, :default => false, :desc => "Terminate the instance on exit"
-    def build_amis(name)
+    method_option :name, :default => "oso-cloudfoundation-base", :desc => "The AMI name (default oso-cloudfoundation-base)"
+    method_option :terminate, :type => :boolean, :default => true, :desc => "Terminate the instance on exit"
+    def build_base_ami
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
 
       conn = connect(options.region)
       image = conn.images[options.ami]
 
       puts "Launch base images for kickstarts"
-      broker_instance = launch_instance(image, name + "-broker")
-      #node_instance = launch_instance(image, name + "-node")
-      #activemq_instance = launch_instance(image, name + "-activemq")
-      #mongo_instance = launch_instance(image, name + "-mongo")
-
-      broker_hostname = broker_instance.dns_name
-      #node_hostname = node_instance.dns_name
-      #activemq_hostname = activemq_instance.dns_name
-      #mongo_hostname = mongo_instance.dns_name
+      instance = launch_instance(image, options.name + "-build")
+      hostname = instance.dns_name
       puts "Done"
-      puts "Broker Hostname: #{broker_hostname}"
+      puts "Builder Hostname: #{hostname}"
   
       begin
-        puts "Copying kickstart script..."
-        kickstart = File.join(File.dirname(__FILE__), "openshift-amz.sh")
-        scp_to(broker_hostname, kickstart, "~/")
+        puts "Updating packages"
+        out, ret = ssh(hostname, "yum update -y", 60 * 30, true)
+        out, ret = ssh(hostname, "yum install -y gcc ruby ruby-devel python python-devel", 60 * 30, true)
         puts "Done"
 
-        puts "Executing kickstart script"
-        out, ret = ssh(broker_hostname, "CONF_INSTALL_COMPONENTS='broker' && sh openshift-amz.sh >> kickstart.log", 60 * 30, true)
-        pp out
-        puts "Done (Return code: #{ret})"
+        puts "Setting up init.d scripts..."
+        kickstart_dir = File.join(File.dirname(__FILE__), "kickstart/*")
+        scp_to(hostname, kickstart_dir, "/etc/init.d")
+        ssh(hostname, "chmod 755 /etc/init.d/ec2-*")
+        ssh(hostname, "chkconfig ec2-ssh-host-key-gen on")
+        ssh(hostname, "chkconfig ec2-run-user-data on")
+        puts "Done"
+
+        # Deregister old image
+        get_amis(conn, options.name).each do |image|
+          puts "Deregistering image #{image.name}"
+          image.deregister
+        end
+
+        # Register the new image
+        new_image = register_image(conn, instance, options.name, "OpenShift CloudFormation Base Image")
       ensure
-        terminate_instance(broker_instance) if options.terminate?
-        #terminate_instance(node_instance) if options.terminate?
-        #terminate_instance(activemq_instance) if options.terminate?
-        #terminate_instance(mongo_instance) if options.terminate?
+        terminate_instance(instance) if options.terminate?
       end
     end
   end # class end
