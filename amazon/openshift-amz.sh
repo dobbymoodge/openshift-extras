@@ -1248,6 +1248,8 @@ UAhplvCUbVcZ3aVFYbofhd6Fyh7eR2RdPD/uWcsWeDkaO1lRXLrvTEgvlpFD//SU
 EWGodSkqrF8f+Gdj1c7fZdc4XRygiOs/596K118fkehXXYtqs3JyXGs=
 -----END RSA PRIVATE KEY-----
 EOF
+
+chmod 700 /root/.ssh/named_rsa
 }
 
 # Configure a default user
