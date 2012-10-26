@@ -1292,7 +1292,7 @@ configure_named_amz()
 # Configures the LIBRA_SERVER variable for convenience
 configure_libra_server()
 {
-  echo "LIBRA_SERVER='${broker_hostname}'" >> /root/.bashrc
+  echo "export LIBRA_SERVER='${broker_hostname}'" >> /root/.bashrc
 }
 
 # This configures an authorized key to allow the broker to be
