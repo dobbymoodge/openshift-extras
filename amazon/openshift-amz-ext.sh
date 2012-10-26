@@ -41,6 +41,13 @@ EWGodSkqrF8f+Gdj1c7fZdc4XRygiOs/596K118fkehXXYtqs3JyXGs=
 EOF
 }
 
+# Configure a default user
+configure_default_user()
+{
+  htpasswd -b -c /etc/openshift/htpasswd demo changeme
+}
+
+
 set_dns_key()
 {
   SSH_CMD="ssh 2> /dev/null -n -o TCPKeepAlive=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -i /root/.ssh/named_rsa"
@@ -53,6 +60,7 @@ named && configure_authorized_key
 broker && configure_private_key
 broker && set_dns_key
 broker && configure_dns_plugin
+broker && configure_default_user
 
 # Important - the callback is only working
 # if the file data is sent up.  Probably related
