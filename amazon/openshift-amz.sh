@@ -982,7 +982,7 @@ EOF
 # Set the hostname
 configure_hostname()
 {
-  sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}.${domain}/" /etc/sysconfig/network
+  sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}/" /etc/sysconfig/network
   hostname "${hostname}"
 }
 
