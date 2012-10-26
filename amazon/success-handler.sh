@@ -14,3 +14,6 @@ EOF
 echo "Calling wait URL..."
 curl -T /tmp/success_data $2
 echo "Done"
+
+echo "Restarting VM"
+reboot
