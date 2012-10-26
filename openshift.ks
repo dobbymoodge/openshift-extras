@@ -961,8 +961,12 @@ BIND_KEYVALUE="${KEY}"
 BIND_ZONE="${domain}"
 EOF
 
-  pushd /usr/share/selinux/packages/openshift-origin-dns-bind/ && make -f /usr/share/selinux/devel/Makefile ; popd
-  semodule -i /usr/share/selinux/packages/openshift-origin-dns-bind/dhcpnamedforward.pp
+  if named
+  then
+    echo 'Broker and bind are running on the same host - installing custom SELinux policy'
+    pushd /usr/share/selinux/packages/openshift-origin-dns-bind/ && make -f /usr/share/selinux/devel/Makefile ; popd
+    semodule -i /usr/share/selinux/packages/openshift-origin-dns-bind/dhcpnamedforward.pp
+  fi
 }
 
 # Configure httpd for authentication.
