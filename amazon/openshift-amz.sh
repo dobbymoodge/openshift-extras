@@ -1259,6 +1259,17 @@ EOF
 chmod 700 /root/.ssh/named_rsa
 }
 
+# Keeps the broker from getting SSH warnings when running the client
+configure_permissive_ssh()
+{
+cat <<EOF >> /etc/ssh/ssh_config
+
+Host *.cloudydemo.com
+   CheckHostIP no
+   StrictHostKeyChecking no
+EOF
+}
+
 # Configure a default user
 configure_default_user()
 {
@@ -1309,6 +1320,10 @@ named && configure_named_amz
 broker && configure_private_key
 broker && set_dns_key
 broker && configure_dns_plugin
+
+# This will keep you from getting SSH warnings if you
+# are running the client on the broker
+broker && configure_permissive_ssh
 
 # This sets up the LIBRA_SERVER on the broker machine
 # for convenience of running 'rhc' on it
