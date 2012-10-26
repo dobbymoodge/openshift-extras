@@ -23,25 +23,7 @@
   },
 
   "Resources" : {
-    "NamedInstance" : {
-      "Type" : "AWS::EC2::Instance",
-      "Properties" : {
-        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
-        "InstanceType" : "m1.small",
-        "KeyName" : "libra",
-        "SecurityGroups" : [ { "Ref" : "NamedSecurityGroup" } ],
-        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "named"]]}}],
-        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
-            "#!/bin/bash -x","\n",
-            "cd ~/","\n",
-            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
-            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
-            "export CONF_INSTALL_COMPONENTS='named'","\n",
-            "sh openshift-amz.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
-      }
-    },
-
-    "NamedSecurityGroup" : {
+    "StandardSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
         "GroupDescription" : "Named firewall rules",
@@ -51,11 +33,52 @@
           "ToPort" : "22",
           "CidrIp" : "0.0.0.0/0"
         }, {
+          "IpProtocol" : "icmp",
+          "FromPort" : "-1",
+          "ToPort" : "-1",
+          "CidrIp" : "0.0.0.0/0"
+        } ]
+      }
+    },
+
+    "NamedSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Named firewall rules",
+        "SecurityGroupIngress" : [ {
           "IpProtocol" : "tcp",
           "FromPort" : "53",
           "ToPort" : "53",
           "CidrIp" : "0.0.0.0/0"
+        }, {
+          "IpProtocol" : "udp",
+          "FromPort" : "53",
+          "ToPort" : "53",
+          "CidrIp" : "0.0.0.0/0"
+        }, {
+          "IpProtocol" : "tcp",
+          "FromPort" : "953",
+          "ToPort" : "953",
+          "CidrIp" : "0.0.0.0/0"
         } ]
+      }
+    },
+
+    "NamedInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "InstanceType" : "m1.small",
+        "KeyName" : "libra",
+        "SecurityGroups" : [ {"Ref" : "StandardSecurityGroup"}, {"Ref" : "NamedSecurityGroup"} ],
+        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "named"]]}}],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
+            "#!/bin/bash -x","\n",
+            "cd ~/","\n",
+            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
+            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
+            "export CONF_INSTALL_COMPONENTS='named'","\n",
+            "sh openshift-amz.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
       }
     },
 
@@ -101,35 +124,13 @@
 
 
 
-    "BrokerInstance" : {
-      "Type" : "AWS::EC2::Instance",
-      "Properties" : {
-        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
-        "InstanceType" : "m1.large",
-        "KeyName" : "libra",
-        "SecurityGroups" : [ { "Ref" : "BrokerSecurityGroup" } ],
-        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "broker"]]}}],
-        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
-            "#!/bin/bash -x","\n",
-            "cd ~/","\n",
-            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
-            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
-            "export CONF_NAMED_IP_ADDR='", {"Fn::GetAtt" : [ "NamedInstance", "PublicIp" ]}, "'\n",
-            "export CONF_INSTALL_COMPONENTS='broker'","\n",
-            "sh openshift-amz.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
-      },
-      "DependsOn" : "NamedInstance"
-    },
+
+
     "BrokerSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
         "GroupDescription" : "Broker firewall rules",
         "SecurityGroupIngress" : [ {
-          "IpProtocol" : "tcp",
-          "FromPort" : "22",
-          "ToPort" : "22",
-          "CidrIp" : "0.0.0.0/0"
-        }, {
           "IpProtocol" : "tcp",
           "FromPort" : "80",
           "ToPort" : "80",
@@ -141,6 +142,27 @@
           "CidrIp" : "0.0.0.0/0"
         } ]
       }
+    },
+
+
+    "BrokerInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "InstanceType" : "m1.large",
+        "KeyName" : "libra",
+        "SecurityGroups" : [ {"Ref" : "StandardSecurityGroup"}, {"Ref" : "BrokerSecurityGroup"} ],
+        "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "broker"]]}}],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
+            "#!/bin/bash -x","\n",
+            "cd ~/","\n",
+            "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
+            "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
+            "export CONF_NAMED_IP_ADDR='", {"Fn::GetAtt" : [ "NamedInstance", "PublicIp" ]}, "'\n",
+            "export CONF_INSTALL_COMPONENTS='broker'","\n",
+            "sh openshift-amz.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
+      },
+      "DependsOn" : "NamedInstance"
     },
 
     "BrokerDNSRecord" : {
