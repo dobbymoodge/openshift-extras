@@ -1161,7 +1161,7 @@ yum update -y
 
 named && configure_named
 
-update_resolv_conf
+#update_resolv_conf
 
 configure_network
 #configure_hostname
