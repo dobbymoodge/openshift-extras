@@ -979,8 +979,8 @@ EOF
   if named
   then
     echo 'Broker and bind are running on the same host - installing custom SELinux policy'
-    pushd /usr/share/selinux/packages/openshift-origin-dns-bind/ && make -f /usr/share/selinux/devel/Makefile ; popd
-    semodule -i /usr/share/selinux/packages/openshift-origin-dns-bind/dhcpnamedforward.pp
+    pushd /usr/share/selinux/packages/rubygem-openshift-origin-dns-bind/ && make -f /usr/share/selinux/devel/Makefile ; popd
+    semodule -i /usr/share/selinux/packages/rubygem-openshift-origin-dns-bind/dhcpnamedforward.pp
   fi
 }
 
