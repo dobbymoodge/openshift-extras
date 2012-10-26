@@ -808,7 +808,7 @@ ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 			NS	${named_hostname}.
 			MX	10 mail.${domain}.
 \$ORIGIN ${domain}.
-${named_hostname%.${domain}}			A	127.0.0.1
+${named_hostname%.${domain}}			A	${named_ip_addr}
 
 EOF
 
@@ -1009,7 +1009,7 @@ EOF
 # Set the hostname
 configure_hostname()
 {
-  sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}.${domain}/" /etc/sysconfig/network
+  sed -i -e "s/HOSTNAME=.*/HOSTNAME=${hostname}/" /etc/sysconfig/network
   hostname "${hostname}"
 }
 
@@ -1018,7 +1018,7 @@ configure_node()
 {
   sed -i -e "s/^PUBLIC_IP=.*$/PUBLIC_IP=${node_ip_addr}/;
              s/^CLOUD_DOMAIN=.*$/CLOUD_DOMAIN=${domain}/;
-             s/^PUBLIC_HOSTNAME=.*$/PUBLIC_HOSTNAME=${hostname}.${domain}/;
+             s/^PUBLIC_HOSTNAME=.*$/PUBLIC_HOSTNAME=${hostname}/;
              s/^BROKER_HOST=.*$/BROKER_HOST=${broker_ip_addr}/" \
       /etc/openshift/node.conf
 }
@@ -1087,7 +1087,7 @@ do
 done
 
 # But any or all components may be explicity enabled.
-for component in ${CONF_INSTALL_COMPONENTS// }
+for component in ${CONF_INSTALL_COMPONENTS//,/ }
 do
   eval "$component() { :; }"
 done
@@ -1117,7 +1117,7 @@ domain="${CONF_DOMAIN:-example.com}"
 
 broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
 node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
-named_hostname="${CONF_NAMED_HOSTNAME:-ns.${domain}}"
+named_hostname="${CONF_NAMED_HOSTNAME:-ns1.${domain}}"
 activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq.${domain}}"
 datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore.${domain}}"
 
