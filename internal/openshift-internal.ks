@@ -905,9 +905,12 @@ EOF
 update_resolv_conf()
 {
   # Update resolv.conf to use our named.
-  cat <<EOF > /etc/resolv.conf
-nameserver ${named_ip_addr}
-EOF
+  #
+  # We will keep any existing entries so that we have fallbacks that
+  # will resolve public addresses even when our private named is
+  # nonfunctional.  However, our private named must appear first in
+  # order for hostnames private to our OpenShift PaaS to resolve.
+  sed -i -e "1i# The named we install for our OpenShift PaaS must appear first.\\nnameserver ${named_ip_addr}\\n" /etc/resolv.conf
 }
 
 

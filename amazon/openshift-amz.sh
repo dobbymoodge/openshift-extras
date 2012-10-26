@@ -867,9 +867,12 @@ EOF
 update_resolv_conf()
 {
   # Update resolv.conf to use our named.
-  cat <<EOF > /etc/resolv.conf
-nameserver ${named_ip_addr}
-EOF
+  #
+  # We will keep any existing entries so that we have fallbacks that
+  # will resolve public addresses even when our private named is
+  # nonfunctional.  However, our private named must appear first in
+  # order for hostnames private to our OpenShift PaaS to resolve.
+  sed -i -e "1i# The named we install for our OpenShift PaaS must appear first.\\nnameserver ${named_ip_addr}\\n" /etc/resolv.conf
 }
 
 
@@ -1269,13 +1272,33 @@ set_dns_key()
   KEY=$(${SSH_CMD} ${named_hostname} "grep Key: /var/named/K${domain}*.private | cut -d ' ' -f 2")
 }
 
+# Amazon machines have fully qualified hostname
+configure_node_amz()
+{
+  sed -i -e "s/^PUBLIC_HOSTNAME=.*$/PUBLIC_HOSTNAME=${hostname}/" /etc/openshift/node.conf
+}
+
+# Configures named with the correct public IP
+configure_named_amz()
+{
+  # Get the public ip address
+  IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+
+  # Replace the bind configuration with the public ip address
+  sed -i -e "s/A 127.0.0.1/A ${IP}/" /var/named/dynamic/${domain}.db
+}
+
 named && configure_authorized_key
+named && configure_named_amz
 
 # Re-run the DNS plugin configuration after establishing the DNS key
 broker && configure_private_key
 broker && set_dns_key
 broker && configure_dns_plugin
 broker && configure_default_user
+
+# Re-configure the node hostname for Amazon hosts
+node && configure_node_amz
 
 # Important - the callback is only working
 # if the file data is sent up.  Probably related
