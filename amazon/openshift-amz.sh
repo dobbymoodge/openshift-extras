@@ -1090,7 +1090,7 @@ domain="${CONF_DOMAIN:-example.com}"
 
 broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
 node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
-named_hostname="${CONF_NAMED_HOSTNAME:-ns.${domain}}"
+named_hostname="${CONF_NAMED_HOSTNAME:-ns1.${domain}}"
 activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq.${domain}}"
 datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore.${domain}}"
 
