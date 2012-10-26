@@ -343,6 +343,7 @@ configure_datastore()
 
     echo 'Configuring the firewall to allow connections to mongod...'
     lokkit --nostart --port=27017:tcp
+    service iptables restart
 
     echo 'Configuring mongod to listen on external interfaces...'
     perl -p -i -e "s/^bind_ip = .*$/bind_ip = 0.0.0.0/" /etc/mongodb.conf
@@ -360,6 +361,7 @@ configure_datastore()
 configure_port_proxy()
 {
   lokkit --nostart --port=35531-65535:tcp
+  service iptables restart
 
   chkconfig openshift-port-proxy on
 }
@@ -381,6 +383,7 @@ enable_services_on_node()
   lokkit --nostart --service=ssh
   lokkit --nostart --service=https
   lokkit --nostart --service=http
+  service iptables restart
 
   chkconfig httpd on
   chkconfig network on
@@ -398,6 +401,7 @@ enable_services_on_broker()
   lokkit --nostart --service=ssh
   lokkit --nostart --service=https
   lokkit --nostart --service=http
+  service iptables restart
 
   chkconfig httpd on
   chkconfig network on
@@ -711,6 +715,7 @@ EOF
 
   # Allow connections to ActiveMQ.
   lokkit --nostart --port=61613:tcp
+  service iptables restart
 
   # Configure ActiveMQ to start on boot.
   chkconfig activemq on
@@ -729,6 +734,7 @@ configure_qpid()
 
   # Allow connections to qpidd.
   lokkit --nostart --port=5672:tcp
+  service iptables restart
 
   # Configure qpidd to start on boot.
   chkconfig qpidd on
@@ -854,11 +860,11 @@ EOF
 
   # Configure named to start on boot.
   lokkit --nostart --service=dns
+  service iptables restart
   chkconfig named on
 
   # Start named so we can perform some updates immediately.
   service named start
-  service iptables restart
 }
 
 
