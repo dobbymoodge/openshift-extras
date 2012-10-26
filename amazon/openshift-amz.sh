@@ -1265,14 +1265,15 @@ configure_default_user()
   htpasswd -b -c /etc/openshift/htpasswd demo changeme
 }
 
-
+# Copy the DNS key from the named host to the broker
 set_dns_key()
 {
   SSH_CMD="ssh -n -o TCPKeepAlive=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -i /root/.ssh/named_rsa"
   KEY=$(${SSH_CMD} ${named_hostname} "grep Key: /var/named/K${domain}*.private | cut -d ' ' -f 2")
 }
 
-# Amazon machines have fully qualified hostname
+# Fix the node configuration to just use the hostname
+# Amazon machines have fully qualified hostnames
 configure_node_amz()
 {
   sed -i -e "s/^PUBLIC_HOSTNAME=.*$/PUBLIC_HOSTNAME=${hostname}/" /etc/openshift/node.conf
@@ -1288,13 +1289,32 @@ configure_named_amz()
   sed -i -e "s/A 127.0.0.1/A ${IP}/" /var/named/dynamic/${domain}.db
 }
 
+# Configures the LIBRA_SERVER variable for convenience
+configure_libra_server()
+{
+  echo "LIBRA_SERVER='${broker_hostname}'" >> /root/.bashrc
+}
+
+# This configures an authorized key to allow the broker to be
+# able to obtain the DNS key
 named && configure_authorized_key
+
+# This fixes the BIND configuration on the named server by
+# setting up the public IP address instead of 127.0.0.1
 named && configure_named_amz
 
-# Re-run the DNS plugin configuration after establishing the DNS key
+# Re-run the DNS plugin configuration after establishing the DNS key.
+# Since the DNS key is on the named server, we need to copy it over
+# to the broker so it can perform updates.
 broker && configure_private_key
 broker && set_dns_key
 broker && configure_dns_plugin
+
+# This sets up the LIBRA_SERVER on the broker machine
+# for convenience of running 'rhc' on it
+broker && configure_libra_server
+
+# Setup a default user on the broker (demo / changeme)
 broker && configure_default_user
 
 # Re-configure the node hostname for Amazon hosts
@@ -1312,9 +1332,15 @@ cat <<EOF > /tmp/success_data
 }
 EOF
 
+# This calls the verification URL for the CloudFormation
+# wait condition.  Again, it's really important to use
+# the file format or you will never unblock the wait state.
 echo "Calling wait URL..."
 curl -T /tmp/success_data $2
 echo "Done"
 
+# The kickstart requires the machines to be restarted
+# in order to properly start the right services, firewalls,
+# etc.  The restart does not re-IP the Amazon machines.
 echo "Restarting VM"
 reboot
