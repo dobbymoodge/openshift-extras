@@ -1,4 +1,3 @@
-#!/bin/bash
 
 # Important - the callback is only working
 # if the file data is sent up.  Probably related

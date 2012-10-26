@@ -32,15 +32,12 @@
         "SecurityGroups" : [ { "Ref" : "NamedSecurityGroup" } ],
         "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "named"]]}}],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
-            "#!/bin/bash -ex","\n",
+            "#!/bin/bash -x","\n",
             "cd ~/","\n",
             "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
-            "wget http://files-oncloud.rhcloud.com/success-handler.sh","\n",
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_INSTALL_COMPONENTS='named'","\n",
-            "sh openshift-amz.sh", "\n",
-            "sh success-handler.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"'", "\n",
-            "echo 'NAMED SUCCESS'", "\n"]]}}
+            "sh openshift-amz.sh 'ID_NAMED' '", {"Ref" : "NamedWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
       }
     },
 
@@ -113,16 +110,13 @@
         "SecurityGroups" : [ { "Ref" : "BrokerSecurityGroup" } ],
         "Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : ["-",["openshift", {"Ref":"Prefix"}, "broker"]]}}],
         "UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
-            "#!/bin/bash -ex","\n",
+            "#!/bin/bash -x","\n",
             "cd ~/","\n",
             "wget http://files-oncloud.rhcloud.com/openshift-amz.sh","\n",
-            "wget http://files-oncloud.rhcloud.com/success-handler.sh","\n",
             "export CONF_PREFIX='", { "Ref" : "Prefix" } , "'\n",
             "export CONF_NAMED_IP_ADDR='", {"Fn::GetAtt" : [ "NamedInstance", "PublicIp" ]}, "'\n",
-            "export CONF_INSTALL_COMPONENTS='broker'", "\n",
-            "sh openshift-amz.sh", "\n",
-            "sh success-handler.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"},"'", "\n",
-            "echo 'BROKER SUCCESS'", "\n"]]}}
+            "export CONF_INSTALL_COMPONENTS='broker'","\n",
+            "sh openshift-amz.sh 'ID_BROKER' '", {"Ref" : "BrokerWaitForInstanceWaitHandle"} ,"'", "\n"]]}}
       },
       "DependsOn" : "NamedInstance"
     },

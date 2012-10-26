@@ -1,3 +1,4 @@
+#!/bin/sh
 
 CONF_PREFIX="${CONF_PREFIX:-demo}"
 CONF_DATASTORE_HOSTNAME="mongo.${CONF_PREFIX}.cloudydemo.com"
@@ -1206,3 +1207,19 @@ node && configure_gears
 node && configure_node
 node && update_openshift_facts_on_node
 
+
+# Important - the callback is only working
+# if the file data is sent up.  Probably related
+# to the newlines after the initial brace.
+cat <<EOF > /tmp/success_data
+{
+  "Status" : "SUCCESS",
+  "Reason" : "Configuration Complete",
+  "UniqueId" : "$1",
+  "Data" : "Component has completed configuration."
+}
+EOF
+
+echo "Calling wait URL..."
+curl -T /tmp/success_data $2
+echo "Done"
