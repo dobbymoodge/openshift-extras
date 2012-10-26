@@ -43,7 +43,8 @@ EOF
 
 set_dns_key()
 {
-  KEY=$(ssh -i ~/.ssh/named_rsa ${named_hostname} "grep Key: /var/named/K${domain}*.private | cut -d ' ' -f 2")
+  SSH_CMD="ssh 2> /dev/null -n -o TCPKeepAlive=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -i /root/.ssh/named_rsa"
+  KEY=$(${SSH_CMD} ${named_hostname} "grep Key: /var/named/K${domain}*.private | cut -d ' ' -f 2")
 }
 
 named && configure_authorized_key
