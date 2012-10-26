@@ -1098,7 +1098,7 @@ do
 done
 
 # But any or all components may be explicity enabled.
-for component in ${CONF_INSTALL_COMPONENTS// }
+for component in ${CONF_INSTALL_COMPONENTS//,/ }
 do
   eval "$component() { :; }"
 done
