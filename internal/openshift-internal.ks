@@ -94,7 +94,7 @@ EOF
 configure_client_tools_repo()
 {
   # Enable repo with the puddle for broker packages.
-  cat >> /etc/yum.repos.d/openshift-client.repo << YUM
+  cat > /etc/yum.repos.d/openshift-client.repo << YUM
 [openshift_client]
 name=OpenShift Client
 baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Client/x86_64/os/
@@ -108,7 +108,7 @@ YUM
 configure_broker_repo()
 {
   # Enable repo with the puddle for broker packages.
-  cat >> /etc/yum.repos.d/openshift-infrastructure.repo << YUM
+  cat > /etc/yum.repos.d/openshift-infrastructure.repo << YUM
 [openshift_infrastructure]
 name=OpenShift Infrastructure
 baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Infrastructure/x86_64/os/
@@ -122,7 +122,7 @@ YUM
 configure_node_repo()
 {
   # Enable repo with the puddle for node packages.
-  cat >> /etc/yum.repos.d/openshift-node.repo << YUM
+  cat > /etc/yum.repos.d/openshift-node.repo << YUM
 [openshift_node]
 name=OpenShift Node
 baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Node/x86_64/os/
@@ -136,7 +136,7 @@ YUM
 configure_jboss_cartridge_repo()
 {
   # Enable repo with the puddle for the JBossEAP cartridge package.
-  cat >> /etc/yum.repos.d/openshift-jboss.repo << YUM
+  cat > /etc/yum.repos.d/openshift-jboss.repo << YUM
 [openshift_jbosseap]
 name=OpenShift JBossEAP
 baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/JBoss_EAP6_Cartridge/x86_64/os/
