@@ -896,14 +896,6 @@ EOF
 
   # Start named so we can perform some updates immediately.
   service named start
-
-  # Tell BIND about the broker.
-  nsupdate -k ${keyfile} <<EOF
-server 127.0.0.1
-update delete ${named_hostname} A
-update add ${named_hostname} 180 A ${named_ip_addr}
-send
-EOF
 }
 
 
