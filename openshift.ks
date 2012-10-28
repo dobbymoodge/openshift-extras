@@ -310,6 +310,31 @@ configure_cgroups_on_node()
   chkconfig openshift-cgroups on
 }
 
+configure_quotas_on_node()
+{
+  # Get the device for /var/lib/openshift.
+  geardata_dev="$(df /var/lib/openshift |grep -om1 '/dev[^ \t]*')"
+
+  # Get the mountpoint for /var/lib/openshift (should be /).
+  geardata_mnt="$(awk "/${geardata_dev////\/}/ {print \$2}" < /etc/fstab)"
+
+  if ! [ x"$geardata_dev" != x ] || ! [ x"$geardata_mnt" != x ]
+  then
+    echo 'Could not enable quotas for gear data:'
+    echo 'unable to determine device and mountpoint.'
+  else
+    # Enable user quotas for the device housing /var/lib/openshift.
+    sed -i -e "/^${geardata_dev////\/}[[:blank:]]/{/usrquota/!  s/[[:blank:]]\\+/,usrquota&/4;}" /etc/fstab
+
+    # Remount to get quotas enabled immediately.
+    mount -o remount "${geardata_mnt}"
+
+    # Generate user quota info for the mount point.
+    quotacheck -cmug "${geardata_mnt}"
+  fi
+
+}
+
 # Turn some sysctl knobs.
 configure_sysctl_on_node()
 {
@@ -1221,6 +1246,7 @@ node && enable_services_on_node
 
 node && configure_pam_on_node
 node && configure_cgroups_on_node
+node && configure_quotas_on_node
 
 broker && configure_selinux_policy_on_broker
 node && configure_selinux_policy_on_node
