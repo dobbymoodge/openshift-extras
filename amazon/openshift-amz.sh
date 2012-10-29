@@ -904,19 +904,15 @@ update_resolv_conf()
 # Update the controller configuration.
 configure_controller()
 {
-  # Configure the broker with the correct hostname.
-  perl -p -i -e "s/.*:domain_suffix.*/    :domain_suffix => \"${domain}\",/" /var/www/openshift/broker/config/environments/*.rb
-  # */ # What the heck, VIM syntax highlighting? Kickstart scripts do not use
-  #  C-style comments.
+  # Configure the broker with the correct hostname, and point the broker
+  # to the data store (the host running MongoDB).
+  sed -i -e "s/^CLOUD_DOMAIN=.*$/CLOUD_DOMAIN=${domain}/;
+             s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=${datastore_hostname}:27017/" \
+      /etc/openshift/broker.conf
 
-  # Point the broker to the data store (mongod service).
-  perl -p -i -e "s/.*:host_port.*/    :host_port => [\"${datastore_hostname}\", 27017],/" /var/www/openshift/broker/config/environments/*.rb
-  # */
-
-  # Configure the broker with the correct password for the data store.
   # If you change the MongoDB password of "mooo" to something else, be
   # sure to edit and enable the following line:
-  #sed -i -e '/:password => "mooo"/s/mooo/<password>/' /var/www/openshift/broker/config/environments/development.rb
+  #sed -i -e '/MONGO_PASSWORD/s/mooo/<password>/' /etc/openshift/broker.conf
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
