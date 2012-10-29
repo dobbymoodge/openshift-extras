@@ -79,8 +79,11 @@ KEYS
 
 configure_rhel_repo()
 {
-  # Enable the optional channel.
-  #yum-config-manager --enable rhel-6-server-optional-rpms
+  # In order for the %post section to succeed, it must have a way of installing from RHEL.
+  # The post section cannot access the method that was used in the base install.
+  # So, you must subscribe to RHEL or configure RHEL repos here.
+
+  ## configure RHEL subscription or repos here
   cat <<EOF > /etc/yum.repos.d/rhel.repo
 [rhel63]
 name=rhel63
@@ -89,17 +92,19 @@ enabled=1
 gpgcheck=0
 
 EOF
+
 }
 
 configure_client_tools_repo()
 {
   # Enable repo with the puddle for broker packages.
-  cat > /etc/yum.repos.d/openshift-client.repo << YUM
+  cat > /etc/yum.repos.d/openshift-client.repo <<YUM
 [openshift_client]
 name=OpenShift Client
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Client/x86_64/os/
+baseurl=${repos_base}/Client/x86_64/os/
 enabled=1
 gpgcheck=0
+sslverify=false
 sslverify=false
 
 YUM
@@ -108,12 +113,13 @@ YUM
 configure_broker_repo()
 {
   # Enable repo with the puddle for broker packages.
-  cat > /etc/yum.repos.d/openshift-infrastructure.repo << YUM
+  cat > /etc/yum.repos.d/openshift-infrastructure.repo <<YUM
 [openshift_infrastructure]
 name=OpenShift Infrastructure
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Infrastructure/x86_64/os/
+baseurl=${repos_base}/Infrastructure/x86_64/os/
 enabled=1
 gpgcheck=0
+sslverify=false
 sslverify=false
 
 YUM
@@ -122,12 +128,13 @@ YUM
 configure_node_repo()
 {
   # Enable repo with the puddle for node packages.
-  cat > /etc/yum.repos.d/openshift-node.repo << YUM
+  cat > /etc/yum.repos.d/openshift-node.repo <<YUM
 [openshift_node]
 name=OpenShift Node
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/Node/x86_64/os/
+baseurl=${repos_base}/Node/x86_64/os/
 enabled=1
 gpgcheck=0
+sslverify=false
 sslverify=false
 
 YUM
@@ -136,12 +143,13 @@ YUM
 configure_jboss_cartridge_repo()
 {
   # Enable repo with the puddle for the JBossEAP cartridge package.
-  cat > /etc/yum.repos.d/openshift-jboss.repo << YUM
+  cat > /etc/yum.repos.d/openshift-jboss.repo <<YUM
 [openshift_jbosseap]
 name=OpenShift JBossEAP
-baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-22/JBoss_EAP6_Cartridge/x86_64/os/
+baseurl=${repos_base}/JBoss_EAP6_Cartridge/x86_64/os/
 enabled=1
 gpgcheck=0
+sslverify=false
 sslverify=false
 
 YUM
@@ -186,47 +194,52 @@ install_cartridges()
   :
   # Following are cartridge rpms that one may want to install here:
 
-  # Embedded cron support.
-  yum install openshift-origin-cartridge-cron-1.4 -y
+  # Embedded cron support. This is required on node hosts.
+  carts="openshift-origin-cartridge-cron-1.4"
 
   # diy app.
-  yum install openshift-origin-cartridge-diy-0.1 -y
+  carts="$carts openshift-origin-cartridge-diy-0.1"
 
   # haproxy-1.4 support.
-  #yum install openshift-origin-cartridge-haproxy-1.4 -y
+  carts="$carts openshift-origin-cartridge-haproxy-1.4"
 
   # JBossEWS1.0 support.
-  #yum install openshift-origin-cartridge-jbossews-1.0 -y
+  #carts="$carts openshift-origin-cartridge-jbossews-1.0"
 
   # JBossEAP6.0 support.
-  #yum install openshift-origin-cartridge-jbosseap-6.0 -y
+  #carts="$carts openshift-origin-cartridge-jbosseap-6.0"
 
   # Jenkins server for continuous integration.
-  #yum install openshift-origin-cartridge-jenkins-1.4 -y
+  carts="$carts openshift-origin-cartridge-jenkins-1.4"
 
   # Embedded jenkins client.
-  #yum install openshift-origin-cartridge-jenkins-client-1.4 -y
+  carts="$carts openshift-origin-cartridge-jenkins-client-1.4"
 
   # Embedded MySQL.
-  #yum install openshift-origin-cartridge-mysql-5.1 -y
+  carts="$carts openshift-origin-cartridge-mysql-5.1"
 
   # mod_perl support.
-  #yum install openshift-origin-cartridge-perl-5.10 -y
+  carts="$carts openshift-origin-cartridge-perl-5.10"
 
   # PHP 5.3 support.
-  yum install openshift-origin-cartridge-php-5.3 -y
+  carts="$carts openshift-origin-cartridge-php-5.3"
 
   # Embedded PostgreSQL.
-  #yum install openshift-origin-cartridge-postgresql-8.4 -y
+  carts="$carts openshift-origin-cartridge-postgresql-8.4"
 
   # Python 2.6 support.
-  #yum install openshift-origin-cartridge-python-2.6 -y
+  carts="$carts openshift-origin-cartridge-python-2.6"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.8).
-  #yum install openshift-origin-cartridge-ruby-1.8 -y
+  #carts="$carts openshift-origin-cartridge-ruby-1.8"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.9).
-  #yum install openshift-origin-cartridge-ruby-1.9 -y
+  #carts="$carts openshift-origin-cartridge-ruby-1.9"
+
+  # Keep things from breaking too much when testing packaging.
+  carts="$carts --skip-broken"
+
+  yum install -y $carts
 }
 
 # Fix up SELinux policy on the broker.
@@ -780,7 +793,7 @@ EOF
 }
 
 
-# Configure qpid.
+# Configure qpid. Deprecated for ActiveMQ.
 configure_qpid()
 {
   if [[ "x`fgrep auth= /etc/qpidd.conf`" == xauth* ]]
@@ -1067,6 +1080,35 @@ update_openshift_facts_on_node()
   /etc/cron.minutely/openshift-facts
 }
 
+echo_installation_intentions()
+{
+  echo "The following components should be installed:"
+  for component in $components
+  do
+    if eval $component
+    then
+      printf '\t%s.\n' $component
+    fi
+  done
+
+  echo "Configuring with broker with hostname ${broker_hostname}."
+  node && echo "Configuring node with hostname ${node_hostname}."
+  echo "Configuring with named with IP address ${named_ip_addr}."
+  broker && echo "Configuring with datastore with hostname ${datastore_hostname}."
+  echo "Configuring with activemq with hostname ${activemq_hostname}."
+}
+
+# Modify console message to show install info
+configure_console_msg()
+{
+  # add the IP to /etc/issue for convenience
+  echo "Install-time IP address: ${cur_ip_addr}" >> /etc/issue
+  echo_installation_intentions >> /etc/issue
+  echo "Check /root/anaconda-post.log to see the %post output." >> /etc/issue
+  echo >> /etc/issue
+}
+
+
 
 ########################################################################
 
@@ -1149,9 +1191,16 @@ fi
 
 # Following are some settings used in subsequent steps.
 
+# Where to find the OpenShift repositories; just the base part before
+# splitting out into Infrastructure/Node/etc.
+repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23'
+repos_base_default=http://buildvm-devops.usersys.redhat.com/puddle/build/OpenShiftEnterprise/Beta/latest
+repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
+
 # The domain name for the OpenShift Enterprise installation.
 domain="${CONF_DOMAIN:-example.com}"
 
+# hostnames to use for the components (could all resolve to same host)
 broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
 node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
 named_hostname="${CONF_NAMED_HOSTNAME:-ns1.${domain}}"
@@ -1194,27 +1243,15 @@ else
   named_ip_addr="${CONF_NAMED_IP_ADDR:-$broker_ip_addr}"
 fi
 
-echo "The following components will be installed:"
-for component in $components
-do
-  if eval $component
-  then
-    printf '\t%s.\n' $component
-  fi
-done
-
-echo "Configuring with broker with hostname ${broker_hostname}."
-node && echo "Configuring with node with hostname ${node_hostname}."
-echo "Configuring with named with IP address ${named_ip_addr}."
-echo "Configuring with datastore with hostname ${datastore_hostname}."
-echo "Configuring with activemq with hostname ${activemq_hostname}."
-
 # The nameservers to which named on the broker will forward requests.
 # This should be a list of IP addresses with a semicolon after each.
 nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
 
 
 ########################################################################
+
+echo_installation_intentions
+configure_console_msg
 
 is_false "$CONF_NO_NTP" && synchronize_clock
 is_false "$CONF_NO_SSH_KEYS" && install_ssh_keys
