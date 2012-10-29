@@ -974,7 +974,8 @@ configure_auth_plugin()
 
 configure_messaging_plugin()
 {
-  cp /etc/openshift/plugins.d/openshift-origin-msg-broker-mcollective.conf{.example,}
+  cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
+     /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
 }
 
 # Configure the broker to use the BIND DNS plug-in.
