@@ -1,0 +1,143 @@
+#!/usr/bin/env ruby
+
+#####################################################################
+# bootstrap our devops/onprem builder
+
+$: << File.expand_path(File.dirname(__FILE__))
+require 'dev_tools_ext_constants'
+
+DEVTOOLS_REPO = File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}")
+
+require 'rubygems'
+require 'thor'
+require 'fileutils'
+require File.join(DEVTOOLS_REPO, 'build', 'lib', 'openshift')
+require 'pp'
+require 'yaml'
+require File.join(DEVTOOLS_REPO, 'build', 'builder')
+
+include FileUtils
+
+######################################################################
+#
+# Define the options available for the onprem builder
+
+module DevOps
+  class BuilderPlugin < OpenShift::Builder
+    include OpenShift::BuilderHelper
+
+    ######################################################################
+    #
+    # Supporting methods go here
+
+    no_tasks do
+
+      # launch also calls this to perform some kind of validation of instance state
+      def validate_instance(hostname, num_tries=2)
+        # here we will check that it has access to the yum repos
+        puts "Validating instance..."
+
+        validation_output = ssh(hostname, 'yum info openshift-origin-broker --cacheonly', 30)
+        if validation_output =~ /Name\s*:\s*openshift-origin-broker/
+          puts "Instance is valid."
+        else
+          puts "ERROR - instance is not valid"
+          puts "Node Acceptance Output:"
+          puts validation_output
+          exit 1
+        end
+      end
+      
+      def build_impl(name, build_num, image, conn, options)
+        puts "Launching AMI: #{image.id} - #{image.name}"
+        instance = launch_instance(image, name + "_" + build_num)
+
+        hostname = instance.dns_name
+        puts "Done"
+        puts "Hostname: #{hostname}"
+    
+        ret, out = 0, nil
+        begin
+          if options.install_required_packages?
+            puts "Starting yum update..."
+            out, ret = ssh(hostname, "yum -y update", 60 * 20, true)
+            print_and_exit(ret, out) if ret != 0
+
+            print_highlighted_output("Update Output", out)
+          end
+
+          puts "Installing packages required for build..."
+          out, ret = ssh(hostname, "yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities", 60 * 10, true)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+
+          init_repos(hostname, true, nil)
+          clone_commands, working_dirs = '', ''
+
+          if options.install_from_local_source?
+            puts "Performing clean install from local source..."
+            clone_commands, working_dirs = sync_available_sibling_repos(hostname)
+          else
+            SIBLING_REPOS.each do |repo_name, repo_dirs|
+              working_dirs += "#{repo_name} "
+              clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
+              clone_commands += "pushd #{repo_name}; git checkout #{options.branch}; popd; "
+            end
+          end
+          out, ret = ssh(hostname, "cd /root; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2)
+          print_and_exit(ret, out) if ret != 0
+          puts "Done"
+
+          puts "Installing pre-requisite packages"
+          out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv install_required_packages", 60 * 30, true)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+
+          if options.install_from_source? || options.install_from_local_source?
+            puts "Installing Origin packages..."
+            out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv local_build", 60 * 20, true)
+            print_and_exit(ret, out) if ret != 0
+          end
+
+          image_id = nil
+          if options[:register]
+            manifest = rpm_manifest(hostname)
+            registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
+            image_id = registered_ami.id
+          end
+
+          unless options.skip_verify? || options.install_required_packages?
+            puts "Running broker setup..."
+            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 2)
+            print_and_exit(ret, out) if ret != 0
+            puts "Done"
+
+            scp_remote_tests(hostname, options.branch, "~")
+            test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
+          end
+          puts "Done."
+        ensure
+          terminate_instance(instance) if options.terminate?
+        end
+      end
+      
+      def rpm_manifest(hostname, sshuser="root")
+        print "Retrieving RPM manifest.."
+        manifest = ssh(hostname, 'rpm -qa | grep -E "(openshift)" | grep -v cartridge', 60, false, 1, sshuser)
+        manifest = manifest.split("\n").sort.join(" / ")
+        # Trim down the output to 255 characters
+        manifest.gsub!(/rubygem-([a-z])/, '\1')
+        manifest.gsub!('openshift-origin-', '')
+        manifest.gsub!('mcollective-', 'mco-')
+        manifest.gsub!('.noarch', '')
+        manifest.gsub!(/\.git\.[a-z0-9\.]+/, '')
+        manifest = manifest[0..254]
+        puts "Done"
+        return manifest
+      end
+
+    end # no_tasks end
+  end # class end
+end # module end
+
+DevOps::BuilderPlugin.start
