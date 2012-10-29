@@ -987,8 +987,7 @@ configure_auth_plugin()
 
 configure_messaging_plugin()
 {
-  cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
-     /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
+  cp /etc/openshift/plugins.d/openshift-origin-msg-broker-mcollective.conf{.example,}
 }
 
 # Configure the broker to use the BIND DNS plug-in.
@@ -1015,7 +1014,8 @@ EOF
 configure_httpd_auth()
 {
   # Install the Apache configuration file.
-  cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf{.sample,}
+  cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
+     /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
 
   # The above configuration file configures Apache to use
   # /etc/openshift/htpasswd for its password file.  Use the following
