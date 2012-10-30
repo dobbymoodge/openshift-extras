@@ -4,7 +4,7 @@
 # bootstrap our devops/onprem builder
 
 $: << File.expand_path(File.dirname(__FILE__))
-require 'dev_tools_ext_constants'
+require 'dev_tools_constants'
 
 DEVTOOLS_REPO = File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}")
 
@@ -58,18 +58,39 @@ module DevOps
     
         ret, out = 0, nil
         begin
-          if options.install_required_packages?
-            puts "Starting yum update..."
-            out, ret = ssh(hostname, "yum -y update", 60 * 20, true)
-            print_and_exit(ret, out) if ret != 0
-
-            print_highlighted_output("Update Output", out)
-          end
-
-          puts "Installing packages required for build..."
-          out, ret = ssh(hostname, "yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities", 60 * 10, true)
+          puts "Starting yum update..."
+          out, ret = ssh(hostname, "yum -y update", 60 * 20, true)
           print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
+          print_highlighted_output("Update Output", out)
+            
+          if options.install_required_packages?
+            output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Install OpenSSH Clients Output", out)
+            
+            puts "Uploading yum client certificates..."
+            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
+            scp_to(hostname, pem_path, "/var/lib/yum/")
+            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
+            scp_to(hostname, pem_path, "/var/lib/yum/")
+            scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
+            ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+            puts "Done"
+          end
+          
+          puts "Uploading devenv script..."
+          script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
+          scp_to(hostname, script_path, "~/")
+          puts "Done"
+          
+          ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo} #{BASE_RELEASE_BRANCH};")
+
+          if options.install_required_packages?
+            puts "Installing packages required for build..."
+            out, ret = ssh(hostname, "yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities", 60 * 10, true)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Install Output", out)
+          end
 
           init_repos(hostname, true, nil)
           clone_commands, working_dirs = '', ''
@@ -89,13 +110,13 @@ module DevOps
           puts "Done"
 
           puts "Installing pre-requisite packages"
-          out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv install_required_packages", 60 * 30, true)
+          out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv install_required_packages 2>&1", 60 * 30, true)
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
-            out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv local_build", 60 * 20, true)
+            out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv local_build 2>&1", 60 * 20, true)
             print_and_exit(ret, out) if ret != 0
           end
 
@@ -108,11 +129,11 @@ module DevOps
 
           unless options.skip_verify? || options.install_required_packages?
             puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 2)
+            out, ret = ssh(hostname, "/usr/bin/oo-setup-broker 2>&1", 60 * 15, true, 2)
             print_and_exit(ret, out) if ret != 0
             puts "Done"
 
-            scp_remote_tests(hostname, options.branch, "~")
+            scp_remote_tests(hostname, options.branch)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
           puts "Done."
