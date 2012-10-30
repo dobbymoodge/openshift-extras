@@ -1,3 +1,4 @@
+#!/bin/bash
 # This script configures a host system with OpenShift components.
 # It may be used either as a RHEL6 kickstart script, or the %post section may be
 # extracted and run directly to install on top of an installed RHEL6 image.
@@ -81,54 +82,6 @@
 # Otherwise you will have DNS failures when creating the app and be unable to reach it in a browser.
 #
 
-#Begin Kickstart Script
-install
-text
-skipx
-
-# NB: Be sure to change the password before running this kickstart script.
-rootpw  --iscrypted $6$QgevUVWY7.dTjKz6$jugejKU4YTngbFpfNlqrPsiE4sLJSj/ahcfqK8fE5lO0jxDhvdg59Qjk9Qn3vNPAUTWXOp9mchQDy6EV9.XBW1
-
-lang en_US.UTF-8
-keyboard us
-timezone --utc America/New_York
-
-services --enabled=ypbind,ntpd,network,logwatch
-network --onboot yes --device eth0
-firewall --service=ssh
-authconfig --enableshadow --passalgo=sha512
-selinux --enforcing
-
-bootloader --location=mbr --driveorder=vda --append=" rhgb crashkernel=auto quiet console=ttyS0"
-
-clearpart --all --initlabel
-firstboot --disable
-reboot
-
-part /boot --fstype=ext4 --size=500
-part pv.253002 --grow --size=1
-volgroup vg_vm1 --pesize=4096 pv.253002
-logvol / --fstype=ext4 --name=lv_root --vgname=vg_vm1 --grow --size=1024 --maxsize=51200
-logvol swap --name=lv_swap --vgname=vg_vm1 --grow --size=2016 --maxsize=4032
-
-%packages
-@core
-@server-policy
-ntp
-git
-
-%post --log=/root/anaconda-post.log
-
-# You can tail the log file showing the execution of the commands below
-# by using the following command:
-#    tailf /mnt/sysimage/root/anaconda-post.log
-
-# You can use sed to extract just the %post section:
-#    sed -e '0,/^%post/d;/^%end/,$d'
-
-# Log the command invocations (and not merely output) in order to make
-# the log more useful.
-set -x
 
 
 ########################################################################
@@ -1344,6 +1297,7 @@ nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
 ########################################################################
 
 echo_installation_intentions
+exit
 configure_console_msg
 
 is_false "$CONF_NO_NTP" && synchronize_clock
@@ -1409,4 +1363,3 @@ node && configure_gears
 node && configure_node
 node && update_openshift_facts_on_node
 
-%end

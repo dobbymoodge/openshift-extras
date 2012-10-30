@@ -1,6 +1,87 @@
-# This kickstart script configures a system that acts as either a node or
-# a broker.
+# This script configures a host system with OpenShift components.
+# It may be used either as a RHEL6 kickstart script, or the %post section may be
+# extracted and run directly to install on top of an installed RHEL6 image.
 
+# SPECIFYING PARAMETERS
+#
+# If you supply no parameters, all components are installed with default configuration,
+# which should give you a running demo.
+#
+# For a kickstart, you can supply further kernel parameters (in addition to the ks=location itself).
+#  e.g. virt-install ... -x "ks=http://.../openshift.ks domain=example.com"
+#
+# As a bash script, just add the parameters as bash variables at the top of the script (or environment variables).
+# Kickstart parameters are mapped to uppercase bash variables prepended with CONF_
+# so for example, "domain=example.com" as a kickstart parameter would be "CONF_DOMAIN=example.com" for the script.
+
+# PARAMETER DESCRIPTIONS
+
+# install_components / CONF_INSTALL_COMPONENTS
+#   Comma-separated selections from the following:
+#     broker - installs the broker webapp and tools
+#     named - installs a BIND DNS server
+#     activemq - installs the messaging bus
+#     datastore - installs the MongoDB datastore
+#     node - installs node functionality
+#   Default: all.
+#   Only the specified components are installed and configured.
+#   E.g. install_components=broker,datastore only installs the broker and DB,
+#   and assumes you have use other hosts for messaging and DNS.
+
+# repos_base / CONF_REPOS_BASE
+#   Default: https://mirror.openshift.com/pub/origin-server/nightly/enterprise/<latest>
+#   The base URL for the OpenShift repositories used in the post-install.
+
+# domain / CONF_DOMAIN
+#   Default: example.com
+#   The network domain under which apps and hosts will be placed.
+
+# broker_hostname / CONF_BROKER_HOSTNAME
+# node_hostname / CONF_NODE_HOSTNAME
+# named_hostname / CONF_NAMED_HOSTNAME
+# activemq_hostname / CONF_ACTIVEMQ_HOSTNAME
+# datastore_hostname / CONF_DATASTORE_HOSTNAME
+#   Default: the root plus the domain, e.g. broker.example.com - except named=ns1.example.com
+#   These supply the FQDN of the hosts containing these components. Used for configuring the
+#   host's name at install, and also for configuring the broker application to reach the
+#   services needed.
+#
+#   IMPORTANT NOTE: if installing a nameserver, the kickstart will create DNS entries for
+#   the hostnames of the other components being installed as well. If not, it is assumed that
+#   you have done so when configuring your nameserver.
+#
+
+# named_ip_addr / CONF_NAMED_IP_ADDR
+#   Default: current IP if installing named, otherwise broker_ip_addr
+#   This is used by every host to configure its primary nameserver.
+
+# broker_ip_addr / CONF_BROKER_IP_ADDR
+#   Default: the current IP (at install)
+#   This is used for the node to record its broker.
+#   Also is the default for the nameserver IP if none is given.
+
+# node_ip_addr / CONF_NODE_IP_ADDR
+#   Default: the current IP (at install)
+#   This is used for the node to give a public IP, if different from the one on its NIC.
+#   You aren't likely to need to specify this.
+
+# IMPORTANT NOTES
+#
+# In order for the %post section to succeed, it must have a way of installing from RHEL 6.
+# The post section cannot access the method that was used in the base install.
+# So, you must modify this script, either to subscribe to RHEL during the base install,
+# or to ensure that the configure_rhel_repo function below subscribes to RHEL
+# or configures RHEL yum repos.
+#
+# If you install a broker, the rhc client is installed as well, for convenient local testing.
+# Also, a test user "demo" with password "changeme" is created.
+#
+# If you want to use the broker from a client outside the installation, then of course that client
+# must be using a DNS server that knows about (or is) the DNS server for the installation.
+# Otherwise you will have DNS failures when creating the app and be unable to reach it in a browser.
+#
+
+#Begin Kickstart Script
 install
 text
 skipx
@@ -832,7 +913,7 @@ EOF
   rm -rf /var/named/dynamic
   mkdir -p /var/named/dynamic
 
-  cat <<EOF > /var/named/dynamic/${domain}.db
+  nsdb=<<EOF
 \$ORIGIN .
 \$TTL 1	; 1 seconds (for testing only)
 ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
@@ -846,8 +927,12 @@ ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 			MX	10 mail.${domain}.
 \$ORIGIN ${domain}.
 ${named_hostname%.${domain}}			A	${named_ip_addr}
-
 EOF
+broker && nsdb="${nsdb}${broker_hostname%.${domain}}			A	${broker_ip_addr}\n"
+node && nsdb="${nsdb}${node_hostname%.${domain}}			A	${node_ip_addr}\n"
+activemq && nsdb="${nsdb}${activemq_hostname%.${domain}}			A	${cur_ip_addr}\n"
+datastore && nsdb="${nsdb}${datastore_hostname%.${domain}}			A	${cur_ip_addr}\n"
+  echo $nsdb > /var/named/dynamic/${domain}.db
 
   # Install the key for the OpenShift Enterprise domain.
   cat <<EOF > /var/named/${domain}.key
@@ -944,14 +1029,19 @@ update_resolv_conf()
 configure_controller()
 {
   # Generate a random salt for the broker authentication.
-  broker_auth_sale="$(openssl rand -base64 20)"
+  broker_auth_salt="$(openssl rand -base64 20)"
 
-  # Configure the broker with the correct hostname, and point the broker
+  # Configure the broker with the correct hostname, and use random salt
   # to the data store (the host running MongoDB).
   sed -i -e "s/^CLOUD_DOMAIN=.*$/CLOUD_DOMAIN=${domain}/;
-             s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/;
              s/^AUTH_SALT=.*/AUTH_SALT=\"${broker_auth_salt}\"/" \
       /etc/openshift/broker.conf
+
+  if !datastore
+  then
+    #mongo not installed locally, so point to given hostname
+    sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/broker.conf
+  fi
 
   # If you change the MongoDB password of "mooo" to something else, be
   # sure to edit and enable the following line:
@@ -1022,6 +1112,9 @@ configure_httpd_auth()
   # command to add users:
   #
   #  htpasswd -c /etc/openshift/htpasswd username
+  #
+  # Here we create a test user
+  htpasswd -bc /etc/openshift/htpasswd demo changeme
 
   # Generate the broker key.
   openssl genrsa -out /etc/openshift/server_priv.pem 2048

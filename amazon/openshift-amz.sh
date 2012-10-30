@@ -806,7 +806,7 @@ EOF
   rm -rf /var/named/dynamic
   mkdir -p /var/named/dynamic
 
-  cat <<EOF > /var/named/dynamic/${domain}.db
+  nsdb=<<EOF
 \$ORIGIN .
 \$TTL 1	; 1 seconds (for testing only)
 ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
@@ -820,8 +820,12 @@ ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 			MX	10 mail.${domain}.
 \$ORIGIN ${domain}.
 ${named_hostname%.${domain}}			A	${named_ip_addr}
-
 EOF
+broker && nsdb="${nsdb}${broker_hostname%.${domain}}			A	${broker_ip_addr}\n"
+node && nsdb="${nsdb}${node_hostname%.${domain}}			A	${node_ip_addr}\n"
+activemq && nsdb="${nsdb}${activemq_hostname%.${domain}}			A	${cur_ip_addr}\n"
+datastore && nsdb="${nsdb}${datastore_hostname%.${domain}}			A	${cur_ip_addr}\n"
+  echo $nsdb > /var/named/dynamic/${domain}.db
 
   # Install the key for the OpenShift Enterprise domain.
   cat <<EOF > /var/named/${domain}.key
@@ -918,14 +922,19 @@ update_resolv_conf()
 configure_controller()
 {
   # Generate a random salt for the broker authentication.
-  broker_auth_sale="$(openssl rand -base64 20)"
+  broker_auth_salt="$(openssl rand -base64 20)"
 
-  # Configure the broker with the correct hostname, and point the broker
+  # Configure the broker with the correct hostname, and use random salt
   # to the data store (the host running MongoDB).
   sed -i -e "s/^CLOUD_DOMAIN=.*$/CLOUD_DOMAIN=${domain}/;
-             s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/;
              s/^AUTH_SALT=.*/AUTH_SALT=\"${broker_auth_salt}\"/" \
       /etc/openshift/broker.conf
+
+  if !datastore
+  then
+    #mongo not installed locally, so point to given hostname
+    sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/broker.conf
+  fi
 
   # If you change the MongoDB password of "mooo" to something else, be
   # sure to edit and enable the following line:
@@ -996,6 +1005,9 @@ configure_httpd_auth()
   # command to add users:
   #
   #  htpasswd -c /etc/openshift/htpasswd username
+  #
+  # Here we create a test user
+  htpasswd -bc /etc/openshift/htpasswd demo changeme
 
   # Generate the broker key.
   openssl genrsa -out /etc/openshift/server_priv.pem 2048

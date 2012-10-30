@@ -1,10 +1,13 @@
-all: internal/openshift-internal.ks amazon/openshift-amz.sh
+all: internal/openshift-internal.ks amazon/openshift-amz.sh internal/openshift-internal.sh
 
 clean:
 	rm -f internal/openshift-internal.ks amazon/openshift-amz.sh
 
 internal/openshift-internal.ks: openshift.ks
-	internal/converter $@
+	internal/converter openshift.ks $@
+
+internal/openshift-internal.sh: internal/openshift-internal.ks
+	internal/scriptify internal/openshift-internal.ks $@
 
 amazon/openshift-amz.sh: openshift.ks amazon/openshift-amz.sh.conf
 	sed -e '0,/^%post/d;/^%end/,$$d' openshift.ks > $@
