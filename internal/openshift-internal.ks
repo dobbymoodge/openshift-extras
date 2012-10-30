@@ -251,6 +251,7 @@ install_broker_pkgs()
   pkgs="$pkgs rubygem-openshift-origin-msg-broker-mcollective"
   pkgs="$pkgs rubygem-openshift-origin-auth-remote-user"
   pkgs="$pkgs rubygem-openshift-origin-dns-bind"
+  pkgs="$pkgs openshift-console"
 
   yum install -y $pkgs
 }
@@ -1062,6 +1063,7 @@ configure_controller()
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
+  chkconfig openshift-console on
 }
 
 # Set the administrative password for the database.
