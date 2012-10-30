@@ -73,6 +73,10 @@
 # or to ensure that the configure_rhel_repo function below subscribes to RHEL
 # or configures RHEL yum repos.
 #
+# The JBoss cartridges similarly require packages from the JBoss entitlements, so you must subscribe
+# to the corresponding channels during the base install or modify the
+# configure_jbossews_subscription or configure_jbosseap_subscription functions to do so.
+#
 # If you install a broker, the rhc client is installed as well, for convenient local testing.
 # Also, a test user "demo" with password "changeme" is created.
 #
@@ -210,7 +214,7 @@ sslverify=false
 YUM
 }
 
-configure_jboss_cartridge_repo()
+configure_jbosseap_cartridge_repo()
 {
   # Enable repo with the puddle for the JBossEAP cartridge package.
   cat > /etc/yum.repos.d/openshift-jboss.repo <<YUM
@@ -222,6 +226,22 @@ gpgcheck=0
 sslverify=false
 
 YUM
+}
+
+configure_jbosseap_subscription()
+{
+  # The JBossEAP cartridge depends on Red Hat's JBoss packages, so you must
+  # subscribe to the appropriate channel here.
+
+  # configure JBossEAP subscription
+}
+
+configure_jbossews_subscription()
+{
+  # The JBossEWS cartridge depends on Red Hat's JBoss packages, so you must
+  # subscribe to the appropriate channel here.
+
+  # configure JBossEWS subscription
 }
 
 # Install the client tools.
@@ -273,9 +293,13 @@ install_cartridges()
   carts="$carts openshift-origin-cartridge-haproxy-1.4"
 
   # JBossEWS1.0 support.
+  # Note: Be sure to subscribe to the JBossEWS entitlements during the
+  # base install or in configure_jbossews_subscription.
   #carts="$carts openshift-origin-cartridge-jbossews-1.0"
 
   # JBossEAP6.0 support.
+  # Note: Be sure to subscribe to the JBossEAP entitlements during the
+  # base install or in configure_jbosseap_subscription.
   #carts="$carts openshift-origin-cartridge-jbosseap-6.0"
 
   # Jenkins server for continuous integration.
@@ -1342,7 +1366,9 @@ then
   configure_broker_repo
 fi
 node && configure_node_repo
-node && configure_jboss_cartridge_repo
+node && configure_jbosseap_cartridge_repo
+node && configure_jbosseap_subscription
+node && configure_jbossews_subscription
 broker && configure_client_tools_repo
 
 yum update -y

@@ -20,3 +20,9 @@ sed -i -e 's/#\(carts.*--skip-broken\)/\1/' $2
 # configure RHEL to use internal repo
 ruby -p -i -e 'if $_ =~ /# configure RHEL subscription or repos here/; $_ = "  #" + $_[2..-1] + "  cat <<EOF > /etc/yum.repos.d/rhel.repo\n" + File.open("internal/rhel.repo").read + "\nEOF\n" end' $2
 
+# configure RHEL to use internal repo for JBossEAP
+ruby -p -i -e 'if $_ =~ /# configure JBossEAP subscription/; $_ = "  #" + $_[2..-1] + "  cat <<EOF > /etc/yum.repos.d/jbosseap.repo\n" + File.open("internal/jbosseap.repo").read + "\nEOF\n" end' $2
+
+# configure RHEL to use internal repo for JBossEWS
+ruby -p -i -e 'if $_ =~ /# configure JBossEWS subscription/; $_ = "  #" + $_[2..-1] + "  cat <<EOF > /etc/yum.repos.d/jbossews.repo\n" + File.open("internal/jbossews.repo").read + "\nEOF\n" end' $2
+

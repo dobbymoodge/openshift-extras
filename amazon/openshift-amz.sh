@@ -102,7 +102,7 @@ sslverify=false
 YUM
 }
 
-configure_jboss_cartridge_repo()
+configure_jbosseap_cartridge_repo()
 {
   # Enable repo with the puddle for the JBossEAP cartridge package.
   cat > /etc/yum.repos.d/openshift-jboss.repo <<YUM
@@ -115,6 +115,22 @@ sslverify=false
 sslverify=false
 
 YUM
+}
+
+configure_jbosseap_subscription()
+{
+  # The JBossEAP cartridge depends on Red Hat's JBoss packages, so you must
+  # subscribe to the appropriate channel here.
+
+  # configure JBossEAP subscription
+}
+
+configure_jbossews_subscription()
+{
+  # The JBossEWS cartridge depends on Red Hat's JBoss packages, so you must
+  # subscribe to the appropriate channel here.
+
+  # configure JBossEWS subscription
 }
 
 # Install the client tools.
@@ -132,7 +148,6 @@ install_broker_pkgs()
   pkgs="$pkgs rubygem-openshift-origin-msg-broker-mcollective"
   pkgs="$pkgs rubygem-openshift-origin-auth-remote-user"
   pkgs="$pkgs rubygem-openshift-origin-dns-bind"
-  pkgs="$pkgs openshift-console"
 
   yum install -y $pkgs
 }
@@ -167,9 +182,13 @@ install_cartridges()
   carts="$carts openshift-origin-cartridge-haproxy-1.4"
 
   # JBossEWS1.0 support.
+  # Note: Be sure to subscribe to the JBossEWS entitlements during the
+  # base install or in configure_jbossews_subscription.
   #carts="$carts openshift-origin-cartridge-jbossews-1.0"
 
   # JBossEAP6.0 support.
+  # Note: Be sure to subscribe to the JBossEAP entitlements during the
+  # base install or in configure_jbosseap_subscription.
   #carts="$carts openshift-origin-cartridge-jbosseap-6.0"
 
   # Jenkins server for continuous integration.
@@ -944,7 +963,6 @@ configure_controller()
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
-  chkconfig openshift-console on
 }
 
 # Set the administrative password for the database.
@@ -1237,7 +1255,9 @@ then
   configure_broker_repo
 fi
 node && configure_node_repo
-node && configure_jboss_cartridge_repo
+node && configure_jbosseap_cartridge_repo
+node && configure_jbosseap_subscription
+node && configure_jbossews_subscription
 broker && configure_client_tools_repo
 
 yum update -y
