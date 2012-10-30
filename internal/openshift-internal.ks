@@ -925,6 +925,7 @@ EOF
   rm -rf /var/named/dynamic
   mkdir -p /var/named/dynamic
 
+  nl=$'\n'
   nsdb=<<EOF
 \$ORIGIN .
 \$TTL 1	; 1 seconds (for testing only)
@@ -940,11 +941,11 @@ ${domain}		IN SOA	${named_hostname}. hostmaster.${domain}. (
 \$ORIGIN ${domain}.
 ${named_hostname%.${domain}}			A	${named_ip_addr}
 EOF
-broker && nsdb="${nsdb}${broker_hostname%.${domain}}			A	${broker_ip_addr}\n"
-node && nsdb="${nsdb}${node_hostname%.${domain}}			A	${node_ip_addr}\n"
-activemq && nsdb="${nsdb}${activemq_hostname%.${domain}}			A	${cur_ip_addr}\n"
-datastore && nsdb="${nsdb}${datastore_hostname%.${domain}}			A	${cur_ip_addr}\n"
-  echo $nsdb > /var/named/dynamic/${domain}.db
+broker && nsdb="${nsdb}${broker_hostname%.${domain}}			A	${broker_ip_addr}${nl}"
+node && nsdb="${nsdb}${node_hostname%.${domain}}			A	${node_ip_addr}${nl}"
+activemq && nsdb="${nsdb}${activemq_hostname%.${domain}}			A	${cur_ip_addr}${nl}"
+datastore && nsdb="${nsdb}${datastore_hostname%.${domain}}			A	${cur_ip_addr}${nl}"
+  echo "$nsdb" > /var/named/dynamic/${domain}.db
 
   # Install the key for the OpenShift Enterprise domain.
   cat <<EOF > /var/named/${domain}.key

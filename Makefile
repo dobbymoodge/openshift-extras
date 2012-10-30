@@ -1,7 +1,7 @@
 all: internal/openshift-internal.ks amazon/openshift-amz.sh internal/openshift-internal.sh
 
 clean:
-	rm -f internal/openshift-internal.ks amazon/openshift-amz.sh
+	rm -f internal/openshift-internal.ks amazon/openshift-amz.sh internal/openshift-internal.sh
 
 internal/openshift-internal.ks: openshift.ks
 	internal/converter openshift.ks $@
