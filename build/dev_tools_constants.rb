@@ -4,7 +4,7 @@ require 'fileutils'
 AMI = {"us-east-1" => "ami-938c5dfa"}
 TYPE = "m1.large"  # default size of instance to use with the AMI
 
-DEVENV_NAME = 'devops'
+DEVENV_NAME = 'enterprise'
 
 # where to find the key to ssh to the instance
 RSA = File.expand_path("~/.ssh/libra.pem")
@@ -12,13 +12,11 @@ KEY_PAIR = "libra"
 CAN_SSH_TIMEOUT=90
 
 # need these due to hardwired inherited code
-SAUCE_USER = ""
-SAUCE_SECRET = ""
 ZONE = 'us-east-1'
+IGNORE_PACKAGES = []
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
 # not sure what we'll do with this yet
 VERIFIED_TAG = "qe-ready"
-
 
 SIBLING_REPOS = {'origin-server' => ['../origin-server'],
                  'rhc' => ['../rhc'],
@@ -28,7 +26,7 @@ SIBLING_REPOS_GIT_URL = {'origin-server' => 'git@github.com:openshift/origin-ser
                         'rhc' => 'git@github.com:openshift/rhc.git',
                         'enterprise-install' => 'git@github.com:openshift/enterprise-install.git',
                         'origin-dev-tools' => 'git@github.com:openshift/origin-dev-tools.git'}
-                        
+
 DEV_TOOLS_REPO = 'origin-dev-tools'
 DEV_TOOLS_EXT_REPO = 'enterprise-install'
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO, DEV_TOOLS_EXT_REPO]

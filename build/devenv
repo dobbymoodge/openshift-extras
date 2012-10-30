@@ -49,94 +49,173 @@ module DevOps
       end
       
       def build_impl(name, build_num, image, conn, options)
-        puts "Launching AMI: #{image.id} - #{image.name}"
-        instance = launch_instance(image, name + "_" + build_num)
-
+        puts "Launching instance of AMI: #{image.id} - #{image.name}"
+        instance = launch_instance(image, name + '_' + build_num)
         hostname = instance.dns_name
-        puts "Done"
-        puts "Hostname: #{hostname}"
-    
-        ret, out = 0, nil
+
+        puts "Building on: #{hostname}"
+
         begin
-          puts "Starting yum update..."
-          out, ret = ssh(hostname, "yum -y update", 60 * 20, true)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Update Output", out)
-            
-          if options.install_required_packages?
-            output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Install OpenSSH Clients Output", out)
-            
-            puts "Uploading yum client certificates..."
-            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
-            scp_to(hostname, pem_path, "/var/lib/yum/")
-            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
-            scp_to(hostname, pem_path, "/var/lib/yum/")
-            scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
-            ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+          manifest = nil
+          begin
+            puts "Updating all packages on the system..."
+            output = ssh(hostname, "yum update -y --exclude='rhc*'", 1800)
             puts "Done"
-          end
-          
-          puts "Uploading devenv script..."
-          script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
-          scp_to(hostname, script_path, "~/")
-          puts "Done"
-          
-          ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo} #{BASE_RELEASE_BRANCH};")
 
-          if options.install_required_packages?
-            puts "Installing packages required for build..."
-            out, ret = ssh(hostname, "yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities", 60 * 10, true)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Install Output", out)
-          end
+            print_highlighted_output('Update Output', output)
 
-          init_repos(hostname, true, nil)
-          clone_commands, working_dirs = '', ''
-
-          if options.install_from_local_source?
-            puts "Performing clean install from local source..."
-            clone_commands, working_dirs = sync_available_sibling_repos(hostname)
-          else
-            SIBLING_REPOS.each do |repo_name, repo_dirs|
-              working_dirs += "#{repo_name} "
-              clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
-              clone_commands += "pushd #{repo_name}; git checkout #{options.branch}; popd; "
+            if options.install_required_packages?
+              output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
+              print_highlighted_output('Install OpenSSH Clients Output', output)
+              exit 1 unless exit_code == 0
             end
-          end
-          out, ret = ssh(hostname, "cd /root; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2)
-          print_and_exit(ret, out) if ret != 0
-          puts "Done"
 
-          puts "Installing pre-requisite packages"
-          out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv install_required_packages 2>&1", 60 * 30, true)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
+            if options.reboot?
+              reboot(instance)
+            end
 
-          if options.install_from_source? || options.install_from_local_source?
-            puts "Installing Origin packages..."
-            out, ret = ssh(hostname, "cd /root/#{DEV_TOOLS_EXT_REPO} && build/devenv local_build 2>&1", 60 * 20, true)
-            print_and_exit(ret, out) if ret != 0
+            puts "Uploading devenv script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+
+            if options.install_required_packages?
+              puts "Uploading yum client certificates..."
+              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
+              scp_to(hostname, pem_path, "/var/lib/yum/")
+              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
+              scp_to(hostname, pem_path, "/var/lib/yum/")
+              scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
+              ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+              puts "Done"
+            end
+
+            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo} #{BASE_RELEASE_BRANCH};")
+
+            output = ''
+            clone_commands = repo_clone_commands(hostname)
+            cmd = "set -ex;"
+            if options.install_from_source? || options.install_from_local_source?
+              if options.install_from_source?
+                puts "Performing clean install from source..."
+              elsif options.install_from_local_source?
+                puts "Performing clean install from local source..."
+              end
+              init_repos(hostname)
+              sync_repos(hostname) if options.install_from_local_source?
+              cmd += "#{clone_commands}\n"
+              cmd += "mkdir -p /tmp/tito;"
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "pushd /root/#{repo_name}; git checkout #{options.branch}; popd;"
+              end if options.install_from_source?
+
+              cmd += %{
+
+pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  echo "Building all specs on the server..."
+  build/devenv find_and_build_specs 2>&1
+popd > /dev/null
+
+mkdir /root/devenv-local/
+
+cat > /etc/yum.repos.d/local.repo <<EOF
+[devenv-local]
+name=devenv-local
+baseurl=file:///root/devenv-local/
+enabled=0
+gpgcheck=0
+priority=1
+EOF
+
+cp /tmp/tito/x86_64/*.rpm /root/devenv-local/
+cp /tmp/tito/noarch/*.rpm /root/devenv-local/
+createrepo /root/devenv-local/
+
+#TODO
+#yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
+pushd /root/devenv-local/
+  yum install *.rpm
+popd
+
+pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  build/devenv write_sync_history 2>&1
+popd > /dev/null
+
+rm -rf /tmp/tito; mkdir -p /root/.source_build;
+}
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "rm -rf /root/#{repo_name}-bare; rm -rf /root/.source_build/#{repo_name}; mv /root/#{repo_name} /root/.source_build/#{repo_name};"
+              end
+            elsif options.install_required_packages?
+              puts "Installing bootstrap packages..."
+              output, exit_code = ssh(hostname, "yum clean metadata; yum update -y; yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities", 600, true)
+              print_highlighted_output('Install Bootstrap Packages Output', output)
+              exit 1 unless exit_code == 0
+              puts "Done"
+
+              puts "Installing requires..."
+              init_repos(hostname)
+              cmd += %{
+
+#{clone_commands}
+
+# Enable RHUI JBoss repos for cartridge rebase on core EAP packages
+yum -y install rh-amazon-rhui-client-jbeap6
+              
+# Enable RHUI JB EWS repos for Tomcat cartridge
+yum -y install rh-amazon-rhui-client-jbews1
+                
+# Install the 32 bit java before anything else
+yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
+yum -y remove java-1.6.0-openjdk.x86_64
+set +e
+rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
+set -e
+yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
+
+pushd #{DEV_TOOLS_EXT_REPO}
+  build/devenv install_required_packages 2>&1
+popd
+}
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "rm -rf /root/#{repo_name}; rm -rf /root/#{repo_name}-bare;"
+              end
+            else
+              puts "Performing clean install with the latest code..."
+              #TODO
+              #cmd += "yum -y install rhc-devenv;"
+            end
+            cmd += 'sed -i "/nameserver 127.0.0.1/d" /etc/resolv.conf;'
+                  
+            output, exit_code = ssh(hostname, cmd, 3600, true)
+            puts "Done"
+
+            print_highlighted_output('Install Output', output)
+
+            exit exit_code unless exit_code == 0
+
+            validate_instance(hostname, 4) unless options.install_required_packages?
+
+            manifest = rpm_manifest(hostname)
+          rescue SystemExit => e
+            download_artifacts(hostname) if options.terminate? || options.official?
+            raise
           end
+
+          output = ssh(hostname, "yum list installed", 120)
+
+          print_highlighted_output('Installed Packages', output)
 
           image_id = nil
-          if options[:register]
-            manifest = rpm_manifest(hostname)
-            registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
-            image_id = registered_ami.id
+          if options.register?
+            image = register_image(conn, instance, name + '_' + build_num, manifest)
+            image_id = image.id
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            puts "Running broker setup..."
-            out, ret = ssh(hostname, "/usr/bin/oo-setup-broker 2>&1", 60 * 15, true, 2)
-            print_and_exit(ret, out) if ret != 0
-            puts "Done"
-
             scp_remote_tests(hostname, options.branch)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
-          puts "Done."
         ensure
           terminate_instance(instance) if options.terminate?
         end
