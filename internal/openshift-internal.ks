@@ -386,6 +386,9 @@ configure_selinux_policy_on_broker()
 
     # Allow the broker to communicate with the named service.
     echo boolean -m --on allow_ypbind
+
+    # Allow the console to spawn passenger threads
+    echo boolean -m --on httpd_execmem
   ) | semanage -i -
 
   fixfiles -R rubygem-passenger restore
