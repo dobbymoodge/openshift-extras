@@ -48,6 +48,52 @@ module DevOps
         end
       end
       
+      def restart_services()
+        run("service mcollective restart; service rhc-broker restart; service rhc-site restart", :verbose => options.verbose?)
+      end
+      
+      def sync_impl(name, options)
+
+        hostname = get_host_by_name_or_tag(name, options)
+
+        # get the necessary repos cloned out to the instance
+        clone_commands, working_dirs = sync_available_sibling_repos(hostname)
+        update_remote_tests(hostname)
+
+        if !options.skip_build?
+          puts "Performing remote install...."
+          output, exit_code = ssh(hostname, %{
+##################
+# Start shell code
+
+set -e
+#{options.clean_metadata? ? 'yum clean metadata' : ''}
+rm -rf #{working_dirs}
+
+#{clone_commands}
+
+pushd #{DEV_TOOLS_EXT_REPO} > /dev/null
+  build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} 2>&1
+popd > /dev/null
+
+rm -rf #{working_dirs}
+#{options.clean_metadata? ? "yum update -y rhc* *openshift* 2>&1;" : ''}
+
+# End shell code
+################
+}, 900, true)
+
+          if exit_code != 0
+            puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            puts "Build failed!  Exiting."
+            puts output
+            puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            exit 1
+          end
+          puts "Done"
+        end
+      end
+      
       def build_impl(name, build_num, image, conn, options)
         puts "Launching instance of AMI: #{image.id} - #{image.name}"
         instance = launch_instance(image, name + '_' + build_num)
@@ -134,7 +180,7 @@ createrepo /root/devenv-local/
 #TODO
 #yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
 pushd /root/devenv-local/
-  yum install *.rpm
+  yum install -y *.rpm --exclude=*openshift-origin-auth-kerberos
 popd
 
 pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
@@ -185,7 +231,6 @@ popd
               #TODO
               #cmd += "yum -y install rhc-devenv;"
             end
-            cmd += 'sed -i "/nameserver 127.0.0.1/d" /etc/resolv.conf;'
                   
             output, exit_code = ssh(hostname, cmd, 3600, true)
             puts "Done"
@@ -206,6 +251,27 @@ popd
 
           print_highlighted_output('Installed Packages', output)
 
+          unless options.install_required_packages?
+            puts "Uploading openshift-amz.sh script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../amazon/openshift-amz.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+
+            puts "Running openshift-amz.sh..."
+            out, ret = ssh(hostname, "/bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
+            print_highlighted_output('openshift-amz.sh Output', out)
+            print_and_exit(ret, out) if ret != 0
+            puts "Done"
+            
+            puts "Validating...."
+            #TODO Temporary workaround
+            out, ret = ssh(hostname, "gem install term-ansicolor; service openshift-broker restart", 60 * 30, true, 10)
+            print_and_exit(ret, out) if ret != 0
+            #out, ret = ssh(hostname, "oo-accept-node; oo-accept-broker", 60 * 30, true, 10)
+            #print_and_exit(ret, out) if ret != 0
+            puts "Done"
+          end
+
           image_id = nil
           if options.register?
             image = register_image(conn, instance, name + '_' + build_num, manifest)
@@ -219,6 +285,24 @@ popd
         ensure
           terminate_instance(instance) if options.terminate?
         end
+      end
+      
+      def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
+        ssh(hostname, "cp -n #{repo_parent_dir}/openshift-test/controller/test/cucumber/*.feature #{repo_parent_dir}/openshift-test/tests/. ", 60, false, 2, user)
+      end
+      
+      def setup_verifier(hostname, branch)
+        print "Initializing git repo for syncing..."
+        init_repos(hostname)
+        puts "Done"
+        update_remote_tests(hostname, branch)
+      end
+      
+      def test_impl(tag, hostname, instance, conn, options, image_id=nil)
+      end
+      
+      def update_facts_impl(hostname)
+        #TODO
       end
       
       def rpm_manifest(hostname, sshuser="root")
