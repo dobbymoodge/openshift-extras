@@ -1259,15 +1259,18 @@ configure_console_msg()
 
 # Parse /proc/cmdline so that from, e.g., "foo=bar baz" we get
 # CONF_FOO=bar and CONF_BAZ=true in the environment.
-for word in $(cat /proc/cmdline)
-do
-  key="${word%%\=*}"
-  case "$word" in
-    (*=*) val="${word#*\=}" ;;
-    (*) val=true ;;
-  esac
-  eval "CONF_${key^^}"'="$val"'
-done
+parse_cmdline()
+{
+  for word in $(cat /proc/cmdline)
+  do
+    key="${word%%\=*}"
+    case "$word" in
+      (*=*) val="${word#*\=}" ;;
+      (*) val=true ;;
+    esac
+    eval "CONF_${key^^}"'="$val"'
+  done
+}
 
 is_true()
 {
@@ -1289,104 +1292,167 @@ is_false()
   return 1
 }
 
-# Following are the different components that can be installed:
-components='broker node named activemq datastore'
+# For each component, this function defines a constant function that
+# returns either true or false.  For example, there will be a named
+# function indicating whether we are currently installing the named
+# service.  We can use 'if named; then ...; fi' or just 'named && ...'
+# to run the given commands if, and only if, named is being installed
+# on this host.
+#
+# The following functions will be defined:
+#
+#   activemq
+#   broker
+#   datastore
+#   named
+#   node
+#
+# For each component foo, we also set a $foo_hostname variable with the
+# hostname for that logical host.  We use hostnames in configuration
+# files wherever possible.  The only places where this is not possible
+# is where we are referencing the named service; in such places, we use
+# $named_ip_addr, which is also set by this function.  It is possible
+# that one host runs multiple services, in which case more than one
+# hostname will resolve to the same IP address.
+#
+# We also set the $cur_ip_addr variable to the IP address of the host
+# running this kickstart script, based on the output of the `ip addr
+# show` command.
+#
+# In addition, the $nameservers variable will be set to
+# a semicolon-delimited list of nameservers, suitable for use in
+# named.conf, based on the existing contents of /etc/resolv.conf.
+#
+# The following variables will be defined:
+#
+#   activemq_hostname
+#   broker_hostname
+#   cur_ip_addr
+#   datastore_hostname
+#   named_hostname
+#   named_ip_addr
+#   nameservers
+#   node_hostname
+#
+# This function makes use of variables that may be set by parse_cmdline
+# based on the content of /proc/cmdline or may be hardcoded by modifying
+# this file.  All of these variables are optional; best attempts are
+# made at determining reasonable defaults.
+#
+# The following variables are used:
+#
+#   CONF_ACTIVEMQ_HOSTNAME
+#   CONF_BROKER_HOSTNAME
+#   CONF_BROKER_IP_ADDR
+#   CONF_DATASTORE_HOSTNAME
+#   CONF_DOMAIN
+#   CONF_INSTALL_COMPONENTS
+#   CONF_NAMED_HOSTNAME
+#   CONF_NAMED_IP_ADDR
+#   CONF_NODE_HOSTNAME
+#   CONF_NODE_IP_ADDR
+#   CONF_REPOS_BASE
+set_defaults()
+{
+  # Following are the different components that can be installed:
+  components='broker node named activemq datastore'
 
-# For each component, will define a constant function that return either
-# true or false.  For example, there will be a named function.  We can
-# then use 'if named; then ...; fi' or just 'named && ...' to run the
-# given commands if, and only if, named is enabled.
-
-# By default, each component is _not_ installed.
-for component in $components
-do
-  eval "$component() { false; }"
-done
-
-# But any or all components may be explicity enabled.
-for component in ${CONF_INSTALL_COMPONENTS//,/ }
-do
-  eval "$component() { :; }"
-done
-
-# If nothing is explicitly enabled, enable everything.
-installing_something=0
-for component in $components
-do
-  if eval $component
-  then
-    installing_something=1
-    break
-  fi
-done
-if [ $installing_something = 0 ]
-then
+  # By default, each component is _not_ installed.
   for component in $components
+  do
+    eval "$component() { false; }"
+  done
+
+  # But any or all components may be explicity enabled.
+  for component in ${CONF_INSTALL_COMPONENTS//,/ }
   do
     eval "$component() { :; }"
   done
-fi
 
-# Following are some settings used in subsequent steps.
+  # If nothing is explicitly enabled, enable everything.
+  installing_something=0
+  for component in $components
+  do
+    if eval $component
+    then
+      installing_something=1
+      break
+    fi
+  done
+  if [ $installing_something = 0 ]
+  then
+    for component in $components
+    do
+      eval "$component() { :; }"
+    done
+  fi
 
-# Where to find the OpenShift repositories; just the base part before
-# splitting out into Infrastructure/Node/etc.
-repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23'
-repos_base_default=http://buildvm-devops.usersys.redhat.com/puddle/build/OpenShiftEnterprise/Beta/latest
-repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
+  # Following are some settings used in subsequent steps.
 
-# The domain name for the OpenShift Enterprise installation.
-domain="${CONF_DOMAIN:-example.com}"
+  # Where to find the OpenShift repositories; just the base part before
+  # splitting out into Infrastructure/Node/etc.
+  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23'
+  repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
 
-# hostnames to use for the components (could all resolve to same host)
-broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
-node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
-named_hostname="${CONF_NAMED_HOSTNAME:-ns1.${domain}}"
-activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq.${domain}}"
-datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore.${domain}}"
+  # The domain name for the OpenShift Enterprise installation.
+  domain="${CONF_DOMAIN:-example.com}"
 
-# The hostname name for this host.
-# Note: If this host is, e.g., both a broker and a datastore, we want to
-# go with the broker hostname and not the datastore hostname.
-if broker
-then hostname="$broker_hostname"
-elif node
-then hostname="$node_hostname"
-elif named
-then hostname="$named_hostname"
-elif activemq
-then hostname="$activemq_hostname"
-elif datastore
-then hostname="$datastore_hostname"
-fi
+  # hostnames to use for the components (could all resolve to same host)
+  broker_hostname="${CONF_BROKER_HOSTNAME:-broker.${domain}}"
+  node_hostname="${CONF_NODE_HOSTNAME:-node.${domain}}"
+  named_hostname="${CONF_NAMED_HOSTNAME:-ns1.${domain}}"
+  activemq_hostname="${CONF_ACTIVEMQ_HOSTNAME:-activemq.${domain}}"
+  datastore_hostname="${CONF_DATASTORE_HOSTNAME:-datastore.${domain}}"
 
-# Grab the IP address set during installation.
-cur_ip_addr="$(/sbin/ip addr show dev eth0 | awk '/inet / { split($2,a,"/"); print a[1]; }')"
+  # The hostname name for this host.
+  # Note: If this host is, e.g., both a broker and a datastore, we want to
+  # go with the broker hostname and not the datastore hostname.
+  if broker
+  then hostname="$broker_hostname"
+  elif node
+  then hostname="$node_hostname"
+  elif named
+  then hostname="$named_hostname"
+  elif activemq
+  then hostname="$activemq_hostname"
+  elif datastore
+  then hostname="$datastore_hostname"
+  fi
 
-# Unless otherwise specified, the broker is assumed to be the current
-# host.
-broker_ip_addr="${CONF_BROKER_IP_ADDR:-$cur_ip_addr}"
+  # Grab the IP address set during installation.
+  cur_ip_addr="$(/sbin/ip addr show dev eth0 | awk '/inet / { split($2,a,"/"); print a[1]; }')"
 
-# Unless otherwise specified, the node is assumed to be the current
-# host.
-node_ip_addr="${CONF_NODE_IP_ADDR:-$cur_ip_addr}"
+  # Unless otherwise specified, the broker is assumed to be the current
+  # host.
+  broker_ip_addr="${CONF_BROKER_IP_ADDR:-$cur_ip_addr}"
 
-# Unless otherwise specified, the named service, data store, and
-# ActiveMQ service are assumed to be the current host if we are
-# installing the component now or the broker host otherwise.
-if named
-then
-  named_ip_addr="${CONF_NAMED_IP_ADDR:-$cur_ip_addr}"
-else
-  named_ip_addr="${CONF_NAMED_IP_ADDR:-$broker_ip_addr}"
-fi
+  # Unless otherwise specified, the node is assumed to be the current
+  # host.
+  node_ip_addr="${CONF_NODE_IP_ADDR:-$cur_ip_addr}"
 
-# The nameservers to which named on the broker will forward requests.
-# This should be a list of IP addresses with a semicolon after each.
-nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
+  # Unless otherwise specified, the named service, data store, and
+  # ActiveMQ service are assumed to be the current host if we are
+  # installing the component now or the broker host otherwise.
+  if named
+  then
+    named_ip_addr="${CONF_NAMED_IP_ADDR:-$cur_ip_addr}"
+  else
+    named_ip_addr="${CONF_NAMED_IP_ADDR:-$broker_ip_addr}"
+  fi
+
+  # The nameservers to which named on the broker will forward requests.
+  # This should be a list of IP addresses with a semicolon after each.
+  nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
+}
 
 
 ########################################################################
+
+# Note: This function is only needed for kickstart and not if this %post
+# section is extracted and executed on a running system.
+parse_cmdline
+
+set_defaults
 
 echo_installation_intentions
 configure_console_msg
