@@ -1064,7 +1064,7 @@ configure_controller()
              s/^AUTH_SALT=.*/AUTH_SALT=\"${broker_auth_salt}\"/" \
       /etc/openshift/broker.conf
 
-  if !datastore
+  if ! datastore
   then
     #mongo not installed locally, so point to given hostname
     sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/broker.conf

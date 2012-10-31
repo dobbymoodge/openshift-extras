@@ -386,9 +386,6 @@ configure_selinux_policy_on_broker()
 
     # Allow the broker to communicate with the named service.
     echo boolean -m --on allow_ypbind
-
-    # Allow the console to spawn passenger threads
-    echo boolean -m --on httpd_execmem
   ) | semanage -i -
 
   fixfiles -R rubygem-passenger restore
@@ -1095,7 +1092,7 @@ configure_controller()
              s/^AUTH_SALT=.*/AUTH_SALT=\"${broker_auth_salt}\"/" \
       /etc/openshift/broker.conf
 
-  if !datastore
+  if ! datastore
   then
     #mongo not installed locally, so point to given hostname
     sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/broker.conf
