@@ -169,7 +169,7 @@ configure_rhel_repo()
   # So, you must subscribe to RHEL or configure RHEL repos here.
 
   # configure RHEL subscription or repos here
-
+  : # no-op so that this function definition is valid.
 }
 
 configure_client_tools_repo()
