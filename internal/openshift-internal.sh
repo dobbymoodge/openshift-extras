@@ -207,6 +207,7 @@ enabled=1
 gpgcheck=0
 
 EOF
+  : # no-op so that this function definition is valid.
 }
 
 configure_jbossews_subscription()
@@ -223,6 +224,7 @@ enabled=1
 gpgcheck=0
 
 EOF
+  : # no-op so that this function definition is valid.
 }
 
 # Install the client tools.

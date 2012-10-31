@@ -234,6 +234,7 @@ configure_jbosseap_subscription()
   # subscribe to the appropriate channel here.
 
   # configure JBossEAP subscription
+  : # no-op so that this function definition is valid.
 }
 
 configure_jbossews_subscription()
@@ -242,6 +243,7 @@ configure_jbossews_subscription()
   # subscribe to the appropriate channel here.
 
   # configure JBossEWS subscription
+  : # no-op so that this function definition is valid.
 }
 
 # Install the client tools.
