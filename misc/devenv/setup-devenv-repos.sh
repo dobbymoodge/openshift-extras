@@ -8,20 +8,11 @@ baseurl=http://mirror1.ops.rhcloud.com/mirror/epel/6/\$basearch/
 failovermethod=priority
 enabled=1
 gpgcheck=0
-
-[epel-testing]
-name=Extra Packages for Enterprise Linux 6 - Testing - \$basearch
-baseurl=http://mirror1.ops.rhcloud.com/mirror/epel/testing/6/\$basearch/
-        http://mirror2.ops.rhcloud.com/mirror/epel/testing/6/\$basearch/
-failovermethod=priority
-enabled=0
-gpgcheck=0
-priority=5
+#priority=5
 
 EOF
 
-cat > /etc/yum.repos.d/devenv.repo <<EOF
-
+cat > /etc/yum.repos.d/li.repo <<EOF
 [devenv]
 name=Li repo for Enterprise Linux 6 - $basearch
 baseurl=https://mirror1.ops.rhcloud.com/libra/libra-rhel-6.3-candidate/\$basearch/
@@ -34,9 +25,12 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=4
+#priority=4
 #includepkgs=rh-amazon-rhui-client* scl-utils* rubygem-* ruby193* rsyslog pam* python-* *mongo*
+EOF
 
+
+cat > /etc/yum.repos.d/devenv.repo <<EOF
 
 [rhui-us-east-1-rhel-server-releases-i386]
 name=Red Hat Enterprise Linux Server 6 -i386 (RPMs)
@@ -49,7 +43,7 @@ sslclientkey=/etc/pki/entitlement/content-rhel6.key
 sslclientcert=/etc/pki/entitlement/product/content-rhel6.crt
 sslcacert=/etc/pki/entitlement/cdn.redhat.com-chain.crt
 includepkgs=java-1.6.0-openjdk* java-1.7.0-openjdk*
-priority=3
+#priority=3
 
 [rhui-us-east-1-rhel-server-releases-optional-i386]
 name=Red Hat Enterprise Linux Server 6 Optional -i386 (RPMs)
@@ -62,7 +56,7 @@ sslclientkey=/etc/pki/entitlement/content-rhel6.key
 sslclientcert=/etc/pki/entitlement/product/content-rhel6.crt
 sslcacert=/etc/pki/entitlement/cdn.redhat.com-chain.crt
 includepkgs=java-1.6.0-openjdk* java-1.7.0-openjdk*
-priority=3
+#priority=3
 
 
 [Client]
@@ -76,7 +70,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=2
+#priority=2
 
 [Infrastructure]
 name=Li repo for Enterprise Linux 6 - $basearch
@@ -89,7 +83,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=2
+#priority=2
 
 [JBoss_EAP6_Cartridge]
 name=Li repo for Enterprise Linux 6 - $basearch
@@ -102,7 +96,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=2
+#priority=2
 
 [Node]
 name=Li repo for Enterprise Linux 6 - $basearch
@@ -115,6 +109,6 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=2
+#priority=2
 
 EOF
