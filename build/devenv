@@ -25,6 +25,17 @@ include FileUtils
 module DevOps
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
+    
+    desc "install_required_packages", "Install the packages required, as specified in the spec files"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    def install_required_packages
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      packages = get_required_packages
+      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-* ghostscript-* java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
+        exit 1
+      end
+    end
+    
 
     ######################################################################
     #
@@ -136,7 +147,7 @@ rm -rf #{working_dirs}
               puts "Done"
             end
 
-            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo} #{BASE_RELEASE_BRANCH};")
+            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo}")
 
             output = ''
             clone_commands = repo_clone_commands(hostname)
@@ -180,7 +191,7 @@ createrepo /root/devenv-local/
 #TODO
 #yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
 pushd /root/devenv-local/
-  yum install -y *.rpm --exclude=*openshift-origin-auth-kerberos
+  yum install -y *.rpm
 popd
 
 pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
@@ -206,18 +217,18 @@ rm -rf /tmp/tito; mkdir -p /root/.source_build;
 #{clone_commands}
 
 # Enable RHUI JBoss repos for cartridge rebase on core EAP packages
-yum -y install rh-amazon-rhui-client-jbeap6
+#yum -y install rh-amazon-rhui-client-jbeap6
               
 # Enable RHUI JB EWS repos for Tomcat cartridge
-yum -y install rh-amazon-rhui-client-jbews1
+#yum -y install rh-amazon-rhui-client-jbews1
                 
 # Install the 32 bit java before anything else
-yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
-yum -y remove java-1.6.0-openjdk.x86_64
-set +e
-rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
-set -e
-yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
+#yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
+#yum -y remove java-1.6.0-openjdk.x86_64
+#set +e
+#rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
+#set -e
+#yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
 
 pushd #{DEV_TOOLS_EXT_REPO}
   build/devenv install_required_packages 2>&1
@@ -233,9 +244,9 @@ popd
             end
                   
             output, exit_code = ssh(hostname, cmd, 3600, true)
-            puts "Done"
 
             print_highlighted_output('Install Output', output)
+            puts "Done"
 
             exit exit_code unless exit_code == 0
 

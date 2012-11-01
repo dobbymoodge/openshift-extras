@@ -16,32 +16,26 @@ baseurl=http://mirror1.ops.rhcloud.com/mirror/epel/testing/6/\$basearch/
 failovermethod=priority
 enabled=0
 gpgcheck=0
+priority=5
 
 EOF
 
 cat > /etc/yum.repos.d/devenv.repo <<EOF
-[qpid]
-name=Qpid repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror1.ops.rhcloud.com/libra/qpid/\$basearch/Packages/
-        https://mirror2.ops.rhcloud.com/libra/qpid/\$basearch/Packages/
-failovermethod=priority
-enabled=1
-gpgcheck=1
-gpgkey=https://mirror1.ops.rhcloud.com/libra/li-signing.asc
-sslverify=0
-sslclientcert=/var/lib/yum/client-cert.pem
-sslclientkey=/var/lib/yum/client-key.pem
 
-[passenger]
-name=Passenger repo for Enterprise Linux 6
-baseurl=https://mirror1.ops.rhcloud.com/libra/passenger
-        https://mirror2.ops.rhcloud.com/libra/passenger
+[devenv]
+name=Li repo for Enterprise Linux 6 - $basearch
+baseurl=https://mirror1.ops.rhcloud.com/libra/libra-rhel-6.3-candidate/\$basearch/
+        https://mirror2.ops.rhcloud.com/libra/libra-rhel-6.3-candidate/\$basearch/
 failovermethod=priority
 enabled=1
 gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=4
+
 
 [rhui-us-east-1-rhel-server-releases-i386]
 name=Red Hat Enterprise Linux Server 6 -i386 (RPMs)
@@ -54,6 +48,7 @@ sslclientkey=/etc/pki/entitlement/content-rhel6.key
 sslclientcert=/etc/pki/entitlement/product/content-rhel6.crt
 sslcacert=/etc/pki/entitlement/cdn.redhat.com-chain.crt
 includepkgs=java-1.6.0-openjdk* java-1.7.0-openjdk*
+priority=3
 
 [rhui-us-east-1-rhel-server-releases-optional-i386]
 name=Red Hat Enterprise Linux Server 6 Optional -i386 (RPMs)
@@ -66,13 +61,12 @@ sslclientkey=/etc/pki/entitlement/content-rhel6.key
 sslclientcert=/etc/pki/entitlement/product/content-rhel6.crt
 sslcacert=/etc/pki/entitlement/cdn.redhat.com-chain.crt
 includepkgs=java-1.6.0-openjdk* java-1.7.0-openjdk*
-EOF
+priority=3
 
-cat >> /etc/yum.repos.d/devenv.repo <<EOF
-[devenv]
+
+[Client]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror1.ops.rhcloud.com/libra/${2-libra-rhel-6.3}-${1-candidate}/\$basearch/
-        https://mirror2.ops.rhcloud.com/libra/${2-libra-rhel-6.3}-${1-candidate}/\$basearch/
+baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Client/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -81,18 +75,45 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=2
 
-[devenv-source]
-
+[Infrastructure]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror1.ops.rhcloud.com/libra/${2-libra-rhel-6.3}-${1-candidate}/source/SRPMS/
-        https://mirror2.ops.rhcloud.com/libra/${2-libra-rhel-6.3}-${1-candidate}/source/SRPMS/
+baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Infrastructure/\$basearch/os/
 failovermethod=priority
-enabled=0
+enabled=1
+gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-gpgcheck=0
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=2
+
+[JBoss_EAP6_Cartridge]
+name=Li repo for Enterprise Linux 6 - $basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/JBoss_EAP6_Cartridge/\$basearch/os/
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=2
+
+[Node]
+name=Li repo for Enterprise Linux 6 - $basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Node/\$basearch/os/
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=2
+
 EOF
