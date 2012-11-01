@@ -13,7 +13,12 @@ CAN_SSH_TIMEOUT=90
 
 # need these due to hardwired inherited code
 ZONE = 'us-east-1'
-IGNORE_PACKAGES = ['rubygem-openshift-origin-auth-kerberos']
+IGNORE_PACKAGES = ['rubygem-openshift-origin-auth-kerberos', 
+                   'openshift-origin-cartridge-nodejs-0.6', 
+                   'openshift-origin-cartridge-jbossas-7', 
+                   'openshift-origin-cartridge-jbosswes-2.0', 
+                   'openshift-origin-cartridge-phpmyadmin-3.4', 
+                   'openshift-origin-cartridge-10gen-mms-agent-0.1']
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
 # not sure what we'll do with this yet
 VERIFIED_TAG = "qe-ready"

@@ -35,6 +35,7 @@ sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
 priority=4
+#includepkgs=rh-amazon-rhui-client* scl-utils* rubygem-* ruby193* rsyslog pam* python-* *mongo*
 
 
 [rhui-us-east-1-rhel-server-releases-i386]
