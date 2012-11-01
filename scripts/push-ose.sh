@@ -19,22 +19,38 @@
 # Purpose:  A utility to push OpenShift Enterprise nightly build to the 
 # 	    public mirrors.
 
-if [ $# -ne 1 ]; then
-	echo "You need to specify the date, for example: $0 2012-10-22"
+if [ $# -lt 1 -o $# -gt 2 ]; then
+	echo "Usage: $0 source_dir [destination_dir]"
+	echo "        If destination_dir is not specified, then it will be"
+	echo "        the same as source_dir."
 	exit 1
 fi
 
-DATE=$1
-
-if [ -d /var/www/html/puddle/build/OpenShiftEnterprise/Beta/$1 ]; then
-	cd /var/www/html/puddle/build/OpenShiftEnterprise/Beta/$1
+if [ $# -eq 2 ]; then
+	ROOT_SRC=$1
+	ROOT_DST=$2
 else
-	echo "/var/www/html/puddle/build/OpenShiftEnterprise/Beta/$1 does not exist.  Exiting..."
+	ROOT_SRC=$1
+	ROOT_DST=$1
+fi
+
+if [ -d /var/www/html/puddle/build/OpenShiftEnterprise/Beta/$ROOT_SRC ]; then
+	cd /var/www/html/puddle/build/OpenShiftEnterprise/Beta/$ROOT_SRC
+else
+	echo "/var/www/html/puddle/build/OpenShiftEnterprise/Beta/$ROOT_SRC does not exist.  Exiting..."
 	exit 1
 fi
 
-ssh mirror1.ops.rhcloud.com "mkdir -p /srv/pub//origin-server/nightly/enterprise/$1"
+# Create the destination dir on mirror1
 
-rsync -av -e ssh Infrastructure Node Client JBoss_EAP6_Cartridge root@mirror1.ops.rhcloud.com:/srv/pub/origin-server/nightly/enterprise/$1/
+ssh mirror1.ops.rhcloud.com "mkdir -p /srv/pub//origin-server/nightly/enterprise/$ROOT_DST"
 
-ssh mirror1.ops.rhcloud.com "for PACK_SET in Infrastructure Node Client JBoss_EAP6_Cartridge; do PATH=/srv/pub/origin-server/nightly/enterprise/$1/$PACK_SET/x86_64/os/Packages/; cd $PATH; createrepo -d .; done"
+# Rsync the files to mirror1
+
+rsync -av -e ssh Infrastructure Node Client JBoss_EAP6_Cartridge root@mirror1.ops.rhcloud.com:/srv/pub/origin-server/nightly/enterprise/$ROOT_DST/
+
+# Rebuild the yum repos
+
+for PACK_SET in Infrastructure Node Client JBoss_EAP6_Cartridge; 
+	do ssh mirror1.ops.rhcloud.com "cd /srv/pub/origin-server/nightly/enterprise/${ROOT_DST}/${PACK_SET}/x86_64/os/Packages/; /usr/bin/createrepo -d ." 
+done
