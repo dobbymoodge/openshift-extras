@@ -217,18 +217,18 @@ rm -rf /tmp/tito; mkdir -p /root/.source_build;
 #{clone_commands}
 
 # Enable RHUI JBoss repos for cartridge rebase on core EAP packages
-#yum -y install rh-amazon-rhui-client-jbeap6
+yum -y install rh-amazon-rhui-client-jbeap6
               
 # Enable RHUI JB EWS repos for Tomcat cartridge
-#yum -y install rh-amazon-rhui-client-jbews1
+yum -y install rh-amazon-rhui-client-jbews1
                 
 # Install the 32 bit java before anything else
-#yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
-#yum -y remove java-1.6.0-openjdk.x86_64
-#set +e
-#rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
-#set -e
-#yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
+yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
+yum -y remove java-1.6.0-openjdk.x86_64
+set +e
+rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
+set -e
+yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
 
 pushd #{DEV_TOOLS_EXT_REPO}
   build/devenv install_required_packages 2>&1

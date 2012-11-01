@@ -13,7 +13,7 @@ CAN_SSH_TIMEOUT=90
 
 # need these due to hardwired inherited code
 ZONE = 'us-east-1'
-IGNORE_PACKAGES = []
+IGNORE_PACKAGES = ['rubygem-openshift-origin-auth-kerberos']
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
 # not sure what we'll do with this yet
 VERIFIED_TAG = "qe-ready"
@@ -35,4 +35,4 @@ BASE_RELEASE_BRANCH = '???'
 
 JENKINS_BUILD_TOKEN = 'libra1'
 
-ACCEPT_DEVENV_SCRIPT = '/usr/bin/enterprise-accept-devenv'
+ACCEPT_DEVENV_SCRIPT = 'true'
