@@ -1138,6 +1138,9 @@ configure_httpd_auth()
   cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
      /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
 
+  cp /var/www/openshift/console/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
+     /var/www/openshift/console/httpd/conf.d/openshift-origin-auth-remote-user.conf
+
   # The above configuration file configures Apache to use
   # /etc/openshift/htpasswd for its password file.  Use the following
   # command to add users:
