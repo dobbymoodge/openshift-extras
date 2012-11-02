@@ -54,12 +54,6 @@ Host *.cloudydemo.com
 EOF
 }
 
-# Configure a default user
-configure_default_user()
-{
-  htpasswd -b -c /etc/openshift/htpasswd demo changeme
-}
-
 # Copy the DNS key from the named host to the broker
 set_dns_key()
 {
@@ -112,9 +106,6 @@ broker && configure_permissive_ssh
 # This sets up the LIBRA_SERVER on the broker machine
 # for convenience of running 'rhc' on it
 broker && configure_libra_server
-
-# Setup a default user on the broker (demo / changeme)
-broker && configure_default_user
 
 # Re-configure the node hostname for Amazon hosts
 node && configure_node_amz
