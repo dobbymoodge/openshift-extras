@@ -150,6 +150,7 @@ install_broker_pkgs()
   pkgs="$pkgs rubygem-openshift-origin-msg-broker-mcollective"
   pkgs="$pkgs rubygem-openshift-origin-auth-remote-user"
   pkgs="$pkgs rubygem-openshift-origin-dns-bind"
+  pkgs="$pkgs openshift-console"
 
   yum install -y $pkgs
 }
@@ -967,6 +968,7 @@ configure_controller()
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
+  chkconfig openshift-console on
 }
 
 # Set the administrative password for the database.
@@ -1024,6 +1026,9 @@ configure_httpd_auth()
   # Install the Apache configuration file.
   cp /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
      /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
+
+  cp /var/www/openshift/console/httpd/conf.d/openshift-origin-auth-remote-user-basic.conf.sample \
+     /var/www/openshift/console/httpd/conf.d/openshift-origin-auth-remote-user.conf
 
   # The above configuration file configures Apache to use
   # /etc/openshift/htpasswd for its password file.  Use the following
@@ -1252,7 +1257,7 @@ set_defaults()
 
   # Where to find the OpenShift repositories; just the base part before
   # splitting out into Infrastructure/Node/etc.
-  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23'
+  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-31'
   repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
 
   # The domain name for the OpenShift Enterprise installation.
@@ -1438,12 +1443,6 @@ Host *.cloudydemo.com
 EOF
 }
 
-# Configure a default user
-configure_default_user()
-{
-  htpasswd -b -c /etc/openshift/htpasswd demo changeme
-}
-
 # Copy the DNS key from the named host to the broker
 set_dns_key()
 {
@@ -1496,9 +1495,6 @@ broker && configure_permissive_ssh
 # This sets up the LIBRA_SERVER on the broker machine
 # for convenience of running 'rhc' on it
 broker && configure_libra_server
-
-# Setup a default user on the broker (demo / changeme)
-broker && configure_default_user
 
 # Re-configure the node hostname for Amazon hosts
 node && configure_node_amz
