@@ -261,6 +261,7 @@ install_broker_pkgs()
   pkgs="$pkgs rubygem-openshift-origin-msg-broker-mcollective"
   pkgs="$pkgs rubygem-openshift-origin-auth-remote-user"
   pkgs="$pkgs rubygem-openshift-origin-dns-bind"
+  pkgs="$pkgs openshift-console"
 
   yum install -y $pkgs
 }
@@ -1078,6 +1079,7 @@ configure_controller()
 
   # Configure the broker service to start on boot.
   chkconfig openshift-broker on
+  chkconfig openshift-console on
 }
 
 # Set the administrative password for the database.
@@ -1363,7 +1365,7 @@ set_defaults()
 
   # Where to find the OpenShift repositories; just the base part before
   # splitting out into Infrastructure/Node/etc.
-  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-23'
+  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-31'
   repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
 
   # The domain name for the OpenShift Enterprise installation.
