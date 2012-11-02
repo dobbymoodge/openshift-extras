@@ -116,7 +116,7 @@ rm -rf #{working_dirs}
           manifest = nil
           begin
             puts "Updating all packages on the system..."
-            output = ssh(hostname, "yum update -y --exclude='rhc*'", 1800)
+            output = ssh(hostname, "yum update -y --exclude='rhc*' 2>&1", 1800)
             puts "Done"
 
             print_highlighted_output('Update Output', output)
@@ -205,6 +205,7 @@ rm -rf /tmp/tito; mkdir -p /root/.source_build;
               end
             elsif options.install_required_packages?
               puts "Installing bootstrap packages..."
+
               output, exit_code = ssh(hostname, "yum clean metadata; yum update -y; yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities", 600, true)
               print_highlighted_output('Install Bootstrap Packages Output', output)
               exit 1 unless exit_code == 0
@@ -271,7 +272,7 @@ popd
             
             puts "Validating...."
             #TODO Temporary workaround
-            out, ret = ssh(hostname, "gem install term-ansicolor; service openshift-broker restart", 60 * 30, true, 10)
+            out, ret = ssh(hostname, "service openshift-broker restart", 60 * 30, true, 10)
             print_and_exit(ret, out) if ret != 0
             #out, ret = ssh(hostname, "oo-accept-node; oo-accept-broker", 60 * 30, true, 10)
             #print_and_exit(ret, out) if ret != 0
