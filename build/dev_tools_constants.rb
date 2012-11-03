@@ -24,17 +24,17 @@ $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
 # not sure what we'll do with this yet
 VERIFIED_TAG = "qe-ready"
 
-SIBLING_REPOS = {'origin-server' => ['../origin-server'],
-                 'rhc' => ['../rhc'],
-                 'enterprise-install' => ["../#{File.basename(FileUtils.pwd)}"],
-                 'origin-dev-tools' => ['../origin-dev-tools']}
-SIBLING_REPOS_GIT_URL = {'origin-server' => 'git@github.com:openshift/origin-server.git',
-                        'rhc' => 'git@github.com:openshift/rhc.git',
-                        'enterprise-install' => 'git@github.com:openshift/enterprise-install.git',
-                        'origin-dev-tools' => 'git@github.com:openshift/origin-dev-tools.git'}
+SIBLING_REPOS = {'enterprise-server' => ['../enterprise-server'],
+                 'enterprise-rhc' => ['../enterprise-rhc'],
+                 'enterprise' => ["../#{File.basename(FileUtils.pwd)}"],
+                 'enterprise-dev-tools' => ['../enterprise-dev-tools']}
+SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterprise-server.git',
+                        'enterprise-rhc' => 'git@github.com:openshift/enterprise-rhc.git',
+                        'enterprise' => 'git@github.com:openshift/enterprise.git',
+                        'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git'}
 
-DEV_TOOLS_REPO = 'origin-dev-tools'
-DEV_TOOLS_EXT_REPO = 'enterprise-install'
+DEV_TOOLS_REPO = 'enterprise-dev-tools'
+DEV_TOOLS_EXT_REPO = 'enterprise'
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO, DEV_TOOLS_EXT_REPO]
 
 BASE_RELEASE_BRANCH = '???'
