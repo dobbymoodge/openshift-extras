@@ -63,6 +63,14 @@ module DevOps
         run("service mcollective restart; service rhc-broker restart; service rhc-site restart", :verbose => options.verbose?)
       end
       
+      def enterprise_repo_version(repo_name)
+        repo_version = repo_name
+        if repo_name =~ /enterprise-(\d.\d)/
+          repo_version = $1
+        end
+        repo_version
+      end
+      
       def sync_impl(name, options)
 
         hostname = get_host_by_name_or_tag(name, options)
@@ -147,7 +155,7 @@ rm -rf #{working_dirs}
               puts "Done"
             end
 
-            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo};")
+            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{enterprise_repo_version(options.yum_repo)};")
 
             output = ''
             clone_commands = repo_clone_commands(hostname)
