@@ -947,8 +947,10 @@ update_resolv_conf()
 # Update the controller configuration.
 configure_controller()
 {
-  # Generate a random salt for the broker authentication.
-  broker_auth_salt="$(openssl rand -base64 20)"
+  if [ "x$broker_auth_salt" = "x" ]
+  then
+    echo "Warning: broker authentication salt is empty!"
+  fi
 
   # Configure the broker with the correct hostname, and use random salt
   # to the data store (the host running MongoDB).
@@ -990,9 +992,43 @@ configure_mongo_password()
 }
 
 # Configure the broker to use the remote-user authentication plugin.
-configure_auth_plugin()
+configure_remote_user_auth_plugin()
 {
   cp /etc/openshift/plugins.d/openshift-origin-auth-remote-user.conf{.example,}
+}
+
+# Configure the broker to use the MongoDB-based authentication plugin.
+#
+# NB: It is assumed that configure_datastore has previously been run on
+# this host to install and configure MongoDB.
+configure_mongo_auth_plugin()
+{
+  cp /etc/openshift/plugins.d/openshift-origin-auth-mongo.conf{.example,}
+
+  if ! datastore
+  then
+    # MongoDB is running on a remote host, so we must modify the
+    # plug-in configuration to point it to that host.
+    sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/plugins.d/openshift-origin-auth-mongo.conf
+  fi
+
+  # The init script is broken as of version 2.0.2-1.el6_3: The start and
+  # restart actions return before the daemon is ready to accept
+  # connections (it appears to take time to initialize the journal).  Thus
+  # we need the following hack to wait until the daemon is ready.
+  echo "Waiting for MongoDB to start ($(date +%H:%M:%S))..."
+  while :
+  do
+    echo exit | mongo --host "${datastore_hostname}" && break
+    sleep 5
+  done
+  echo "MongoDB is ready! ($(date +%H:%M:%S))"
+
+  hashed_password="$(printf 'admin' | md5sum -b | cut -d' ' -f1)"
+  hashed_salted_password="$(printf '%s' "$hashed_password$broker_auth_salt" | md5sum | cut -d' ' -f1)"
+
+  # Add user "admin" with password "admin" for oo-register-user.
+  mongo openshift_broker_dev --host "${datastore_hostname}" --username openshift --password mooo --eval 'db.auth_user.update({"_id":"admin"}, {"_id":"admin","user":"admin","password":"'"$hashed_salted_password"'"}, true)'
 }
 
 configure_messaging_plugin()
@@ -1309,6 +1345,9 @@ set_defaults()
   # The nameservers to which named on the broker will forward requests.
   # This should be a list of IP addresses with a semicolon after each.
   nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
+
+  # Generate a random salt for the broker authentication.
+  broker && broker_auth_salt="${CONF_BROKER_AUTH_SALT:-$(openssl rand -base64 20)}"
 }
 
 
@@ -1375,7 +1414,8 @@ node && configure_sysctl_on_node
 node && configure_sshd_on_node
 
 broker && configure_controller
-broker && configure_auth_plugin
+broker && configure_remote_user_auth_plugin
+#broker && configure_mongo_auth_plugin
 broker && configure_messaging_plugin
 broker && configure_dns_plugin
 broker && configure_httpd_auth
