@@ -1104,6 +1104,15 @@ configure_mongo_auth_plugin()
     sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/plugins.d/openshift-origin-auth-mongo.conf
   fi
 
+  # We must specify the --host, --username, and --password options iff the
+  # datastore is being installed on the current host.
+  if datastore
+  then
+    mongo_opts=""
+  else
+    mongo_opts="--host ${datastore_hostname} --username openshift --password mooo"
+  fi
+
   # The init script is broken as of version 2.0.2-1.el6_3: The start and
   # restart actions return before the daemon is ready to accept
   # connections (it appears to take time to initialize the journal).  Thus
@@ -1111,7 +1120,7 @@ configure_mongo_auth_plugin()
   echo "Waiting for MongoDB to start ($(date +%H:%M:%S))..."
   while :
   do
-    echo exit | mongo --host "${datastore_hostname}" && break
+    echo exit | mongo $mongo_opts && break
     sleep 5
   done
   echo "MongoDB is ready! ($(date +%H:%M:%S))"
@@ -1120,7 +1129,7 @@ configure_mongo_auth_plugin()
   hashed_salted_password="$(printf '%s' "$hashed_password$broker_auth_salt" | md5sum | cut -d' ' -f1)"
 
   # Add user "admin" with password "admin" for oo-register-user.
-  mongo openshift_broker_dev --host "${datastore_hostname}" --username openshift --password mooo --eval 'db.auth_user.update({"_id":"admin"}, {"_id":"admin","user":"admin","password":"'"$hashed_salted_password"'"}, true)'
+  mongo openshift_broker_dev $mongo_opts --eval 'db.auth_user.update({"_id":"admin"}, {"_id":"admin","user":"admin","password":"'"$hashed_salted_password"'"}, true)'
 }
 
 configure_messaging_plugin()
