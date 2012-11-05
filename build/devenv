@@ -124,6 +124,11 @@ rm -rf #{working_dirs}
           manifest = nil
           begin
             if options.install_required_packages?
+              puts "Updating all packages on the system..."
+              output = ssh(hostname, "yum clean metadata; yum update -y 2>&1", 1800)
+              puts "Done"
+              print_highlighted_output('Update Output', output)
+            
               output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
               print_highlighted_output('Install OpenSSH Clients Output', output)
               exit 1 unless exit_code == 0
@@ -152,7 +157,7 @@ rm -rf #{working_dirs}
             ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{enterprise_repo_version(options.yum_repo)};")
             
             puts "Updating all packages on the system..."
-            output = ssh(hostname, "yum clean metadata; yum update -y --exclude='rhc*' 2>&1", 1800)
+            output = ssh(hostname, "yum clean metadata; yum update -y 2>&1", 1800)
             puts "Done"
             print_highlighted_output('Update Output', output)
 
