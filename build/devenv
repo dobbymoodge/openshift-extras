@@ -123,12 +123,6 @@ rm -rf #{working_dirs}
         begin
           manifest = nil
           begin
-            puts "Updating all packages on the system..."
-            output = ssh(hostname, "yum update -y --exclude='rhc*' 2>&1", 1800)
-            puts "Done"
-
-            print_highlighted_output('Update Output', output)
-
             if options.install_required_packages?
               output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
               print_highlighted_output('Install OpenSSH Clients Output', output)
@@ -156,6 +150,11 @@ rm -rf #{working_dirs}
             end
 
             ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{enterprise_repo_version(options.yum_repo)};")
+            
+            puts "Updating all packages on the system..."
+            output = ssh(hostname, "yum clean metadata; yum update -y --exclude='rhc*' 2>&1", 1800)
+            puts "Done"
+            print_highlighted_output('Update Output', output)
 
             output = ''
             clone_commands = repo_clone_commands(hostname)
@@ -214,7 +213,7 @@ rm -rf /tmp/tito; mkdir -p /root/.source_build;
             elsif options.install_required_packages?
               puts "Installing bootstrap packages..."
 
-              output, exit_code = ssh(hostname, "yum clean metadata; yum update -y; yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities", 600, true)
+              output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities", 600, true)
               print_highlighted_output('Install Bootstrap Packages Output', output)
               exit 1 unless exit_code == 0
               puts "Done"
