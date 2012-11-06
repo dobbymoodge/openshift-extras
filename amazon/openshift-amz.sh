@@ -1553,11 +1553,13 @@ named && configure_authorized_key
 # setting up the public IP address instead of 127.0.0.1
 named && configure_named_amz
 
-# Re-run the DNS plugin configuration after establishing the DNS key.
-# Since the DNS key is on the named server, we need to copy it over
-# to the broker so it can perform updates.
+# If named was installed on this host, then have the DNSSEC key still
+# that we used when configuring named.  Otherwise, we must grab the key
+# from the host running named, copy it here (onto the broker), and
+# re-run the DNS plug-in configuration on the broker once we have that
+# key so that the broker can perform updates.
 broker && configure_private_key
-broker && set_dns_key
+broker && ! named && set_dns_key
 broker && configure_dns_plugin
 
 # This will keep you from getting SSH warnings if you
