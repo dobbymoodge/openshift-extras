@@ -918,12 +918,15 @@ configure_named()
   # $keyfile will contain a new DNSSEC key for our domain.
   keyfile=/var/named/${domain}.key
 
-  # Generate the new key for the domain.
-  rm -f /var/named/K${domain}*
-  pushd /var/named
-  dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom ${domain}
-  KEY="$(grep Key: K${domain}*.private | cut -d ' ' -f 2)"
-  popd
+  if [ "x$bind_key" = x ]
+  then
+    # Generate the new key for the domain.
+    pushd /var/named
+    rm -f /var/named/K${domain}*
+    dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom ${domain}
+    bind_key="$(grep Key: K${domain}*.private | cut -d ' ' -f 2)"
+    popd
+  fi
 
   # Ensure we have a key for the broker to communicate with BIND.
   rndc-confgen -a -r /dev/urandom
@@ -971,7 +974,7 @@ EOF
   cat <<EOF > /var/named/${domain}.key
 key ${domain} {
   algorithm HMAC-MD5;
-  secret "${KEY}";
+  secret "${bind_key}";
 };
 EOF
 
@@ -1162,12 +1165,20 @@ configure_messaging_plugin()
 # Configure the broker to use the BIND DNS plug-in.
 configure_dns_plugin()
 {
+  if [ "x$bind_key" = x ]
+  then
+    echo 'WARNING: No key has been set for communication with BIND.'
+    echo 'You will need to modify the value of BIND_KEYVALUE in'
+    echo '/etc/openshift/plugins.d/openshift-origin-dns-bind.conf'
+    echo 'after installation.'
+  fi
+
   mkdir -p /etc/openshift/plugins.d
   cat <<EOF > /etc/openshift/plugins.d/openshift-origin-dns-bind.conf
 BIND_SERVER="${named_ip_addr}"
 BIND_PORT=53
 BIND_KEYNAME="${domain}"
-BIND_KEYVALUE="${KEY}"
+BIND_KEYVALUE="${bind_key}"
 BIND_ZONE="${domain}"
 EOF
 
@@ -1346,11 +1357,13 @@ is_false()
 #
 # In addition, the $nameservers variable will be set to
 # a semicolon-delimited list of nameservers, suitable for use in
-# named.conf, based on the existing contents of /etc/resolv.conf.
+# named.conf, based on the existing contents of /etc/resolv.conf, and
+# the $bind_key variable will be set to the value of CONF_BIND_KEY.
 #
 # The following variables will be defined:
 #
 #   activemq_hostname
+#   bind_key
 #   broker_hostname
 #   cur_ip_addr
 #   datastore_hostname
@@ -1367,6 +1380,7 @@ is_false()
 # The following variables are used:
 #
 #   CONF_ACTIVEMQ_HOSTNAME
+#   CONF_BIND_KEY
 #   CONF_BROKER_HOSTNAME
 #   CONF_BROKER_IP_ADDR
 #   CONF_DATASTORE_HOSTNAME
@@ -1469,6 +1483,10 @@ set_defaults()
   # This should be a list of IP addresses with a semicolon after each.
   nameservers="$(awk '/nameserver/ { printf "%s; ", $2 }' /etc/resolv.conf)"
 
+  # Set $bind_key to the value of $CONF_BIND_KEY if the latter is
+  # non-empty.
+  [ "x$CONF_BIND_KEY" != x ] && bind_key="$CONF_BIND_KEY"
+
   # Generate a random salt for the broker authentication.
   broker && broker_auth_salt="${CONF_BROKER_AUTH_SALT:-$(openssl rand -base64 20)}"
 }
@@ -1500,6 +1518,8 @@ broker && configure_client_tools_repo
 
 yum update -y
 
+# Note: configure_named must run before configure_controller if we are
+# installing both named and broker on the same host.
 named && configure_named
 
 update_resolv_conf
