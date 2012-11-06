@@ -233,6 +233,9 @@ configure_selinux_policy_on_broker()
   # We combine these setsebool commands into a single semanage command
   # because separate commands take a long time to run.
   (
+    # Allow the console application to access executable and writable memory
+    echo boolean -m --on httpd_execmem
+
     # Allow the broker to write files in the http file context.
     echo boolean -m --on httpd_unified
 
