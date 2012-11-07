@@ -25,7 +25,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-includepkgs=GitPython perl-MongoDB python-argparse python-async python-bunch python-gitdb python-kitchen python-offtrac python-smmap python-virtualenv rsyslog rh-amazon-rhui-client* ruby193-build ykpers rubygem-addressable rubygem-httparty rubygem-crack rubygem-webmock php-pecl-mongo ruby193-rubygems-devel
+includepkgs=GitPython perl-MongoDB python-argparse python-async python-bunch python-gitdb python-kitchen python-offtrac python-smmap python-virtualenv rsyslog rh-amazon-rhui-client* ruby193-build ykpers rubygem-addressable rubygem-httparty rubygem-crack rubygem-webmock php-pecl-mongo ruby193-rubygems-devel charlie
 #priority=4
 
 [Client]
