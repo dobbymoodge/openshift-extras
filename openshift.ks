@@ -1351,6 +1351,14 @@ is_false()
 # that one host runs multiple services, in which case more than one
 # hostname will resolve to the same IP address.
 #
+# We also set the $domain variable, which is the domain that will be
+# used when configuring BIND and assigning hostnames for the various
+# hosts in the OpenShift PaaS.
+#
+# We also set the $repos_base variable with the base URL for the yum
+# repositories that will be used to download OpenShift RPMs.  The value
+# of this variable can be changed to use a custom repository or puddle.
+#
 # We also set the $cur_ip_addr variable to the IP address of the host
 # running this kickstart script, based on the output of the `ip addr
 # show` command.
@@ -1366,11 +1374,13 @@ is_false()
 #   bind_key
 #   broker_hostname
 #   cur_ip_addr
+#   domain
 #   datastore_hostname
 #   named_hostname
 #   named_ip_addr
 #   nameservers
 #   node_hostname
+#   repos_base
 #
 # This function makes use of variables that may be set by parse_cmdline
 # based on the content of /proc/cmdline or may be hardcoded by modifying
