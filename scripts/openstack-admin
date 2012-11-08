@@ -132,6 +132,8 @@ controller_iptables_config() {
     iptables -I INPUT 13 -p tcp -m tcp --dport 6080 -j ACCEPT 
 # xvpvncproxy available to outside clients
     iptables -I INPUT 14 -p tcp -m tcp --dport 6081 -j ACCEPT 
+# EC2 access
+    iptables -I INPUT 15 -p tcp -m tcp --dport 8773 -j ACCEPT 
 # Zabbix
 #    iptables -I INPUT 15 -p tcp -m tcp --dport 10050 -j ACCEPT 
 
@@ -727,7 +729,7 @@ controller_create_nova_key() {
     mkdir .ssh
     chmod 700 .ssh
     ssh-keygen -f .ssh/id_rsa -b 1024 -P ""
-    chown nova.nova id_rsa*
+    chown nova.nova .ssh/id_rsa*
 }
 
 # On compute node, get nova ssh keys
@@ -821,9 +823,11 @@ echo 1500 > /sys/block/$NFS_DEVICE/queue/iosched/write_expire" >> /etc/rc.local
 compute_live_migration_config() {
 
 # Enable promiscuous mode on the private NIC
-grep PROMISC=yes  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+grep promisc /etc/rc.local &> /dev/null
 if [ $? -eq 1 ]; then
-    echo PROMISC=yes >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+    echo "" >> /etc/rc.local
+    echo "/sbin/ifconfig ${PRIV_NET_NIC} promisc" >> /etc/rc.local
+    ifconfig ${PRIV_NET_NIC} promisc
 fi
 
 # Enable jumbo frames
@@ -843,6 +847,12 @@ ln -s /nova/instances instances
 
 chkconfig autofs on
 service autofs start
+
+  perl -pe "s/#LIBVIRTD_ARGS=.*$/LIBVIRTD_ARGS="--listen"/g;" -i /etc/sysconfig/libvirtd
+  perl -pe 's/#listen_tls = 0/listen_tls = 0/g;s/#listen_tcp = 1/listen_tcp = 1/g;s/#auth_tcp = "sasl"/auth_tcp = "none"/g;' -i /etc/libvirt/libvirtd.conf 
+  perl -pe 's/#RPCNFSDCOUNT=8/RPCNFSDCOUNT=64/;' -i /etc/sysconfig/nfs
+
+service libvirtd restart
 }
 
 # Adding a compute node
@@ -1122,21 +1132,21 @@ controller_install() {
     # Set SELinux policy to permissive 
     # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
 
-##    setenforce permissive
+    setenforce permissive
 
 #    install_epel_repo
     controller_iptables_config
-##    enable_ntp
-##    keystone_install_config
-##    controller_install_base
-##    keystone_nova_config
-##    keystone_glance_config
+    enable_ntp
+    keystone_install_config
+    controller_install_base
+    keystone_nova_config
+    keystone_glance_config
     nova_network_config
-#    controller_live_migration_config
-##    image_register
-#    image_launch
-##    dashboard_install_config
-##    controller_vnc_install_config
+    controller_live_migration_config
+###   image_register
+###   image_launch
+    dashboard_install_config
+    controller_vnc_install_config
 #    keystone_swift_install_config
 #    swift_storage_create
 #    euca_tools_install_config
@@ -1151,16 +1161,16 @@ compute_install() {
     # Set SELinux policy to permissive 
     # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
 
-##    setenforce permissive
+    setenforce permissive
 
     #install_epel_repo
     compute_iptables_config
-##    enable_ntp
-##    compute_install_base
-#    compute_live_migration_config
-##    compute_vnc_install_config
-##    nova_user_enable_login
-##    compute_get_nova_key
+    enable_ntp
+    compute_install_base
+    compute_live_migration_config
+    compute_vnc_install_config
+    nova_user_enable_login
+    compute_get_nova_key
 }
 
 #############################################################################
