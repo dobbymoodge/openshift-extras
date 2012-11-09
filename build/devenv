@@ -138,6 +138,11 @@ rm -rf #{working_dirs}
               reboot(instance)
             end
 
+            puts "Uploading update-ip-address.sh script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/update-ip-address.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+
             puts "Uploading devenv script..."
             script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
             scp_to(hostname, script_path, "~/")
@@ -322,6 +327,18 @@ popd
       
       def update_facts_impl(hostname)
         #TODO
+      end
+      
+      def post_launch_setup(hostname)
+        puts "Updating IP addresses in configuration files..."
+        out, ret = ssh(hostname, "/bin/bash ~/update-ip-address.sh", 60, true)
+        puts "Done"
+
+        if ret != 0
+          puts "Exiting with error code #{ret}"
+          puts "Output: #{out}"
+          exit ret
+        end
       end
       
       def rpm_manifest(hostname, sshuser="root")
