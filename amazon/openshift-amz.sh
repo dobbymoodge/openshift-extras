@@ -210,10 +210,10 @@ install_cartridges()
   carts="$carts openshift-origin-cartridge-python-2.6"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.8).
-  #carts="$carts openshift-origin-cartridge-ruby-1.8"
+  carts="$carts openshift-origin-cartridge-ruby-1.8"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.9).
-  #carts="$carts openshift-origin-cartridge-ruby-1.9"
+  carts="$carts openshift-origin-cartridge-ruby-1.9-scl"
 
   # Keep things from breaking too much when testing packaging.
   #carts="$carts --skip-broken"

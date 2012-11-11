@@ -68,6 +68,9 @@
 
 # IMPORTANT NOTES
 #
+# You will almost certainly want to change the root password or authorized keys (or both) that are
+# specified in the script so that you can access the system after installation.
+#
 # In order for the %post section to succeed, it must have a way of installing from RHEL 6.
 # The post section cannot access the method that was used in the base install.
 # So, you must modify this script, either to subscribe to RHEL during the base install,
@@ -308,10 +311,10 @@ install_cartridges()
   carts="$carts openshift-origin-cartridge-python-2.6"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.8).
-  #carts="$carts openshift-origin-cartridge-ruby-1.8"
+  carts="$carts openshift-origin-cartridge-ruby-1.8"
 
   # Ruby Rack support running on Phusion Passenger (Ruby 1.9).
-  #carts="$carts openshift-origin-cartridge-ruby-1.9"
+  carts="$carts openshift-origin-cartridge-ruby-1.9-scl"
 
   # Keep things from breaking too much when testing packaging.
   carts="$carts --skip-broken"
