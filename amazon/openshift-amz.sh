@@ -2,6 +2,8 @@
 
 CONF_PREFIX="${CONF_PREFIX:-demo}"
 CONF_DOMAIN="${CONF_PREFIX}.cloudydemo.com"
+
+CONF_NO_NTP=true
 # You can tail the log file showing the execution of the commands below
 # by using the following command:
 #    tailf /mnt/sysimage/root/anaconda-post.log
