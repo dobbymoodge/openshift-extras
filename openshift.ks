@@ -372,7 +372,7 @@ configure_selinux_policy_on_broker()
   fixfiles -R rubygem-passenger restore
   fixfiles -R mod_passenger restore
 
-  restorecon -R -v /var/run
+  restorecon -rv /var/run
   restorecon -rv /usr/share/rubygems/gems/passenger-* 
 }
 
@@ -429,9 +429,9 @@ configure_pam_on_node()
 configure_cgroups_on_node()
 {
   cp -vf /usr/share/doc/*/cgconfig.conf /etc/cgconfig.conf
-  restorecon -v /etc/cgconfig.conf
+  restorecon -rv /etc/cgconfig.conf
   mkdir -p /cgroup
-  restorecon -v /cgroup
+  restorecon -rv /cgroup
   chkconfig cgconfig on
   chkconfig cgred on
   chkconfig openshift-cgroups on
@@ -986,7 +986,7 @@ key ${domain} {
 EOF
 
   chown named:named -R /var/named
-  restorecon -R /var/named
+  restorecon -rv /var/named
 
   # Replace named.conf.
   cat <<EOF > /etc/named.conf
