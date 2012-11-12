@@ -157,7 +157,7 @@ synchronize_clock()
 # with a wget command to download a key from elsewhere.
 install_ssh_keys()
 {
-  mkdir /root/.ssh
+  mkdir -p /root/.ssh
   chmod 700 /root/.ssh
   cat >> /root/.ssh/authorized_keys << KEYS
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDkMc2jArUbWICi0071HXrt5uofQam11duqo5KEDWUZGtHuMTzuoZ0XEtzpqoRSidya9HjbJ5A4qUJBrvLZ07l0OIjENQ0Kvz83alVGFrEzVVUSZyiy6+yM9Ksaa/XAYUwCibfaFFqS9aVpVdY0qwaKrxX1ycTuYgNAw3WUvkHagdG54/79M8BUkat4uNiot0bKg6VLSI1QzNYV6cMJeOzz7WzHrJhbPrgXNKmgnAwIKQOkbATYB+YmDyHpA4m/O020dWDk9vWFmlxHLZqddCVGAXFyQnXoFTszFP4wTVOu1q2MSjtPexujYjTbBBxraKw9vrkE25YZJHvbZKMsNm2b libra_onprem
@@ -458,7 +458,7 @@ configure_cgroups_on_node()
 {
   cp -vf /usr/share/doc/*/cgconfig.conf /etc/cgconfig.conf
   restorecon -v /etc/cgconfig.conf
-  mkdir /cgroup
+  mkdir -p /cgroup
   restorecon -v /cgroup
   chkconfig cgconfig on
   chkconfig cgred on
