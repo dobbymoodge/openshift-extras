@@ -820,7 +820,7 @@ configure_named()
 forwarders { ${nameservers} } ;
 EOF
   restorecon /var/named/forwarders.conf
-  chmod 755 /var/named/forwarders.conf
+  chmod 644 /var/named/forwarders.conf
 
   # Install the configuration file for the OpenShift Enterprise domain
   # name.
@@ -1522,7 +1522,7 @@ EWGodSkqrF8f+Gdj1c7fZdc4XRygiOs/596K118fkehXXYtqs3JyXGs=
 -----END RSA PRIVATE KEY-----
 EOF
 
-chmod 700 /root/.ssh/named_rsa
+chmod 600 /root/.ssh/named_rsa
 }
 
 # Keeps the broker from getting SSH warnings when running the client

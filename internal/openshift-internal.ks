@@ -966,7 +966,7 @@ configure_named()
 forwarders { ${nameservers} } ;
 EOF
   restorecon /var/named/forwarders.conf
-  chmod 755 /var/named/forwarders.conf
+  chmod 644 /var/named/forwarders.conf
 
   # Install the configuration file for the OpenShift Enterprise domain
   # name.
