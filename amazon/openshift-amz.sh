@@ -457,7 +457,7 @@ enable_services_on_broker()
 
   chkconfig httpd on
   chkconfig network on
-  chkconfig ntpd on
+  is_false "$CONF_NO_NTP" && chkconfig ntpd on
   chkconfig sshd on
 }
 
