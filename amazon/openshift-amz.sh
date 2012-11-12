@@ -1594,10 +1594,12 @@ broker && configure_libra_server
 # Re-configure the node hostname for Amazon hosts
 node && configure_node_amz
 
-# Important - the callback is only working
-# if the file data is sent up.  Probably related
-# to the newlines after the initial brace.
-cat <<EOF > /tmp/success_data
+if [ "x$2" != "x" ]
+then
+  # Important - the callback is only working
+  # if the file data is sent up.  Probably related
+  # to the newlines after the initial brace.
+  cat <<EOF > /tmp/success_data
 {
   "Status" : "SUCCESS",
   "Reason" : "Configuration Complete",
@@ -1606,12 +1608,13 @@ cat <<EOF > /tmp/success_data
 }
 EOF
 
-# This calls the verification URL for the CloudFormation
-# wait condition.  Again, it's really important to use
-# the file format or you will never unblock the wait state.
-echo "Calling wait URL..."
-curl -T /tmp/success_data $2
-echo "Done"
+  # This calls the verification URL for the CloudFormation
+  # wait condition.  Again, it's really important to use
+  # the file format or you will never unblock the wait state.
+  echo "Calling wait URL..."
+  curl -T /tmp/success_data $2
+  echo "Done"
+fi
 
 # The kickstart requires the machines to be restarted
 # in order to properly start the right services, firewalls,
