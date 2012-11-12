@@ -737,7 +737,7 @@ EOF
 configure_activemq()
 {
   # Install the service.
-  yum install -y activemq activemq-client
+  yum install -y activemq
 
   cat <<EOF > /etc/activemq/activemq.xml
 <!--
