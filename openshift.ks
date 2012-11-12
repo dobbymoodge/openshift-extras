@@ -439,19 +439,15 @@ configure_cgroups_on_node()
 
 configure_quotas_on_node()
 {
-  # Get the device for /var/lib/openshift.
-  geardata_dev="$(df /var/lib/openshift |grep -om1 '/[^[:blank:]]*')"
-
   # Get the mountpoint for /var/lib/openshift (should be /).
-  geardata_mnt="$(awk "/${geardata_dev////\/}/ {print \$2}" < /etc/fstab)"
+  geardata_mnt=$(df -P /var/lib/openshift 2>/dev/null | tail -n 1 | awk '{ print $6 }')
 
-  if ! [ x"$geardata_dev" != x ] || ! [ x"$geardata_mnt" != x ]
+  if ! [ x"$geardata_mnt" != x ]
   then
-    echo 'Could not enable quotas for gear data:'
-    echo 'unable to determine device and mountpoint.'
+    echo 'Could not enable quotas for gear data: unable to determine mountpoint.'
   else
     # Enable user quotas for the device housing /var/lib/openshift.
-    sed -i -e "/^${geardata_dev////\/}[[:blank:]]/{/usrquota/! s/[[:blank:]]\\+/,usrquota&/4;}" /etc/fstab
+    sed -i -e "/^[^[:blank:]]\\+[[:blank:]]\\+${geardata_mnt////\/}/{/usrquota/! s/[[:blank:]]\\+/,usrquota&/4;}" /etc/fstab
 
     # Remount to get quotas enabled immediately.
     mount -o remount "${geardata_mnt}"
