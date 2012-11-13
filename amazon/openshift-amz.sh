@@ -882,7 +882,6 @@ EOF
 
 options {
 	listen-on port 53 { any; };
-	listen-on port 953 { any; };
 	directory 	"/var/named";
 	dump-file 	"/var/named/data/cache_dump.db";
         statistics-file "/var/named/data/named_stats.txt";
