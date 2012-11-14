@@ -208,7 +208,7 @@ createrepo /root/devenv-local/
 #TODO
 #yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
 pushd /root/devenv-local/
-  yum install -y *.rpm
+  yum install -y *.rpm 2>&1
 popd
 
 pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
