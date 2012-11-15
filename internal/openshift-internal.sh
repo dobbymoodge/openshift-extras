@@ -558,6 +558,10 @@ enable_services_on_broker()
   chkconfig network on
   is_false "$CONF_NO_NTP" && chkconfig ntpd on
   chkconfig sshd on
+
+  # The broker httpd proxy ServerName should be set in order to avoid conflicting
+  # with the default ssl.conf
+  sed -i -e "s/ServerName .*$/ServerName ${hostname}/" /etc/httpd/conf.d/000000_openshift_origin_broker_proxy.conf
 }
 
 
@@ -1068,7 +1072,7 @@ configure_controller()
     sed -i -e "s/^MONGO_HOST_PORT=.*$/MONGO_HOST_PORT=\"${datastore_hostname}:27017\"/" /etc/openshift/broker.conf
   fi
 
-  # If you change the MongoDB password of "mooo" to something else, be
+  # When you change the MongoDB password of "mooo" to something else, be
   # sure to edit and enable the following line:
   #sed -i -e '/MONGO_PASSWORD/s/mooo/<password>/' /etc/openshift/broker.conf
 
