@@ -4,7 +4,7 @@
 
 # SPECIFYING PARAMETERS
 #
-# If you supply no parameters, all components are installed with default configuration,
+# If you supply no parameters, all components are installed on one host with default configuration,
 # which should give you a running demo.
 #
 # For a kickstart, you can supply further kernel parameters (in addition to the ks=location itself).
@@ -27,6 +27,11 @@
 #   Only the specified components are installed and configured.
 #   E.g. install_components=broker,datastore only installs the broker and DB,
 #   and assumes you have use other hosts for messaging and DNS.
+#
+# Example kickstart parameter:
+#  install_components="node,broker,named,activemq,datastore"
+# Example script variable:
+#  CONF_INSTALL_COMPONENTS="node,broker,named,activemq,datastore"
 
 # repos_base / CONF_REPOS_BASE
 #   Default: https://mirror.openshift.com/pub/origin-server/nightly/enterprise/<latest>
@@ -46,10 +51,9 @@
 #   host's name at install, and also for configuring the broker application to reach the
 #   services needed.
 #
-#   IMPORTANT NOTE: if installing a nameserver, the kickstart will create DNS entries for
-#   the hostnames of the other components being installed as well. If not, it is assumed that
-#   you have done so when configuring your nameserver.
-#
+#   IMPORTANT NOTE: if installing a nameserver, the script will create DNS entries for the
+#   hostnames of the other components being installed on this host as well. If you are using
+#   a nameserver set up separately, you are responsible for all necessary DNS entries.
 
 # named_ip_addr / CONF_NAMED_IP_ADDR
 #   Default: current IP if installing named, otherwise broker_ip_addr
@@ -68,7 +72,8 @@
 # IMPORTANT NOTES
 #
 # You will almost certainly want to change the root password or authorized keys (or both) that are
-# specified in the script so that you can access the system after installation.
+# specified in the script, and/or set up another user/group with sudo access so that you can access
+# the system after installation.
 #
 # In order for the %post section to succeed, it must have a way of installing from RHEL 6.
 # The post section cannot access the method that was used in the base install.
@@ -80,6 +85,10 @@
 # to the corresponding channels during the base install or modify the
 # configure_jbossews_subscription or configure_jbosseap_subscription functions to do so.
 #
+# DO NOT install with third-party (non-RHEL) repos enabled (e.g. EPEL). You may install different
+# package versions than OpenShift expects and be in for a long troubleshooting session.
+# Also avoid pre-installing third-party software like Puppet for the same reason.
+#
 # If you install a broker, the rhc client is installed as well, for convenient local testing.
 # Also, a test user "demo" with password "changeme" is created.
 #
@@ -87,6 +96,29 @@
 # must be using a DNS server that knows about (or is) the DNS server for the installation.
 # Otherwise you will have DNS failures when creating the app and be unable to reach it in a browser.
 #
+
+# MANUAL TASKS
+#
+# This script attempts to automate as many tasks as it reasonably can. Unfortunately, it is
+# constrained to setting up only a single host at a time. In an assumed multi-host setup,
+# you will need to do the following after the script has completed.
+#
+# 1. Set up DNS entries for hosts
+# If you installed BIND with the script, then any other components installed with the script
+# on the same host received DNS entries. Other hosts must all be defined manually, including
+# at least your node hosts. oo-register-dns may prove useful for this.
+#
+# 2. Copy public key to enable moving gears
+# The broker rsync public key needs to go on nodes, but there is no good way
+# to script that generically. Nodes should not have password-less access
+# to brokers to copy the .pub key, so this must be performed manually on each node host:
+#   [root@node] # scp root@broker:/etc/openshift/rsync_id_rsa.pub /root/.ssh/
+#   (the above step will ask for the root password of the broker machine)
+#   # cat /root/.ssh/rsync_id_rsa.pub >> /root/.ssh/authorized_keys
+#   # rm /root/.ssh/rsync_id_rsa.pub
+# If you skip this, each gear move will require typing root passwords for each of the
+# node hosts involved.
+
 
 #Begin Kickstart Script
 install
@@ -126,7 +158,7 @@ git
 
 %post --log=/root/anaconda-post.log
 
-# You can tail the log file showing the execution of the commands below
+# During a kickstart you can tail the log file showing %post execution
 # by using the following command:
 #    tailf /mnt/sysimage/root/anaconda-post.log
 
@@ -286,7 +318,6 @@ install_node_pkgs()
 # Install any cartridges developers may want.
 install_cartridges()
 {
-  :
   # Following are cartridge rpms that one may want to install here:
 
   # Embedded cron support. This is required on node hosts.
@@ -1219,13 +1250,27 @@ configure_httpd_auth()
   # Here we create a test user
   htpasswd -bc /etc/openshift/htpasswd demo changeme
 
-  # Generate the broker key.
-  openssl genrsa -out /etc/openshift/server_priv.pem 2048
-  openssl rsa -in /etc/openshift/server_priv.pem -pubout > /etc/openshift/server_pub.pem
-
   # TODO: In the future, we will want to edit
   # /etc/openshift/plugins.d/openshift-origin-auth-remote-user.conf to
   # put in a random salt.
+}
+
+configure_access_keys_on_broker()
+{
+  # Generate a broker access key for remote apps (Jenkins) to access the broker.
+  openssl genrsa -out /etc/openshift/server_priv.pem 2048
+  openssl rsa -in /etc/openshift/server_priv.pem -pubout > /etc/openshift/server_pub.pem
+
+  # Generate a key pair for moving gears between nodes from the broker
+  ssh-keygen -t rsa -b 2048 -P "" -f /root/.ssh/rsync_id_rsa
+  cp ~/.ssh/rsync_id_rsa* /etc/openshift/
+  # the .pub key needs to go on nodes, but there is no good way
+  # to script that generically. Nodes should not have password-less access
+  # to brokers to copy the .pub key, but this can be performed manually:
+  # [root@node] # scp root@broker:/etc/openshift/rsync_id_rsa.pub /root/.ssh/
+  # the above step will ask for the root password of the broker machine
+  # # cat /root/.ssh/rsync_id_rsa.pub >> /root/.ssh/authorized_keys
+  # # rm /root/.ssh/rsync_id_rsa.pub
 }
 
 # Configure IP address and hostname.
@@ -1457,7 +1502,7 @@ set_defaults()
 
   # Where to find the OpenShift repositories; just the base part before
   # splitting out into Infrastructure/Node/etc.
-  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-31'
+  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-11-12'
   repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
 
   # The domain name for the OpenShift Enterprise installation.
@@ -1589,6 +1634,7 @@ node && configure_sshd_on_node
 
 broker && configure_controller
 broker && configure_remote_user_auth_plugin
+broker && configure_access_keys_on_broker
 #broker && configure_mongo_auth_plugin
 broker && configure_messaging_plugin
 broker && configure_dns_plugin

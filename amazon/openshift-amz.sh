@@ -4,7 +4,7 @@ CONF_PREFIX="${CONF_PREFIX:-demo}"
 CONF_DOMAIN="${CONF_PREFIX}.cloudydemo.com"
 
 CONF_NO_NTP=true
-# You can tail the log file showing the execution of the commands below
+# During a kickstart you can tail the log file showing %post execution
 # by using the following command:
 #    tailf /mnt/sysimage/root/anaconda-post.log
 
@@ -168,7 +168,6 @@ install_node_pkgs()
 # Install any cartridges developers may want.
 install_cartridges()
 {
-  :
   # Following are cartridge rpms that one may want to install here:
 
   # Embedded cron support. This is required on node hosts.
@@ -1101,13 +1100,27 @@ configure_httpd_auth()
   # Here we create a test user
   htpasswd -bc /etc/openshift/htpasswd demo changeme
 
-  # Generate the broker key.
-  openssl genrsa -out /etc/openshift/server_priv.pem 2048
-  openssl rsa -in /etc/openshift/server_priv.pem -pubout > /etc/openshift/server_pub.pem
-
   # TODO: In the future, we will want to edit
   # /etc/openshift/plugins.d/openshift-origin-auth-remote-user.conf to
   # put in a random salt.
+}
+
+configure_access_keys_on_broker()
+{
+  # Generate a broker access key for remote apps (Jenkins) to access the broker.
+  openssl genrsa -out /etc/openshift/server_priv.pem 2048
+  openssl rsa -in /etc/openshift/server_priv.pem -pubout > /etc/openshift/server_pub.pem
+
+  # Generate a key pair for moving gears between nodes from the broker
+  ssh-keygen -t rsa -b 2048 -P "" -f /root/.ssh/rsync_id_rsa
+  cp ~/.ssh/rsync_id_rsa* /etc/openshift/
+  # the .pub key needs to go on nodes, but there is no good way
+  # to script that generically. Nodes should not have password-less access
+  # to brokers to copy the .pub key, but this can be performed manually:
+  # [root@node] # scp root@broker:/etc/openshift/rsync_id_rsa.pub /root/.ssh/
+  # the above step will ask for the root password of the broker machine
+  # # cat /root/.ssh/rsync_id_rsa.pub >> /root/.ssh/authorized_keys
+  # # rm /root/.ssh/rsync_id_rsa.pub
 }
 
 # Configure IP address and hostname.
@@ -1339,7 +1352,7 @@ set_defaults()
 
   # Where to find the OpenShift repositories; just the base part before
   # splitting out into Infrastructure/Node/etc.
-  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-10-31'
+  repos_base_default='https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-11-12'
   repos_base="${CONF_REPOS_BASE:-${repos_base_default}}"
 
   # The domain name for the OpenShift Enterprise installation.
@@ -1471,6 +1484,7 @@ node && configure_sshd_on_node
 
 broker && configure_controller
 broker && configure_remote_user_auth_plugin
+broker && configure_access_keys_on_broker
 #broker && configure_mongo_auth_plugin
 broker && configure_messaging_plugin
 broker && configure_dns_plugin
