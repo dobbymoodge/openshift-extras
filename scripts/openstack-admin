@@ -41,17 +41,19 @@ DOMAIN_NAME=osop.rhcloud.com
 CONTROLLER=10.4.59.6
 CONTROLLER_PUB_IP=10.4.59.6
 CONTROLLER_PRIV_IP=192.168.59.6
+OS_NET_NET=192.168.59.0
+OS_NET_MASK=25
 # Block device that contains the NFS volume where VM instances are stored
 NFS_DEVICE=sda
 
 # Public/Floating network settings
-PUB_NET_NAME=${PROJECT}-pub
-PUB_NET_NIC=eth5
-PUB_NET_NET=10.4.59.128
-PUB_NET_MASK=25
+FLOAT_NET_NAME=${PROJECT}-pub
+FLOAT_NET_NIC=eth5
+FLOAT_NET_NET=10.4.59.128
+FLOAT_NET_MASK=25
 
-if [ -z $PUB_NET_NAME ]; then
-    echo "PUB_NET_NAME not set.  Please set it.  Aborting..."
+if [ -z $FLOAT_NET_NAME ]; then
+    echo "FLOAT_NET_NAME not set.  Please set it.  Aborting..."
     exit 1
 fi
 
@@ -151,9 +153,11 @@ compute_iptables_config() {
     iptables -I INPUT 2 -p tcp -m tcp --dport 6081 -j ACCEPT 
     iptables -I INPUT 3 -s ${CONTROLLER_PUB_IP}/32 -p tcp -m tcp --dport 5900:5950 -j ACCEPT
 # libvirt port for VM migration
-    iptables -I INPUT 4 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
+    iptables -I INPUT 4 -s ${OS_NET_NET}/${OS_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
+    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
 # KVM
-    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
+    iptables -I INPUT 6 -s ${OS_NET_NET}/${OS_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
+    iptables -I INPUT 7 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
 
     iptables-save > /etc/sysconfig/iptables
 }
@@ -258,11 +262,6 @@ do
 done
 check_it
 
-# Create the 'nova-volumes' LVM Volume Group using loopback sparse disk image
-dd if=/dev/zero of=/var/lib/nova/nova-volumes.img bs=1M seek=20k count=0
-vgcreate nova-volumes $(losetup --show -f /var/lib/nova/nova-volumes.img)
-check_it
-
 # Start the various Nova services
 for svc in api objectstore network volume scheduler cert; 
 do 
@@ -275,6 +274,7 @@ done
 grep ERROR /var/log/nova/*.log
 
 }
+
 
 
 # Configure nova to use keystone
@@ -345,7 +345,7 @@ check_it
 
 # Add the floating IP range
 
-nova-manage floating create --pool=$PUB_NET_NAME --ip_range=${PUB_NET_NET}/${PUB_NET_MASK} --interface=${PUB_NET_NIC}
+nova-manage floating create --pool=$FLOAT_NET_NAME --ip_range=${FLOAT_NET_NET}/${FLOAT_NET_MASK} --interface=${FLOAT_NET_NIC}
 
 nova-manage floating list
 check_it
@@ -522,6 +522,45 @@ openstack-config --set /etc/swift/proxy-server.conf filter:authtoken admin_token
 openstack-config --set /etc/swift/proxy-server.conf filter:authtoken auth_token $ADMIN_TOKEN
 }
 
+storage_nova_volume_configure() {
+
+# Install iscsi target service
+    yum -y -q install scsi-target-utils openstack-nova-volume
+
+# Check for nova-volume volume group
+    pvs | grep nova-volume &> /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Volume Group 'nova-volume' does not exist."
+        echo "Creating 20G loopback sparse disk image for testing purposes."
+        echo "You should really create a "nova-volume" Volume Group, manually."
+
+        # Create the 'nova-volumes' LVM Volume Group using loopback sparse disk image
+        dd if=/dev/zero of=/var/lib/nova/nova-volumes.img bs=1M seek=20k count=0
+        vgcreate nova-volumes $(losetup --show -f /var/lib/nova/nova-volumes.img)
+        check_it
+    fi
+
+# Configure iscsi and nova-volume service
+    for svc in tgtd openstack-nova-volume    
+        do 
+        chkconfig $svc on
+        service $svc start
+    done
+
+}
+
+# Enable nova-volume on the compute nodes
+
+compute_nova_volume_configure() {
+    yum -y -q install iscsi-initiator-utils
+    for svc in iscsi iscsi
+    do
+        chkconfig $svc on
+        service $svc start
+    done
+            
+}
+
 # Create Swift storage device
 
 swift_storage_create() {
@@ -593,7 +632,7 @@ ACCESS_KEY=$(keystone ec2-credentials-list --user $USER_ID | awk '/admin / {prin
 SECRET_KEY=$(keystone ec2-credentials-list --user $USER_ID | awk '/admin / {print $6}')
 
 cat > ~/.novarc <<EOF
-export EC2_URL=http://localhost:8773/services/Cloud
+export EC2_URL=http://${CONTROLLER}:8773/services/Cloud
 export EC2_ACCESS_KEY=$ACCESS_KEY
 export EC2_SECRET_KEY=$SECRET_KEY
 EOF
