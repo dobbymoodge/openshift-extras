@@ -3,12 +3,16 @@ enterprise
 
 Content and utilities specific to OpenShift Enterprise
 
-* internal - contains the kickstart that can be run within the Red Hat
-network with access to internal repositories
+* docs - misc documentation such as our team conference call line and
+  'team-only' docs.
 
-* amazon - contains a converted shell script that can be run on a public
-Amazon instance
+* install-scripts - contains a Makefile for generating scripts and kickstarts
+  compatible with internal systems as well as the EC2.
 
 * build - A dev-tools-ext implementation specific to OpenShift Enterprise devenvs
 
 * misc - Various content including the devenv bootstrap files 
+
+* openstack - configs and scripts for managing our OpenStack deployment
+
+* puddle - our puddle configuration
