@@ -1,0 +1,1 @@
+Currently the root password for all our hosts/VMs is: dog8code

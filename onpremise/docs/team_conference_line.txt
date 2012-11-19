@@ -1,0 +1,241 @@
+John Keck setup a team InterCall account for us.  Feel free to use this
+whenever you need it.  It would probably be wise to send something to
+libra-onpremise-devel@redhat.com if you think there is any chance someone else
+on the team might need it at the same time.  For the most part we use G+/Skype
+so this shouldn't be much of a problem.
+
+Here's the details:
+
+***************************************************
+
+Toll-free dial-in number (U.S. and Canada): 
+(800) 451-8679 
+
+International dial-in number: 
+(212) 729-5016
+
+Conference code: 
+9026317584 
+
+Leader PIN: 
+2751 
+
+Additional resources:
+Go to http://www.intercall.com/rphelp for more information, including a user guide, list of phone commands and international dial-in numbers.
+
+
+Want to Manage Better Conference Calls?
+Install InterCall Unified Meeting today and you will be able to:
+
+• Schedule, start and join conference calls right from your computer or mobile device.
+• Control your call and keep it secure without touching a telephone keypad.
+• Instantly share applications and collaborate online when you need to—no extra set up required!
+
+If your InterCall Unified Meeting account information isn’t listed above, then sign up today!
+
+
+
+Get started:
+1. Give your participants the date and time of the call, your dial-in number and your conference code.
+2. At the specified time, dial your Reservationless-Plus dial-in number, then enter your conference code, followed by #.
+3. When prompted, press *, then enter your leader PIN, followed by #.
+4. Your participants join the conference by dialing your number and entering the conference code.
+
+Global Network Access
+Toll Dial-in Numbers	
+Australia, Adelaide :	61870020130
+Australia, Brisbane :	61730870178
+Australia, Melbourne :	0382561740
+Australia, Perth :	61861884572
+Australia, Sydney :	0289852326
+Austria, Vienna :	012534978196
+Belgium, Brussels :	027920405
+China, All Cities Domestic :	8008190132
+China, All Cities Domestic :	4006205013
+Czech Republic, Prague :	239014984
+Denmark, Copenhagen :	32729215
+Finland, Helsinki :	0923194436
+France, Paris :	0170377140
+Germany, Berlin :	030300190579
+Germany, Frankfurt :	06922222594
+Hong Kong, Hong Kong :	85230730429
+Hungary, Budapest :	7789030
+India, Bangalore :	08039417180
+India, Chennai :	04430061276
+India, Hyderabad :	04030644055
+India, Mumbai :	02230985358
+India, New Delhi :	01139417180
+Ireland, Dublin :	014367793
+Italy, Milan :	0236269529
+Japan, Tokyo :	0345807897
+Korea (South), Seoul :	0234837408
+Lithuania, Vilnius :	52054226
+Luxembourg, Luxembourg :	24871157
+Malaysia, Kuala Lumpur :	0348190012
+Netherlands, Amsterdam :	0207975872
+Norway, Oslo :	21033188
+Poland, Warsaw :	222120148
+Romania, Bucharest :	0318103711
+Russian Federation, Moscow :	4999221989
+Singapore, All Cities :	64840858
+Singapore, All Cities :	64840858
+Slovak Republic, Bratislava :	0233456338
+Slovenia, Ljubljana :	016003991
+Spain, Barcelona :	935452328
+Spain, Madrid :	914146284
+Sweden, Stockholm :	0850513770
+Switzerland, Geneva :	0225927881
+Switzerland, Zurich :	0445803463
+United Kingdom, All Cities :	08445790678
+United Kingdom, All Cities :	02035746870
+United States, All Cities :	2127295016
+Vietnam, Ho Chi Minh :	84838012421
+
+Global Network Access
+Toll-Free Dial-in Numbers	
+Argentina :	08004441016
+Australia :	1800337169
+Austria :	0800005898
+Bahamas :	18002054778
+Bahrain :	80004377
+Barbados :	18668556594
+Belarus :	882000110160
+Belgium :	080048325
+Bolivia :	800100768
+Brazil :	08008921002
+Bulgaria :	008001100236
+Chile :	800370228
+Colombia :	018005182186
+Costa Rica :	08000131048
+Croatia (Hrvatska) :	0800222320
+Cyprus :	80095297
+Czech Republic, Mobile :	800884448
+Czech Republic :	800701035
+Denmark :	80887114
+Dominican Republic :	18007519076
+Ecuador :	1800020545
+Egypt, *SITF* :	08000000188
+El Salvador :	8006699
+Estonia :	8000100232
+Fiji :	008002539
+Finland :	0800117116
+France :	0805632867
+Germany :	08006647541
+Greece :	00800127562
+Guam :	18773010136
+Hong Kong :	800930349
+Hungary :	0680014726
+Iceland :	8008967
+India :	180030104350
+Indonesia, PT Indosat only :	0018030179162
+Indonesia, PT Telkom only :	0078030179162
+Ireland :	1800932401
+Israel :	1809462557
+Italy :	800985897
+Jamaica :	18002050328
+Japan :	00531250120
+Japan :	0120934453
+Kazakhstan :	88003337376
+Korea (South) :	007986517393
+Latvia :	80003339
+Lithuania :	880031223
+Luxembourg :	80026595
+Malaysia :	1800814451
+Malta :	80062176
+Mexico :	018009269658
+Monaco :	80093642
+Netherlands :	08000222329
+New Zealand :	0800888167
+Nicaragua :	0018002202067
+Norway :	80013504
+Panama :	0018002043574
+Peru :	080052972
+Philippines :	180011100991
+Poland :	008001210187
+Portugal :	800814625
+Romania :	0800895537
+Russian Federation :	81080028341012
+Saint Kitts and Nevis :	18002059252
+Saudi Arabia :	8008445917
+Singapore :	8006162235
+Slovak Republic :	0800001441
+Slovenia :	080080471
+South Africa :	0800982957
+Spain :	800300524
+Sweden :	0200896860
+Switzerland :	0800650077
+Taiwan :	00801127141
+Thailand :	001800656966
+Trinidad and Tobago :	18002024615
+Turkey :	0080044632093
+Turks and Caicos Islands :	18772780472
+Ukraine :	0800500152
+United Arab Emirates :	8000440163
+United Kingdom :	08006948057
+United States :	8004518679
+Uruguay :	00040190315
+Venezuela :	8001627182
+Vietnam :	12011346
+Virgin Islands (U.S.) :	8773007428
+
+Helpful Keypad Commands:
+*0     Operator assistance - conference 
+00     Operator assistance-individual 
+*1      Dial-out to a participant - leader only 
+*2      Begin/end conference record - leader only 
+*3      Change entry/exit method (recorded names, tones, silence) - leader only
+*4      Private roll call
+*5/#5 Mute/unmute all participant lines - leader only
+*6/#6 Mute/unmute your own line
+*7/#7 Lock/unlock conference (including operator) - leader only
+*8      Allow/disallow conference continuation - leader only
+*9      Start/join sub-conferencing
+11      Third-party conference start - bypass hold music to start call as leader
+*51/#51  Lecture mode on/off – leader only
+#99    Disconnect all lines except leader’s – leader only
+*#      Participant count
+**       List available keypad commands
+Customer Service Information
+General Information
+Owner name: OpenShift Team
+Company name: Red Hat, Inc.
+Owner number: 8785947
+Web PIN: 5271 
+
+Customer service: (800) 374-2441 or (706) 645-8600
+Your InterCall Online Account Information
+Manage your InterCall services with InterCall Online. It's your single point of entry to schedule and manage your meetings, change account settings and view reports on your conferencing activity. Visithttps://www.intercallonline.com for additional information.
+
+
+To create a username and password that will let you access the site, clickGo in the First Time User box and enter your owner number and web PIN.
+
+InterCall Online URL: https://www.intercallonline.com 
+Owner number: 8785947 
+Web PIN: 5271 
+
+
+Learn about all of InterCall's services
+
+View Demo »	
+Join meetings 
+while on the road
+
+Download Mobile Assistant »	
+Make scheduling 
+meetings easier
+
+Download Outlook® Plug-in »
+
+We look forward to serving your conference communication needs.
+
+To update your account information or for technical support, call the customer service department at the number listed above.
+
+Please Note: The dial-in number(s) for the service(s) listed may be reclaimed if they are not used for a period of 180 days.
+
+By ordering or using Services provided by or through InterCall, you agree to be bound by the Terms and Conditions set forth athttp://www.intercall.com/terms or, in the alternative if applicable, a written Service Agreement executed by you and InterCall (in either case the "Agreement"). Furthermore, you agree that (i) to the extent applicable, you shall be charged for the Services at rates specifically agreed to between you and InterCall and (ii) you shall be charged for all fees, surcharges and Services for which you do not have a specifically negotiated rate at InterCall’s standard rates. You may obtain InterCall’s standard rates through your sales or account representative or, in some cases, your web account. Your use of the Services indicates your acceptance of the above.
+
+
+
+ 
+
+

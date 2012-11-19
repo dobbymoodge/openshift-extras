@@ -1,0 +1,1261 @@
+#!/bin/bash
+#   Copyright 2012 Red Hat Inc.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# Owner: Dan Yocum <yocum@redhat.com>
+# Creation Date: 2012-10-18
+# Purpose:  A utility to manage OpenStack installation, de-installation, 
+#           backup, and control services in a non-puppet environment.
+
+
+# Check if we're root
+if [ $UID -ne 0 ]; then
+    echo "Not running as root.  Aborting..."
+    exit 1
+fi
+
+#############################################################################
+# VARIABLES
+#############################################################################
+
+DATE=`date +%Y-%m-%d-%H%M`
+
+# Project name
+PROJECT=osop
+
+# Domainname this system lives on
+DOMAIN_NAME=osop.rhcloud.com
+
+# Head controller hostname and IPs
+CONTROLLER=10.4.59.6
+CONTROLLER_PUB_IP=10.4.59.6
+CONTROLLER_PRIV_IP=192.168.59.6
+OS_NET_NET=192.168.59.0
+OS_NET_MASK=25
+# Block device that contains the NFS volume where VM instances are stored
+NFS_DEVICE=sda
+
+# Public/Floating network settings
+FLOAT_NET_NAME=${PROJECT}-pub
+FLOAT_NET_NIC=eth5
+FLOAT_NET_NET=10.4.59.128
+FLOAT_NET_MASK=25
+
+if [ -z $FLOAT_NET_NAME ]; then
+    echo "FLOAT_NET_NAME not set.  Please set it.  Aborting..."
+    exit 1
+fi
+
+# Flat, Private network settings
+PRIV_NET_NIC=eth4
+PRIV_NET_BRIDGE=br4
+PRIV_NET_NET=192.168.59.0
+PRIV_NET_MASK=25
+
+if [ -z $PRIV_NET_NIC ]; then
+    echo "PRIV_NET_NIC not set.  Please set it.  Aborting..."
+    exit 1
+fi
+
+# Nova internal, virtual network settings
+VIRT_NET_NAME=${PROJECT}-virt
+VIRT_NET_BRIDGE=$PRIV_NET_BRIDGE
+VIRT_NET_NET=192.168.59.128
+VIRT_NET_MASK=25
+NUM_VIRT_NETS=1
+VIRT_NET_SIZE=127
+
+if [ -z $VIRT_NET_NAME ]; then
+    echo "VIRT_NET_NAME not set.  Please set it.  Aborting..."
+    exit 1
+fi
+
+# Keystone token and password
+ADM_TOKEN=7de15fa819f7879f5c05
+OS_PASS=0972ef53
+SERVICE_PASS=c30b73e0
+
+# If the above token/password are not set, let's set them, here.
+if [ -z $ADM_TOKEN ]; then
+    TMP_TOKEN=`openssl rand -hex 10`
+    TMP_OS_PASS=`openssl rand -hex 4`
+    TMP_SVC_PASS=`openssl rand -hex 4`
+    perl -pe "s/^ADM_TOKEN=.*$/ADM_TOKEN=$TMP_TOKEN/;" -i $0
+    perl -pe "s/^OS_PASS=.*$/OS_PASS=$TMP_OS_PASS/;" -i $0
+    perl -pe "s/^SERVICE_PASS=.*$/SERVICE_PASS=$TMP_SVC_PASS/;" -i $0
+fi
+
+#############################################################################
+# FUNCTIONS
+#############################################################################
+
+check_it() {
+# Check if the previous command completed, exit if not
+if [ $? -eq 1 ]; then
+    echo "Something failed.  Aborting..."
+    exit 1
+fi
+}
+
+controller_iptables_config() {
+
+    # Save the iptables
+    cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
+
+    # Open everything to the private network
+    iptables -I INPUT -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -j ACCEPT
+
+    # Open http/https 
+    iptables -I INPUT 5 -p tcp -m tcp --dport 80 -j ACCEPT 
+    iptables -I INPUT 6 -p tcp -m tcp --dport 443 -j ACCEPT 
+    iptables -I INPUT 7 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 2049 -j ACCEPT 
+# Mysql
+    iptables -I INPUT 8 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3306 -j ACCEPT 
+# Keystone
+    iptables -I INPUT 9 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5000 -j ACCEPT 
+#qpidd
+    iptables -I INPUT 10 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 5672 -j ACCEPT 
+#glance
+    iptables -I INPUT 11 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 9292 -j ACCEPT 
+# ??
+    iptables -I INPUT 12 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 3260 -j ACCEPT 
+# novncproxy available to outside clients
+    iptables -I INPUT 13 -p tcp -m tcp --dport 6080 -j ACCEPT 
+# xvpvncproxy available to outside clients
+    iptables -I INPUT 14 -p tcp -m tcp --dport 6081 -j ACCEPT 
+# EC2 access
+    iptables -I INPUT 15 -p tcp -m tcp --dport 8773 -j ACCEPT 
+# Zabbix
+#    iptables -I INPUT 15 -p tcp -m tcp --dport 10050 -j ACCEPT 
+
+    iptables-save > /etc/sysconfig/iptables
+}
+
+compute_iptables_config() {
+
+    # Save the iptables
+    cp /etc/sysconfig/iptables /etc/sysconfig/iptables.$DATE
+
+    # Open the port for novnc
+    iptables -I INPUT 2 -p tcp -m tcp --dport 6080 -j ACCEPT 
+    # Open the port for xvpvnc
+    iptables -I INPUT 2 -p tcp -m tcp --dport 6081 -j ACCEPT 
+    iptables -I INPUT 3 -s ${CONTROLLER_PUB_IP}/32 -p tcp -m tcp --dport 5900:5950 -j ACCEPT
+# libvirt port for VM migration
+    iptables -I INPUT 4 -s ${OS_NET_NET}/${OS_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
+    iptables -I INPUT 5 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 16509 -j ACCEPT 
+# KVM
+    iptables -I INPUT 6 -s ${OS_NET_NET}/${OS_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
+    iptables -I INPUT 7 -s ${PRIV_NET_NET}/${PRIV_NET_MASK} -p tcp -m tcp --dport 49152:49261 -j ACCEPT 
+
+    iptables-save > /etc/sysconfig/iptables
+}
+
+# Install EPEL yum repo
+install_epel_repo() {
+
+rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-7.noarch.rpm
+}
+
+keystone_install_config() {
+
+yum -y -q install openstack-utils dnsmasq-utils openstack-keystone mysql-server mysql policycoreutils-python
+check_it
+
+# Config Keystone database
+openstack-db --service keystone --init
+check_it
+
+# Config keystonerc 
+
+echo "export ADMIN_TOKEN=$ADM_TOKEN
+export OS_USERNAME=admin
+export OS_PASSWORD=$OS_PASS
+export OS_TENANT_NAME=admin
+export OS_AUTH_URL=http://127.0.0.1:5000/v2.0/" > ~/.keystonerc
+    . ~/.keystonerc
+
+# Let's source .keystonerc when we log in.
+
+echo '
+# Source OpenStack rc file(s)
+if [ -f ~/.keystonerc ]; then
+	. ~/.keystonerc
+fi' >> ~/.bashrc
+
+# Config the admin token
+    openstack-config --set /etc/keystone/keystone.conf DEFAULT admin_token $ADMIN_TOKEN
+    check_it
+
+# Enable and start Keystone
+for svc in openstack-keystone mysqld
+    do
+    chkconfig $svc on
+    service $svc start
+    sleep 30
+    grep ERROR /var/log/keystone/keystone.log
+done
+
+# Create some sample tenants, users, and roles
+    export ADMIN_PASSWORD=$OS_PASSWORD 
+    export SERVICE_PASSWORD=$SERVICE_PASS 
+    openstack-keystone-sample-data
+
+# Test Keystone CLI
+    echo "Testing keystone CLI..."
+    echo ""
+    keystone user-list
+    check_it
+
+# Open the port for nova-client
+
+}
+
+controller_install_base() {
+# Install Nova packages
+yum -y -q install openstack-nova openstack-glance openstack-dashboard qpid-cpp-server
+check_it
+
+# Setup the databases for Nova and Glance
+openstack-db --service nova --init
+check_it
+openstack-db --service glance --init
+check_it
+
+# Nova networking doesn't like the default libvirtd bridge, so let's remove it
+
+rm -f /var/lib/libvirt/network/default.xml /etc/libvirt/qemu/networks/autostart/default.xml
+
+# ip_forwarding needs to be enabled
+
+grep ip_forward /etc/sysctl.conf &> /dev/null
+if [ $? -eq 0 ]; then
+    perl -pe 's/net.ipv4.ip_forward.*$/net.ipv4.ip_forward = 1 /g;' -i /etc/sysctl.conf
+    else
+    echo "
+Controls IP packet forwarding
+net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+fi
+
+sysctl -p
+
+# Disable authentication for qpidd
+
+perl -pe 's/^auth=.*$/auth=no/;g' -i /etc/qpidd.conf
+
+# Enable and Start services
+for svc in qpidd libvirtd openstack-glance-api openstack-glance-registry
+do
+    chkconfig $svc on
+    service $svc start
+done
+check_it
+
+# Start the various Nova services
+for svc in api objectstore network volume scheduler cert; 
+do 
+    chkconfig openstack-nova-$svc on
+    service openstack-nova-$svc start
+    check_it
+done
+
+# Check for nova errors
+grep ERROR /var/log/nova/*.log
+
+}
+
+
+
+# Configure nova to use keystone
+keystone_nova_config() {
+
+source_keystonerc
+
+openstack-config --set /etc/nova/api-paste.ini filter:authtoken admin_tenant_name service
+openstack-config --set /etc/nova/api-paste.ini filter:authtoken admin_user nova
+openstack-config --set /etc/nova/api-paste.ini filter:authtoken admin_password $SERVICE_PASS
+openstack-config --set /etc/nova/nova.conf DEFAULT auth_strategy keystone
+
+# Restart the nova services
+
+for svc in api compute
+do 
+	service openstack-nova-$svc restart
+done
+
+sleep 10 
+
+# Check that nova can communicate with keystone
+    echo "Testing Nova <-> Keystone authorization..."
+    echo ""
+
+    nova flavor-list
+}
+
+# Configure Glance to use Keystone
+keystone_glance_config() {
+
+source_keystonerc
+
+openstack-config --set /etc/glance/glance-api.conf paste_deploy flavor keystone
+openstack-config --set /etc/glance/glance-registry.conf paste_deploy flavor keystone
+openstack-config --set /etc/glance/glance-api-paste.ini filter:authtoken admin_tenant_name service
+openstack-config --set /etc/glance/glance-api-paste.ini filter:authtoken admin_user glance
+openstack-config --set /etc/glance/glance-api-paste.ini filter:authtoken admin_password $SERVICE_PASS
+openstack-config --set /etc/glance/glance-registry-paste.ini filter:authtoken admin_tenant_name service
+openstack-config --set /etc/glance/glance-registry-paste.ini filter:authtoken admin_user glance
+openstack-config --set /etc/glance/glance-registry-paste.ini filter:authtoken admin_password $SERVICE_PASS
+
+# Restart Glance services
+for svc in api registry
+do
+    service openstack-glance-$svc restart
+done
+
+sleep 10
+
+# Check that Glance can authenticate to Keystone
+echo "Checking Glance <-> Keystone authentication..."
+echo ""
+
+glance index
+}
+
+# Nova Network Setup
+
+nova_network_config() {
+
+source_keystonerc
+
+nova-manage network create --multi_host=T --label=$VIRT_NET_NAME --fixed_range_v4=${VIRT_NET_NET}/${VIRT_NET_MASK} --num_networks=${NUM_VIRT_NETS} --network_size=${VIRT_NET_SIZE} --bridge=${VIRT_NET_BRIDGE} --bridge_interface=${PRIV_NET_NIC} --dns1=${DNS1} --dns2=${DNS2} --project_id=${PROJECT} --priority=1
+
+nova-manage network list
+check_it
+
+# Add the floating IP range
+
+nova-manage floating create --pool=$FLOAT_NET_NAME --ip_range=${FLOAT_NET_NET}/${FLOAT_NET_MASK} --interface=${FLOAT_NET_NIC}
+
+nova-manage floating list
+check_it
+
+# Add the virtual bridge for compute nodes
+openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NET_NIC}
+
+
+# Modify security groups to allow ssh and icmp
+
+nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
+nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
+}
+
+# Register a test image to run
+
+image_register() {
+
+source_keystonerc
+
+glance add name=f16-jeos is_public=true disk_format=qcow2 container_format=bare copy_from=http://berrange.fedorapeople.org/images/2012-02-29/f16-x86_64-openstack-sda.qcow2
+glance add name=F16-x86_64-cfntools-openshift is_public=true disk_format=qcow2 container_format=bare copy_from=https://github.com/downloads/heat-api/prebuilt-jeos-images/F16-x86_64-cfntools-openshift.qcow2
+
+glance index
+check_it
+}
+
+# Launch an instance
+
+image_launch() {
+
+source_keystonerc
+
+# verify that nbd is loaded in the kernel
+#    modprobe nbd
+
+# create ssh keypair for new image
+if [ ! -e ~/oskey.priv ]; then
+    nova keypair-add mykey > oskey.priv
+    chmod 600 oskey.priv
+fi
+
+# Launch the instance
+nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep f16-jeos | awk '{print $1}')
+#nova boot myserver --flavor 2 --key_name mykey --image $(glance index | grep F16-x86_64-cfntools-openshift | awk '{print $1}')
+
+# Verify if the image launches
+echo " Verifying that image launches..."
+echo ""
+
+sleep 20
+
+virsh list
+if [ $? -eq 0 ]; then
+    nova list
+else
+    echo "Failure of Instance to launch. Aborting..."
+    exit 1
+fi
+
+# Attempt to log in to the VM...
+echo "Attempting to log in to the instance..."
+echo ""
+VM_IP=`nova list | grep $VIRT_NET_NAME | awk -F"$VIRT_NET_NAME=" '{print $2}' | awk '{print $1}'`
+ssh -i oskey.priv ec2-user@${VM_IP} "hostname;date"
+nova console-log myserver
+
+# Delete the instance
+nova delete myserver
+}
+
+# Configure the Dashboard
+
+dashboard_install_config() {
+
+source_keystonerc
+
+yum -y -q install openstack-dashboard
+chkconfig httpd on
+service httpd restart
+setsebool -P httpd_can_network_connect=on
+
+}
+
+# Configure Swift to use Keystone
+keystone_swift_install_config() {
+
+source_keystonerc
+
+yum -y -q install openstack-swift openstack-swift-proxy openstack-swift-account openstack-swift-container openstack-swift-object memcached
+
+# Create config files (5)
+
+cat > /etc/swift/swift.conf <<- EOF
+[swift-hash]
+swift_hash_path_suffix = randomestringchangeme
+EOF
+
+cat > /etc/swift/proxy-server.conf <<- EOF
+[DEFAULT]
+bind_port = 8080
+workers = 8
+user = swift
+[pipeline:main]
+pipeline = catch_errors healthcheck cache authtoken keystone proxy-server
+[app:proxy-server]
+use = egg:swift#proxy
+account_autocreate = true
+[filter:keystone]
+paste.filter_factory = keystone.middleware.swift_auth:filter_factory
+operator_roles = admin, swiftoperator
+[filter:authtoken]
+paste.filter_factory = keystone.middleware.auth_token:filter_factory
+auth_port = 35357
+auth_host = 127.0.0.1
+auth_protocol = http
+admin_token = ADMINTOKEN
+#  ??? Are these needed?
+service_port = 5000
+service_host = 127.0.0.1
+service_protocol = http
+auth_token = ADMINTOKEN
+[filter:healthcheck]
+use = egg:swift#healthcheck
+[filter:cache]
+use = egg:swift#memcache
+memcache_servers = 127.0.0.1:11211
+[filter:catch_errors]
+use = egg:swift#catch_errors
+EOF
+
+cat > /etc/swift/account-server.conf <<- EOF
+[DEFAULT]
+bind_ip = 127.0.0.1
+workers = 2
+[pipeline:main]
+pipeline = account-server
+[app:account-server]
+use = egg:swift#account
+[account-replicator]
+[account-auditor]
+[account-reaper]
+EOF
+
+cat > /etc/swift/container-server.conf <<- EOF
+[DEFAULT]
+bind_ip = 127.0.0.1
+workers = 2
+[pipeline:main]
+pipeline = container-server
+[app:container-server]
+use = egg:swift#container
+[container-replicator]
+[container-updater]
+[container-auditor]
+EOF
+
+cat > /etc/swift/object-server.conf <<- EOF
+[DEFAULT]
+bind_ip = 127.0.0.1
+workers = 2
+[pipeline:main]
+pipeline = object-server
+[app:object-server]
+use = egg:swift#object
+[object-replicator]
+[object-updater]
+[object-auditor]
+EOF
+
+# Add keystone admin token in swift proxy file
+
+openstack-config --set /etc/swift/proxy-server.conf filter:authtoken admin_token $ADMIN_TOKEN
+openstack-config --set /etc/swift/proxy-server.conf filter:authtoken auth_token $ADMIN_TOKEN
+}
+
+storage_nova_volume_configure() {
+
+# Install iscsi target service
+    yum -y -q install scsi-target-utils openstack-nova-volume
+
+# Check for nova-volume volume group
+    pvs | grep nova-volume &> /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Volume Group 'nova-volume' does not exist."
+        echo "Creating 20G loopback sparse disk image for testing purposes."
+        echo "You should really create a "nova-volume" Volume Group, manually."
+
+        # Create the 'nova-volumes' LVM Volume Group using loopback sparse disk image
+        dd if=/dev/zero of=/var/lib/nova/nova-volumes.img bs=1M seek=20k count=0
+        vgcreate nova-volumes $(losetup --show -f /var/lib/nova/nova-volumes.img)
+        check_it
+    fi
+
+# Configure iscsi and nova-volume service
+    for svc in tgtd openstack-nova-volume    
+        do 
+        chkconfig $svc on
+        service $svc start
+    done
+
+}
+
+# Enable nova-volume on the compute nodes
+
+compute_nova_volume_configure() {
+    yum -y -q install iscsi-initiator-utils
+    for svc in iscsi iscsi
+    do
+        chkconfig $svc on
+        service $svc start
+    done
+            
+}
+
+# Create Swift storage device
+
+swift_storage_create() {
+
+source_keystonerc
+
+mkdir /var/lib/swift
+truncate --size=20G /var/lib/swift/swiftstorage
+DEVICE=$(sudo losetup --show -f /tmp/swiftstorage)
+mkfs.ext4 -I 1024 $DEVICE
+mkdir -p /srv/node/partitions
+mount $DEVICE /srv/node/partitions -t ext4 -o noatime,nodiratime,nobarrier,user_xattr
+
+# Create the swift ring with 1024 partitions, and 1 zone (only suitable for test)
+
+swift-ring-builder account.builder create 10 1 1
+swift-ring-builder container.builder create 10 1 1
+swift-ring-builder object.builder create 10 1 1
+
+# Create a device for each of the account, container and object services
+
+swift-ring-builder account.builder add z1-127.0.0.1:6002/partitions 100
+swift-ring-builder container.builder add z1-127.0.0.1:6001/partitions 100
+swift-ring-builder object.builder add z1-127.0.0.1:6000/partitions 100
+
+# Rebalance the ring - allocates partitions to devices
+
+swift-ring-builder account.builder rebalance
+swift-ring-builder container.builder rebalance
+swift-ring-builder object.builder rebalance
+
+# Change file ownerships
+
+chown -R swift:swift /etc/swift /srv/node/partitions
+
+# Add swift service and endpoints to Keystone
+
+SERVICEID=$(keystone  service-create --name=swift --type=object-store --description="Swift Service" | grep "id " | cut -d "|" -f 3)
+echo $SERVICEID # just making sure we got a SERVICEID
+keystone endpoint-create --service_id $SERVICEID --publicurl "http://127.0.0.1:8080/v1/AUTH_\$(tenant_id)s" --adminurl "http://127.0.0.1:8080/v1/AUTH_\$(tenant_id)s" --internalurl "http://127.0.0.1:8080/v1/AUTH_\$(tenant_id)s"
+
+# Start the services
+
+service memcached start
+for srv in account container object proxy
+do 
+    chkconfig openstack-swift-$srv on
+    service openstack-swift-$srv start
+done
+
+# Test the Swift client and upload a test file
+
+swift list
+dd if=/dev/zero of=/tmp/out.dat bs=1024 count=10240 &> /dev/null
+swift upload container /tmp/out.dat
+
+}
+
+
+# Configure EC2 tools
+euca_tools_install_config() {
+
+source_keystonerc
+
+yum -y -q euca2ools
+
+USER_ID=$(keystone user-list | awk '/admin / {print $2}')
+ACCESS_KEY=$(keystone ec2-credentials-list --user $USER_ID | awk '/admin / {print $4}')
+SECRET_KEY=$(keystone ec2-credentials-list --user $USER_ID | awk '/admin / {print $6}')
+
+cat > ~/.novarc <<EOF
+export EC2_URL=http://${CONTROLLER}:8773/services/Cloud
+export EC2_ACCESS_KEY=$ACCESS_KEY
+export EC2_SECRET_KEY=$SECRET_KEY
+EOF
+
+chmod 600 ~/.novarc
+. ~/.novarc
+
+# Launch an instance using euca-tools
+euca-run-instances f16-jeos -k mykey
+euca-describe-instances
+euca-get-console-output i-00000001
+euca-terminate-instances i-00000001
+
+
+}
+
+# Create iSCSI volumes
+
+iscsi_volumes_config() {
+# Enable iSCSI daemon
+    chkconfig tgtd on
+    service tgtd start
+
+# Create new 1GB Volume
+    VOLUME=$(euca-create-volume -s 1 -z nova | awk '{print $2}')
+
+# Watch the status
+
+    watch "euca-describe-volumes | grep $VOLUME | grep available"
+
+# Re-start the previously terminated instance
+
+    INSTANCE=$(euca-run-instances f16-jeos -k mykey | grep INSTANCE | awk '{print $2}')
+    VM_IP=`nova list | grep $VIRT_NET_NAME | awk -F"$VIRT_NET_NAME=" '{print $2}' | awk '{print $1}'`
+
+# Make the storage available to the instance
+
+euca-attach-volume -i $INSTANCE -d /dev/vdc $VOLUME
+
+# ssh to the instance and verify that the vdc device is listed in
+# /proc/partitions
+
+ssh -i oskey.priv ec2-user@${VM_IP} 'cat /proc/partitions'
+
+# Now mount it
+
+ssh -i oskey.priv ec2-user@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+
+# Create a tmp file:
+
+ssh -i oskey.priv ec2-user@${VM_IP} 'echo foo > /mnt/nova-volume/bar'
+
+# Restart the instance to verify file 'bar' exists
+euca-terminate-instances i-00000001
+euca-run-instances f16-jeos -k mykey
+ssh -i oskey.priv ec2-user@${VM_IP} 'mknod /dev/vdc b 252 32; mkfs.ext3 /dev/vdc; mkdir /mnt/nova-volume; mount /dev/vdc /mnt/nova-volume; df -h /dev/vdc'
+ssh -i oskey.priv ec2-user@${VM_IP} 'cat /mnt/nova-volume/bar'
+ssh -i oskey.priv ec2-user@${VM_IP} 'umount /mnt/nova-volume'
+
+# Detach and delete the volume
+
+euca-detach-volume $VOLUME
+euca-delete-volume $VOLUME
+
+}
+
+# Configure VNC access to guests through the dashboard
+
+controller_vnc_install_config() {
+
+source_keystonerc
+
+yum -y -q install openstack-nova-novncproxy
+
+# Enable VNC in the controller
+#     echo "# Adding VNC support
+# novncproxy_host = 0.0.0.0
+# novncproxy_port = 6080
+# novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
+# vnc_enabled=true
+# vncserver_listen=127.0.0.1
+# vncserver_proxyclient_address=127.0.0.1" >> /etc/nova/nova.conf
+
+
+# Restart the services
+for svc in consoleauth novncproxy compute
+do
+    chkconfig openstack-nova-$svc on
+    service openstack-nova-$svc restart
+done
+
+}
+
+compute_vnc_install_config() {
+    yum -y -q install openstack-nova-novncproxy
+#    echo "# Adding VNC support
+#novncproxy_base_url=http://${CONTROLLER}:6080/vnc_auto.html
+#vnc_enabled=true
+#vncserver_listen=`hostname`
+#vncserver_proxyclient_address=`hostname`" >> /etc/nova/nova.conf
+
+openstack-config --set /etc/nova/nova.conf DEFAULT novncproxy_base_url http://${CONTROLLER}:6080/vnc_auto.html
+#openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen `hostname`
+openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_listen 0.0.0.0
+openstack-config --set /etc/nova/nova.conf DEFAULT vncserver_proxyclient_address `hostname`
+
+# Restart the services
+for svc in novncproxy
+do
+    chkconfig openstack-nova-$svc on
+    service openstack-nova-$svc restart
+done
+}
+
+# Enable remote logins from controller node to compute node for things like
+# migrate and resize
+
+nova_user_enable_login() {
+    usermod -s /bin/bash nova
+    cd ~nova
+    mkdir .ssh
+    cd .ssh
+    echo "Host * 
+  StrictHostKeyChecking no 
+  UserKnownHostsFile=/dev/null" >> config
+    cd ~nova
+    chown -R nova.nova .ssh
+}
+
+# On controller node, create ssh keys
+controller_create_nova_key() {
+    cd ~nova
+    mkdir .ssh
+    chmod 700 .ssh
+    ssh-keygen -f .ssh/id_rsa -b 1024 -P ""
+    chown nova.nova .ssh/id_rsa*
+}
+
+# On compute node, get nova ssh keys
+compute_get_nova_key() {
+    scp root@${CONTROLLER}:/var/lib/nova/.ssh/id_rsa.pub /var/lib/nova/.ssh/authorized_keys
+    chown nova.nova ~nova/.ssh/authorized_keys
+    semanage permissive -a sshd_t
+}
+
+# Install package
+
+install_package() {
+    rpm -q $1 &> /dev/null
+    if [ $? -ne 0 ]; then
+        yum -y -q install $1
+    fi
+}
+
+# Enable ntp
+
+enable_ntp() {
+    rpm -q ntp &> /dev/null
+    if [ $? -ne 0 ]; then
+        yum -y -q install ntp
+    fi
+    chkconfig ntpdate on
+    chkconfig ntpd on
+    service ntpd stop
+    service ntpdate restart
+    service ntpd start
+}
+
+# Live migrate config on controller (NFS)
+
+controller_live_migration_config() {
+
+# Enable promiscuous mode on the private NIC
+grep promisc /etc/rc.local &> /dev/null
+if [ $? -eq 1 ]; then
+    echo "" >> /etc/rc.local
+    echo "/sbin/ifconfig ${PRIV_NET_NIC} promisc" >> /etc/rc.local
+    ifconfig ${PRIV_NET_NIC} promisc
+fi
+
+# Enable jumbo frames
+grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
+
+install_package nfs-utils
+
+grep '/var/lib/nova/instances' /etc/exports &> /dev/null
+  if [ $? -ne 0 ]; then
+      echo "/var/lib/nova/instances ${PRIV_NET_NET}/${PRIV_NET_MASK}(rw,async,fsid=0,no_root_squash)" >> /etc/exports
+  fi
+  chmod o+x /var/lib/nova/instances
+  echo "rpcbind: ${PRIV_NET_NET}/${PRIV_NET_MASK}" >> /etc/hosts.allow
+  perl -pe "s/#Domain =.*$/Domain = ${DOMAIN_NAME}/g;" -i /etc/idmapd.conf
+  perl -pe "s/#LIBVIRTD_ARGS=.*$/LIBVIRTD_ARGS="--listen"/g;" -i /etc/sysconfig/libvirtd
+  perl -pe 's/#listen_tls = 0/listen_tls = 0/g;s/#listen_tcp = 1/listen_tcp = 1/g;s/#auth_tcp = "sasl"/auth_tcp = "none"/g;' -i /etc/libvirt/libvirtd.conf 
+  perl -pe 's/#RPCNFSDCOUNT=8/RPCNFSDCOUNT=64/;' -i /etc/sysconfig/nfs
+
+  echo "
+# Tune for NFS
+net.core.wmem_max = 8388608
+net.core.rmem_max = 8388608
+net.ipv4.tcp_wmem = 4096 65536 8388608
+net.ipv4.tcp_rmem = 4096 87380 8388608" >> /etc/sysctl.conf
+
+  sysctl -p
+
+  echo "
+# Tune for NFS
+echo deadline > /sys/block/$NFS_DEVICE/queue/scheduler 
+echo 150 /sys/block/$NFS_DEVICE/queue/iosched/read_expire 
+echo 150  > /sys/block/$NFS_DEVICE/queue/iosched/read_expire 
+echo 1500 > /sys/block/$NFS_DEVICE/queue/iosched/write_expire" >> /etc/rc.local
+
+  perl -pe 's/LANG=en_US.UTF-8/elevator=deadline LANG=en_US.UTF-8/g;' -i /boot/grub/grub.conf
+
+  for svc in nfs nfslock rpcidmapd rpcgssd libvirtd
+      do 
+          chkconfig $svc on
+          service $svc restart
+      done
+}
+
+# Live migrate config on compute (NFS)
+
+compute_live_migration_config() {
+
+# Enable promiscuous mode on the private NIC
+grep promisc /etc/rc.local &> /dev/null
+if [ $? -eq 1 ]; then
+    echo "" >> /etc/rc.local
+    echo "/sbin/ifconfig ${PRIV_NET_NIC} promisc" >> /etc/rc.local
+    ifconfig ${PRIV_NET_NIC} promisc
+fi
+
+# Enable jumbo frames
+grep MTU=9000  /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC} &> /dev/null
+if [ $? -eq 1 ]; then
+    echo MTU=9000 >> /etc/sysconfig/network-scripts/ifcfg-${PRIV_NET_NIC}
+fi
+
+install_package nfs-utils autofs
+
+echo "/nova /etc/auto.nova proto=tcp,hard,intr,timeo=60,retrans=3,rsize=65536,wsize=65536" >> /etc/auto.master
+echo "instances ${CONTROLLER_PRIV_IP}:/var/lib/nova/instances" >> /etc/auto.nova
+mkdir /nova
+cd /var/lib/nova/
+mv instances instances.bak
+ln -s /nova/instances instances
+
+chkconfig autofs on
+service autofs start
+
+  perl -pe "s/#LIBVIRTD_ARGS=.*$/LIBVIRTD_ARGS="--listen"/g;" -i /etc/sysconfig/libvirtd
+  perl -pe 's/#listen_tls = 0/listen_tls = 0/g;s/#listen_tcp = 1/listen_tcp = 1/g;s/#auth_tcp = "sasl"/auth_tcp = "none"/g;' -i /etc/libvirt/libvirtd.conf 
+  perl -pe 's/#RPCNFSDCOUNT=8/RPCNFSDCOUNT=64/;' -i /etc/sysconfig/nfs
+
+service libvirtd restart
+}
+
+# Adding a compute node
+
+compute_install_base() {
+    yum -y -q install openstack-nova openstack-nova-compute openstack-nova-network openstack-nova-api python-keystone openstack-utils dnsmasq-utils policycoreutils-python
+    chkconfig libvirtd on
+    service libvirtd start
+    setenforce 0
+
+# Configure nova to find the services on the controller
+
+    scp root@${CONTROLLER}:/etc/nova/nova.conf /etc/nova/
+#    scp root@${CONTROLLER}:/etc/nova/api-paste.ini /etc/nova/
+
+openstack-config --set /etc/nova/nova.conf DEFAULT my_ip `ifconfig ${PRIV_NET_BRIDGE} | grep "inet addr" | awk -F"[ :]" '{print $13}'`
+openstack-config --set /etc/nova/nova.conf DEFAULT network_host `ifconfig ${PRIV_NET_BRIDGE} | grep "inet addr" | awk -F"[ :]" '{print $13}'`
+
+#    openstack-config --set /etc/nova/nova.conf DEFAULT qpid_hostname $CONTROLLER
+#    openstack-config --set /etc/nova/nova.conf DEFAULT sql_connection mysql://nova:nova@${CONTROLLER}/nova
+#    openstack-config --set /etc/nova/nova.conf DEFAULT glance_api_servers ${CONTROLLER}:9292
+#    openstack-config --set /etc/nova/nova.conf DEFAULT iscsi_ip_prefix ${CONTROLLER_IP}
+#    openstack-config --set /etc/nova/nova.conf DEFAULT auth_strategy keystone
+#
+## Configure the network interfaces
+#    openstack-config --set /etc/nova/nova.conf DEFAULT flat_network_bridge ${VIRT_NET_BRIDGE}
+#    openstack-config --set /etc/nova/nova.conf DEFAULT flat_interface ${PRIV_NET_NIC}
+
+# Enable the compute service
+    for svc in compute network metadata-api
+    do 
+        chkconfig openstack-nova-$svc on
+        service openstack-nova-$svc start
+    done
+
+}
+
+
+backup_openstack() {
+    DATE=`date +%Y-%m-%d-%H%M`
+
+    mkdir -p /var/tmp/openstack-db-${DATE}
+    for db in nova glance keystone swift
+    do
+            for table in `mysql -ss -B -e "use $db; show tables;"`
+            do
+                    mysqldump $db $table > /var/tmp/openstack-db-${DATE}/${db}-${table}.sql
+            done
+    done
+
+    tar -cvzf /var/tmp/openstack-backup.${DATE}.tgz /var/tmp/openstack-db-${DATE}/ /etc/{keystone,nova,swift,glance} /root/{.keystonerc,.novaclient,.novarc,account*,container*,object*,oskey.priv,backups} /var/lib/{keystone,nova,swift,glance}
+}
+
+clean_openstack() {
+
+    mysql -B -e "
+        drop database glance; \
+        drop database keystone;\ 
+        drop database nova; \
+        drop database swift; \
+        delete from mysq.user where user='glance'; \
+        delete from mysq.user where user='keystone'; \
+        delete from mysq.user where user='nova'; \
+        delete from mysq.user where user='swift';"
+
+    PACKAGES="
+	python-setuptools \
+	libgssglue \
+	python-sqlalchemy0.7 \
+	python-httplib2 \
+	apr \
+	apr-util \
+	MySQL-python \
+	python-iso8601 \
+	python-memcached \
+	libpcap \
+	python-crypto \
+	yajl \
+	python-routes1.12 \
+	numactl \
+	python-webob1.0 \
+	libtirpc \
+	perl-hivex \
+	hivex \
+	python-lockfile \
+	boost-program-options \
+	parted \
+	python-argparse \
+	libaio \
+	iscsi-initiator-utils \
+	lzo \
+	lzop \
+	python-ldap \
+	vconfig \
+	augeas-libs \
+	netcf-libs \
+	perl-DBI \
+	openstack-utils \
+	radvd \
+	python-greenlet \
+	python-eventlet \
+	tunctl \
+	python-lxml \
+	boost-system \
+	boost-filesystem \
+	python-prettytable \
+	python-novaclient \
+	python-keystoneclient \
+	libibverbs \
+	cryptsetup-luks-libs \
+	cryptsetup-luks \
+	python-gflags \
+	libcgroup \
+	python-paste \
+	python-paste-deploy1.5 \
+	python-paste-deploy \
+	python-quantumclient \
+	numad \
+	librdmacm \
+	qpid-cpp-client \
+	perl-DBD-MySQL \
+	python-daemon \
+	rpcbind \
+	python-paramiko \
+	apr-util-ldap \
+	httpd-tools \
+	python-pygments \
+	python-dateutil \
+	febootstrap-supermin-helper \
+	mailcap \
+	httpd \
+	mod_wsgi \
+	python-netaddr \
+	libpciaccess \
+	PyPAM \
+	Django \
+	btrfs-progs \
+	cyrus-sasl-md5 \
+	libusb1 \
+	usbredir \
+	qemu-img \
+	python-passlib \
+	saslwrapper \
+	python-saslwrapper \
+	python-qpid \
+	python-sqlalchemy \
+	dnsmasq \
+	python-anyjson \
+	python-markdown \
+	python-cheetah \
+	pysendfile \
+	python-tempita \
+	seabios \
+	fuse-libs \
+	python-cloudfiles \
+	dnsmasq-utils \
+	libevent \
+	sg3_utils-libs \
+	sg3_utils \
+	strace \
+	hdparm \
+	pm-utils \
+	hal \
+	hal-info \
+	perl-Config-General \
+	scsi-target-utils \
+	mysql \
+	python-decorator \
+	python-migrate \
+	ebtables \
+	keyutils \
+	nfs-utils-lib \
+	nfs-utils \
+	genisoimage \
+	gpxe-roms-qemu \
+	scrub \
+	pyxattr \
+	python-glance \
+	openstack-glance \
+	python-django-horizon \
+	python-webob \
+	python-keystone-auth-token \
+	python-keystone \
+	fuse \
+	nc \
+	vgabios \
+	mdadm \
+	python-boto \
+	python-nova \
+	openstack-nova-common \
+	openstack-nova-cert \
+	openstack-nova-volume \
+	openstack-nova-scheduler \
+	openstack-nova-objectstore \
+	openstack-nova-network \
+	openstack-nova-console \
+	openstack-nova-api \
+	gnutls-utils \
+	libvirt-client \
+	libvirt \
+	libvirt-python \
+	celt051 \
+	spice-server \
+	sgabios-bin \
+	qemu-kvm \
+	libconfig \
+	dosfstools \
+	libguestfs \
+	libguestfs-tools-c \
+	openstack-nova-compute \
+	openstack-nova \
+	openstack-keystone \
+	openstack-dashboard \
+	mysql-server \
+	qpid-cpp-server"
+
+    yum -y -q remove $PACKAGES
+
+    cd ~
+    rm -rf .keystonerc .novaclient .novarc account* container* object* oskey.priv backups
+
+    cd /etc
+    rm -rf keystone nova swift glance
+
+    cd /var/log
+    rm -rf keystone nova swift glance
+}
+
+start_openstack() {
+    cd /etc/rc3.d/; 
+    for svc in `ls S*open* S*iptables S*qpidd 2> /dev/null` ; 
+    do 
+        ./$svc start; 
+    done; 
+    cd - &> /dev/null
+}
+
+stop_openstack() {
+    cd /etc/rc3.d/; 
+    for svc in `ls S*open* S*iptables *dnsmasq S*qpidd 2> /dev/null` ; 
+    do 
+        ./$svc stop; 
+    done; 
+    cd - &> /dev/null
+    brctl delbr ${VIRT_NET_BRIDGE}
+}
+
+status_openstack() {
+    cd /etc/rc3.d/; 
+    for svc in `ls S*open*` ; 
+    do 
+        ./$svc status; 
+    done; 
+    cd - &> /dev/null
+}
+
+restart_openstack() {
+    stop_openstack
+    start_openstack
+}
+
+source_keystonerc() {
+# If ~/.keystonerc exists, source it
+if [ -e ~/.keystonerc ]; then
+    . ~/.keystonerc
+fi
+}
+
+echo_usage() {
+    echo $"$0: Usage: [ start|stop|restart|status ] [ clean ] [ install {controller|compute} ]"
+}
+
+# Install the controller 
+
+controller_install() {
+
+    # Set SELinux policy to permissive 
+    # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
+
+    setenforce permissive
+
+#    install_epel_repo
+    controller_iptables_config
+    enable_ntp
+    keystone_install_config
+    controller_install_base
+    keystone_nova_config
+    keystone_glance_config
+    nova_network_config
+    controller_live_migration_config
+###   image_register
+###   image_launch
+    dashboard_install_config
+    controller_vnc_install_config
+#    keystone_swift_install_config
+#    swift_storage_create
+#    euca_tools_install_config
+#    iscsi_volumes_config
+##    controller_create_nova_key
+}
+
+
+# Install the compute node
+
+compute_install() {
+    # Set SELinux policy to permissive 
+    # see  https://bugzilla.redhat.com/show_bug.cgi?id=734346
+
+    setenforce permissive
+
+    #install_epel_repo
+    compute_iptables_config
+    enable_ntp
+    compute_install_base
+    compute_live_migration_config
+    compute_vnc_install_config
+    nova_user_enable_login
+    compute_get_nova_key
+}
+
+#############################################################################
+# MAIN
+#############################################################################
+
+case $1 in
+    start)
+           start_openstack
+           ;;
+    stop)
+           stop_openstack
+           ;;
+    restart)
+           restart_openstack
+           ;;
+    status)
+           status_openstack
+           ;;
+    clean)
+           echo "This will remove all trace of OpenStack from your system."
+           echo "Are you sure you want to continue? [y|n]"
+           read CONT_ANS
+           if [ $CONT_ANS = "y" -o $CONT_ANS = "Y" ]; then
+               echo "Do you want to make a backup?  This will be placed in"
+               echo "/var/tmp/openstack-backup.<today's date>.tgz [y|n]"
+               read BACK_ANS
+               if [ $BACK_ANS = "y" -o $BACK_ANS = "Y" ]; then
+                    backup_openstack
+                    clean_openstack
+               else
+                    clean_openstack
+               fi
+           fi
+           ;;
+    install)
+           if [ "$2" = "controller" ]; then
+                 controller_install
+           elif [ "$2" = "compute" ]; then
+                 compute_install
+           else
+                echo_usage
+           fi
+           ;;
+    *)    
+           echo_usage
+           exit 1
+           ;;
+esac
