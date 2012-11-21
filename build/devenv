@@ -296,7 +296,7 @@ popd
 
           unless options.install_required_packages?
             puts "Uploading openshift-amz.sh script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../amazon/openshift-amz.sh")
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../install-scripts/amazon/openshift-amz.sh")
             scp_to(hostname, script_path, "~/")
             puts "Done"
 
