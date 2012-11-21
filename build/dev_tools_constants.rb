@@ -41,4 +41,6 @@ BASE_RELEASE_BRANCH = '???'
 
 JENKINS_BUILD_TOKEN = 'libra1'
 
+CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin ~@not-enterprise'
+
 ACCEPT_DEVENV_SCRIPT = 'true'
