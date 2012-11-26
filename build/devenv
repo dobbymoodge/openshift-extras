@@ -60,6 +60,10 @@ module DevOps
         scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
         scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
         puts "Done"
+
+        puts "Creating dummy Cucumber test result file..."
+        `mkdir -p rhc/log/cucumber_results > /dev/null && touch rhc/log/cucumber_results/TEST_dummy.xml > /dev/null`
+        puts "Done"
       end
       
       # launch also calls this to perform some kind of validation of instance state
