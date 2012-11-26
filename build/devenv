@@ -432,7 +432,8 @@ popd
   
             unless options.exclude_broker?
               test_queues[0] << ["OpenShift Origin Broker Functional", "cd openshift-test/broker; su -c \"bundle exec rake test:functionals\""]
-              test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; su -c \"bundle exec rake test:integration\""]
+              # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
+              #test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; su -c \"bundle exec rake test:integration\""]
               test_queues[1] << ["OpenShift Origin Broker Unit 1", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit1\""]
               # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
               #test_queues[1] << ["OpenShift Origin Broker Unit 2", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit2\""]
