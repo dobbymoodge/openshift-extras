@@ -62,7 +62,19 @@ module DevOps
         puts "Done"
 
         puts "Creating dummy Cucumber test result file..."
-        `mkdir -p rhc/log/cucumber_results > /dev/null && touch rhc/log/cucumber_results/TEST_dummy.xml > /dev/null`
+        `mkdir -p rhc/log/cucumber_results > /dev/null`
+        File.open("rhc/log/cucumber_results/TEST_dummy.xml", 'w') do |dummy| dummy.write <<-"EOF"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="Dummy" tests="1" time="0" failures="0" errors="0" skipped="0" assertions="1">
+            <testcase name="test_dummy" time="0" assertions="1">
+            </testcase>
+            <system-out>
+            </system-out>
+            <system-err>
+            </system-err>
+          </testsuite>
+        EOF
+        end
         puts "Done"
       end
       
