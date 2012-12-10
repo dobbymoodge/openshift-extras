@@ -30,7 +30,7 @@ includepkgs=GitPython perl-MongoDB python-argparse python-async python-bunch pyt
 
 [Client]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Client/\$basearch/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-12-10/Client/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -43,7 +43,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 
 [Infrastructure]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Infrastructure/\$basearch/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-12-10/Infrastructure/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -56,7 +56,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 
 [JBoss_EAP6_Cartridge]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/JBoss_EAP6_Cartridge/\$basearch/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-12-10/JBoss_EAP6_Cartridge/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -69,7 +69,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 
 [Node]
 name=Li repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-1.0}/rhel-6/Node/\$basearch/os/
+baseurl=https://mirror.openshift.com/pub/origin-server/nightly/enterprise/2012-12-10/Node/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
