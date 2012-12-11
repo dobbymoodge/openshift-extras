@@ -16,7 +16,7 @@ ZONE = 'us-east-1'
 IGNORE_PACKAGES = ['rubygem-openshift-origin-auth-kerberos', 
                    'openshift-origin-cartridge-nodejs-0.6', 
                    'openshift-origin-cartridge-jbossas-7', 
-                   'openshift-origin-cartridge-jbosswes-2.0', 
+                   'openshift-origin-cartridge-jbossews-2.0', 
                    'openshift-origin-cartridge-phpmyadmin-3.4',
                    'openshift-origin-cartridge-mongodb-2.2',
                    'openshift-origin-cartridge-10gen-mms-agent-0.1']
