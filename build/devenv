@@ -317,7 +317,7 @@ popd
             puts "Done"
 
             puts "Running openshift-amz.sh..."
-            out, ret = ssh(hostname, "/bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
+            out, ret = ssh(hostname, "CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true /bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
             print_highlighted_output('openshift-amz.sh Output', out)
             print_and_exit(ret, out) if ret != 0
             puts "Done"
