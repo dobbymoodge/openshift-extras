@@ -194,6 +194,7 @@ rm -rf #{working_dirs}
               puts "Done"
             end
 
+            # TODO actually pass in the version
             ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{enterprise_repo_version(options.yum_repo)};")
             
             puts "Updating all packages on the system..."
@@ -258,7 +259,7 @@ rm -rf /tmp/tito; mkdir -p /root/.source_build;
             elsif options.install_required_packages?
               puts "Installing bootstrap packages..."
 
-              output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities charlie", 600, true)
+              output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities charlie java-devel ruby193-build", 600, true)
               print_highlighted_output('Install Bootstrap Packages Output', output)
               exit 1 unless exit_code == 0
               puts "Done"
@@ -287,7 +288,7 @@ popd
               end
             else
               puts "Performing clean install with the latest code..."
-              #TODO
+              #TODO Our openshift-amz.sh script handles most of what rhc-devenv does
               #cmd += "yum -y install rhc-devenv;"
             end
                   
@@ -312,12 +313,14 @@ popd
 
           unless options.install_required_packages?
             puts "Uploading openshift-amz.sh script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../install-scripts/amazon/openshift-amz.sh")
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../../openshift-extras/enterprise/install-scripts/amazon/openshift-amz.sh")
             scp_to(hostname, script_path, "~/")
             puts "Done"
 
             puts "Running openshift-amz.sh..."
-            out, ret = ssh(hostname, "CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true /bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
+            out, ret = ssh(hostname, "CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true " +
+                                     "CONF_NO_REPOS=true " +
+                                     "/bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
             print_highlighted_output('openshift-amz.sh Output', out)
             print_and_exit(ret, out) if ret != 0
             puts "Done"
