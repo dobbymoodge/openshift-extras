@@ -41,7 +41,8 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+# We have to be careful that this only shadows the rhui RHEL when we actually need it
+#priority=1
 
 [devenv-jboss-eap]
 name=Devenv EAP repo for Enterprise Linux 6 - $basearch
