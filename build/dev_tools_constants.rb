@@ -4,10 +4,10 @@ TYPE = "m1.large"
 KEY_PAIR = "libra"
 ZONE = 'us-east-1d'
 
-DEVENV_NAME = 'devenv'
+DEVENV_NAME = 'enterprise'
 
-IMAGES = {DEVENV_NAME => {:branches => ['stage']},
-          'enterprise' => {:branches => ['enterprise-1.2']},
+IMAGES = {'devenv' => {:branches => ['stage']},
+          DEVENV_NAME => {:branches => ['enterprise-1.2']},
           'oso-fedora' => {:branches => []}}
 
 DEVENV_AMI_WILDCARDS = {}
@@ -47,10 +47,10 @@ SIBLING_REPOS = {'enterprise-server' => ['../enterprise-server'],
                  'enterprise-dev-tools' => ['../enterprise-dev-tools'],
                  'openshift-extras' => ['../openshift-extras']}
 OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
-SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'https://github.com/openshift/enterprise-server.git',
-                        'enterprise-rhc' => 'https://github.com/openshift/enterprise-rhc.git',
+SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterprise-server.git',
+                        'enterprise-rhc' => 'git@github.com:openshift/enterprise-rhc.git',
                         'enterprise' => 'git@github.com:openshift/enterprise.git',
-                        'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git'},
+                        'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git',
                         'openshift-extras' => 'git@github.com:openshift/openshift-extras.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'
