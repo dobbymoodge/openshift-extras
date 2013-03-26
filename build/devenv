@@ -674,7 +674,9 @@ service openshift-port-proxy restart
               cmd += "mkdir -p /tmp/tito;"
               SIBLING_REPOS.each_key do |repo_name|
                 cmd += "pushd /root/#{repo_name}; git checkout #{options.branch}; popd;"
-              end if options.install_from_source?
+              # TODO why is this here?
+              #end if options.install_from_source?
+              end
 
               cmd += %{
 
