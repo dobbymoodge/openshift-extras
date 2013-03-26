@@ -17,7 +17,7 @@ EOF
 cat > /etc/yum.repos.d/misc.repo <<EOF
 [misc]
 name=misc
-baseurl=https://mirror.openshift.com/enterprise/enterprise-1.2/misc/
+baseurl=https://mirror.openshift.com/enterprise/${2-enterprise-1.2}/misc/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -32,8 +32,8 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release RHEL content
 #[devenv]
 #name=Devenv repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/enterprise-1.2/rhel
-#        https://mirror2.ops.rhcloud.com/enterprise/enterprise-1.2/rhel
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/rhel
+#        https://mirror2.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/rhel
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
@@ -48,8 +48,8 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-eap]
 #name=Devenv EAP repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/enterprise-1.2/jb-eap-6-for-rhel-6-server-rpms
-#        https://mirror2.ops.rhcloud.com/enterprise/enterprise-1.2/jb-eap-6-for-rhel-6-server-rpms
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/jb-eap-6-for-rhel-6-server-rpms
+#        https://mirror2.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/jb-eap-6-for-rhel-6-server-rpms
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
@@ -63,8 +63,8 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
 #name=Devenv EWS repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/enterprise-1.2/jb-ews-1-for-rhel-6-server-rpms
-#        https://mirror2.ops.rhcloud.com/enterprise/enterprise-1.2/jb-ews-1-for-rhel-6-server-rpms
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/jb-ews-1-for-rhel-6-server-rpms
+#        https://mirror2.ops.rhcloud.com/enterprise/${2-enterprise-1.2}/jb-ews-1-for-rhel-6-server-rpms
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
@@ -77,7 +77,7 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 
 [Client]
 name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/enterprise-1.2/openshift_repositories/Client/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${2-enterprise-1.2}/openshift_repositories/Client/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -90,7 +90,7 @@ priority=1
 
 [Infrastructure]
 name=Infrastructure repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/enterprise-1.2/openshift_repositories/Infrastructure/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${2-enterprise-1.2}/openshift_repositories/Infrastructure/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -103,7 +103,7 @@ priority=1
 
 [JBoss_EAP6_Cartridge]
 name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/enterprise-1.2/openshift_repositories/JBoss_EAP6_Cartridge/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${2-enterprise-1.2}/openshift_repositories/JBoss_EAP6_Cartridge/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -116,7 +116,7 @@ priority=1
 
 [Node]
 name=Node repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/enterprise-1.2/openshift_repositories/Node/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${2-enterprise-1.2}/openshift_repositories/Node/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0

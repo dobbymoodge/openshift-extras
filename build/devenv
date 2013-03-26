@@ -1,111 +1,823 @@
 #!/usr/bin/env ruby
 
-#####################################################################
-# bootstrap our devops/onprem builder
-
 $: << File.expand_path(File.dirname(__FILE__))
-require 'dev_tools_constants'
-
-DEVTOOLS_REPO = File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}")
 
 require 'rubygems'
 require 'thor'
 require 'fileutils'
-require File.join(DEVTOOLS_REPO, 'build', 'lib', 'openshift')
 require 'pp'
 require 'yaml'
-require File.join(DEVTOOLS_REPO, 'build', 'builder')
+require 'dev_tools_constants'
+require File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}", 'build', 'lib', 'openshift')
+require File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}", 'build', 'builder')
+require 'lib/openshift/brew'
 
 include FileUtils
 
-######################################################################
-#
-# Define the options available for the onprem builder
-
-module DevOps
+module Enterprise
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
-    
-    desc "install_required_packages", "Install the packages required, as specified in the spec files"
-    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
-    def install_required_packages
+
+    desc "write_sync_history", "Write out the sync history so updates won't happen for already installed changes"
+    def write_sync_history()
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-      packages = get_required_packages
-      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-* ghostscript-* java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
-        exit 1
+      get_sync_dirs
+    end
+
+    desc "tunnel", "Setup tunnelling to the devenv"
+    method_option :localhost, :required => false, :default => 'localhost', :desc => "The hostname to use locally (default 'localhost')"
+    method_option :devenv,    :required => false, :default => 'verifier',  :desc => "The hostname for the devenv (default 'verifier')"
+    def tunnel
+      ports = {
+        8118 => 8118,
+        9443 => 443,
+        11211 => 11211,
+        11212 => 11212
+      }
+      say "Your local machine will now think '#{options.localhost}' is the hostname of your devenv."
+      cmd = "ssh #{ports.map{ |k,v| "-L #{k}:#{options.localhost}:#{v}"}.join(' ')} #{options.devenv}"
+      exec cmd
+    end
+
+    desc "watch", "Watch for changes to your source directory with the 'listen' gem and copy them to the remote image. Not a full replacement for 'sync' - intended to speed Rails development."
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+
+    def watch
+      config = File.join ENV['HOME'], '.openshiftdev/watch.lua'
+      if File.exists? config
+        say "You have #{config}, which was used for an old mechanism which relied on lsyncd to check for local file changes. It is no longer used. Please remove it."
+      end
+
+      @rsync_default_opts = ['-vuzt', '--chmod=ug+rwX']
+
+      @source_dir_for = {
+        # The trailing slash is important in order to avoid creating an
+        # additional directory
+        :drupal => File.join('misc', 'devenv', 'etc', 'drupal6', '/'),
+        :httpd  => File.join('misc', 'devenv', 'etc', 'httpd', '/'),
+        # Drupal modules
+        :'custom_forms'                    => File.join('drupal', 'drupal6-openshift-custom_forms'                   , '/'),
+        :'features-application_quickstarts' => File.join('drupal', 'drupal6-openshift-features-application_quickstarts', '/'),
+        :'features-blogs'                  => File.join('drupal', 'drupal6-openshift-features-blogs'                 , '/'),
+        :'features-community_wiki'         => File.join('drupal', 'drupal6-openshift-features-community_wiki'        , '/'),
+        :'features-forums'                 => File.join('drupal', 'drupal6-openshift-features-forums'                , '/'),
+        :'features-front_page'             => File.join('drupal', 'drupal6-openshift-features-front_page'            , '/'),
+        :'features-global_settings'        => File.join('drupal', 'drupal6-openshift-features-global_settings'       , '/'),
+        :'features-recent_activity_report' => File.join('drupal', 'drupal6-openshift-features-recent_activity_report', '/'),
+        :'features-reporting_csv_views'    => File.join('drupal', 'drupal6-openshift-features-reporting_csv_views'   , '/'),
+        :'features-rules_by_category'      => File.join('drupal', 'drupal6-openshift-features-rules_by_category'     , '/'),
+        :'features-user_profile'           => File.join('drupal', 'drupal6-openshift-features-user_profile'          , '/'),
+        :'features-video'                  => File.join('drupal', 'drupal6-openshift-features-video'                 , '/'),
+        :'modals'                          => File.join('drupal', 'drupal6-openshift-modals'                         , '/'),
+        :'og_comment_perms'                => File.join('drupal', 'drupal6-openshift-og_comment_perms'               , '/'),
+        :'redhat_acquia'                   => File.join('drupal', 'drupal6-openshift-redhat_acquia'                  , '/'),
+        :'redhat_frontpage'                => File.join('drupal', 'drupal6-openshift-redhat_frontpage'               , '/'),
+        :'redhat_events'                   => File.join('drupal', 'drupal6-openshift-redhat_events'                  , '/'),
+        :'redhat_ideas'                    => File.join('drupal', 'drupal6-openshift-redhat_ideas'                   , '/'),
+        :'redhat_sso'                      => File.join('drupal', 'drupal6-openshift-redhat_sso'                     , '/'),
+        :'theme'                           => File.join('drupal', 'drupal6-openshift-theme'                          , '/'),
+        :'styles'                          => File.join('site', 'app', 'assets', 'stylesheets'                       , '/'),
+      }
+
+      @target_dir_for = {
+        :drupal => '/etc/drupal6',
+        :httpd  => '/etc/httpd',
+        # Drupal modules
+        :'custom_forms'                    => '/etc/drupal6/all/modules/custom/custom_forms',
+        :'features-application_quickstarts' => '/etc/drupal6/all/modules/features/application_quickstarts',
+        :'features-blogs'                  => '/etc/drupal6/all/modules/features/blogs',
+        :'features-community_wiki'         => '/etc/drupal6/all/modules/features/community_wiki',
+        :'features-forums'                 => '/etc/drupal6/all/modules/features/forums',
+        :'features-front_page'             => '/etc/drupal6/all/modules/features/front_page',
+        :'features-global_settings'        => '/etc/drupal6/all/modules/features/global_settings',
+        :'features-recent_activity_report' => '/etc/drupal6/all/modules/features/recent_activity_report',
+        :'features-reporting_csv_views'    => '/etc/drupal6/all/modules/features/reporting_csv_views',
+        :'features-rules_by_category'      => '/etc/drupal6/all/modules/features/rules_by_category',
+        :'features-user_profile'           => '/etc/drupal6/all/modules/features/user_profile',
+        :'features-video'                  => '/etc/drupal6/all/modules/features/video',
+        :'modals'                          => '/etc/drupal6/all/modules/custom/modals',
+        :'og_comment_perms'                => '/etc/drupal6/all/modules/custom/og_comment_perms',
+        :'redhat_acquia'                   => '/etc/drupal6/all/modules/custom/redhat_acquia',
+        :'redhat_frontpage'                => '/etc/drupal6/all/modules/custom/redhat_frontpage',
+        :'redhat_events'                   => '/etc/drupal6/all/modules/custom/redhat_events',
+        :'redhat_ideas'                    => '/etc/drupal6/all/modules/custom/redhat_ideas',
+        :'redhat_sso'                      => '/etc/drupal6/all/modules/custom/redhat_sso',
+        :'theme'                           => '/etc/drupal6/all/themes/openshift-theme',
+        :'styles'                          => '/var/www/openshift/site/app/assets/stylesheets',
+      }
+
+      @ignore_for = {
+        :rails => ['log', 'tmp', 'httpd'],
+        :rpm   => ['*.spec'],
+      }
+
+      @latency_for = {
+        :rails => 0.2,
+        :rpm => 0.2,
+      }
+
+      @rsync_target_host = 'verifier'
+
+      begin
+        require 'listen'
+        if options.verbose?
+          say "Using 'listen' gem"
+        end
+        watch_with_listen(options.verbose?)
+      rescue LoadError
+        warn "'listen' gem is required for the 'watch' function."
       end
     end
-    
 
-    ######################################################################
-    #
-    # Supporting methods go here
+    private
+
+    def watch_with_listen(verbose = false)
+      # Rsync cannot set owner or group, so we should inherit
+      set_sticky_bits_for '/var/www/openshift'
+
+      @target_dir_for.keys.each do |component|
+        start_listener_for component
+      end
+
+      sleep
+    end
+
+    def start_listener_for(component)
+      Dir.chdir(File.join(File.dirname(__FILE__), '..'))
+      Listen.to(@source_dir_for[component],
+      :latency => @latency_for[component]).
+      change(&(callback_for component, @ignore_for[component])).start(false)
+    end
+
+    def callback_for(component, exclude = nil)
+      unless @source_dir_for[component]
+        warn "#{@source_dir_for[component]} does not contain key #{component}"
+        return
+      end
+
+      Proc.new do |modified, added, removed|
+        Dir.chdir(File.join(File.dirname(__FILE__), '..'))
+        run ['rsync', '-r', @rsync_default_opts, exclude ? exclude.map {|dir| "--exclude=#{dir}" } : nil, @source_dir_for[component], @rsync_target_host + ':' + @target_dir_for[component]].join(" ")
+      end
+    end
+
+    def set_sticky_bits_for(dir, timeout = 1800)
+      ssh @rsync_target_host, "find #{dir} -type d | xargs chmod g+s", timeout
+    end
+
+    public
+
+    desc "print_packages", "Print a space separated list of packages"
+    def print_packages
+      puts get_sorted_package_names
+    end
+
+    desc "print_ignore_packages", "Print a space separated list of packages to ignore"
+    method_option :include_unmodified, :type => :boolean, :desc => "Include packages which have no modifications since their last tag"
+    def print_ignore_packages
+      puts get_ignore_packages(options.include_unmodified)
+    end
+
+    desc "setup_multi_node_broker", "Sets up verifier as a multi-node broker"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+
+    def setup_multi_node_broker
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+
+      #internal_hostname = get_internal_hostname("verifier")
+      internal_ip = get_private_ip("verifier")
+      ssh("verifier", "sed -i 's,^plugin.activemq.pool.1.host.*=.*,plugin.activemq.pool.1.host=#{internal_ip},' /etc/mcollective/client.cfg;" \
+                    "sed -i 's,^plugin.activemq.pool.1.host.*=.*,plugin.activemq.pool.1.host=#{internal_ip},' /etc/mcollective/server.cfg;" \
+                    "sed -i 's,^#-A,-A,' /etc/sysconfig/iptables;" \
+                    "sed -i 's,^BROKER_HOST.*=.*,BROKER_HOST=#{internal_ip},' /etc/openshift/node.conf;" \
+                    "service iptables restart; service activemq restart; service mcollective restart", 240)
+
+      puts ssh("verifier", "mco ping")
+    end
+
+    desc "add_multi_node_devenv", "Adds a node to a multi node devenv setup"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+
+    def add_multi_node_devenv(hostname)
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+
+      internal_hostname = get_internal_hostname("verifier")
+      internal_ip = get_private_ip("verifier")
+
+      puts `pushd /tmp > /dev/null; rm -rf /tmp/clients; scp -r verifier:/etc/mcollective/ssl/clients/ .; scp -r clients/* #{hostname}:/etc/mcollective/ssl/clients/; popd > /dev/null`
+
+      ssh(hostname, "sed -i 's,^plugin.activemq.pool.1.host.*=.*,plugin.activemq.pool.1.host=#{internal_ip},' /etc/mcollective/client.cfg;" \
+                    "sed -i 's,^plugin.activemq.pool.1.host.*=.*,plugin.activemq.pool.1.host=#{internal_ip},' /etc/mcollective/server.cfg;" \
+                    "sed -i 's,^BROKER_HOST.*=.*,BROKER_HOST=#{internal_ip},' /etc/openshift/node.conf;" \
+                    "service activemq stop; service mcollective restart", 240)
+
+      puts ssh("verifier", "mco ping")
+    end
+
+    desc "sync_groups GROUPNAME", "Copies the security group permission from specified region to other regions"
+    method_option :clean, :type => :boolean, :desc => "Revokes any existing permissions and starts fresh"
+    method_option :region, :required => false, :default => 'us-east-1', :desc => "Amazon region to copy (default us-east-1)"
+
+    def sync_groups(group_name)
+      conn = connect
+      origin_sg = conn.regions[options.region].security_groups.filter('group-name', group_name).first
+      if(origin_sg.nil?)
+        puts "Group #{group_name} not found in region #{options.region}"
+        exit 1
+      end
+      conn.regions.each do |region|
+        #skip the region of origin
+        next if(region.name == options.region)
+
+        puts "Synching #{region.name}"
+        sg = conn.regions[region.name].security_groups.filter('group-name', group_name).first
+        #If group does not exist then create it
+        if(sg.nil?)
+          sg = conn.regions[region.name].security_groups.create(group_name)
+          #open access within the group
+          sg.authorize_ingress(:tcp, 0..65535, sg)
+          sg.authorize_ingress(:udp, 0..65535, sg)
+          sg.authorize_ingress(:icmp, -1, sg)
+        elsif (options.clean)
+          puts "Revoking existing permissions"
+          sg.ingress_ip_permissions.each do |i|
+            i.revoke()
+          end
+          #open access within the group
+          sg.authorize_ingress(:tcp, 0..65535, sg)
+          sg.authorize_ingress(:udp, 0..65535, sg)
+          sg.authorize_ingress(:icmp, -1, sg)
+        end
+        puts "Adding permissions"
+        origin_sg.ingress_ip_permissions.each do |i|
+          i.ip_ranges.each do |ip|
+            puts "#{i.protocol}  \tport_range=#{i.port_range}\t" +
+            "ip_range=#{ip} "
+            begin
+              sg.authorize_ingress(i.protocol , i.port_range, ip )
+            rescue AWS::EC2::Errors::InvalidPermission::Duplicate
+              puts "Permission already exists."
+            end
+          end
+          i.groups.each do |g|
+            if(g.owner_id != sg.owner_id)
+              puts "#{i.protocol}  \tport_range=#{i.port_range}\t" +
+              "group name=#{g.name} owner=#{g.owner_id} id=#{g.group_id} "
+              if(g.exists?)
+                begin
+                  sg.authorize_ingress(i.protocol , i.port_range, g )
+                rescue AWS::EC2::Errors::InvalidPermission::Duplicate
+                  puts "Permission already exists."
+                end
+              else
+                puts "ERROR: Group name=#{g.name} owner=#{g.owner_id} id=#{g.group_id} " +
+                "does not exist or is in a different region."
+              end
+            end
+          end
+        end
+      end
+    end
 
     no_tasks do
+      def idle_all_gears(hostname)
+        puts "Idling all gears on remote instance: #{hostname}"
+        ssh(hostname, "service mcollective restart; service openshift-port-proxy restart; for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then oo-idler -n -u `basename $dir`; fi; done; service httpd graceful", 240)
+        puts "Done"
+      end
+
+      def repo_path(dir='')
+        File.expand_path("../#{dir}", File.dirname(__FILE__))
+      end
+
+      def disable_charlie(hostname)
+        puts "Disabling automatic shutdown on remote instance: #{hostname}"
+        ssh(hostname, "echo HOURS=9999 > /etc/charlie.conf", 240)
+      end
+
+      def broker_profiler(hostname, enable=true)
+        puts "Setting broker profile enable: #{enable}"
+        f=Tempfile.open('fixbroker')
+        begin
+          if enable
+            f.puts '/config.profiler = {/,/}/ { s/\#//g; }'
+          else
+            f.puts '/config.profiler = {/,/}/ { s/\#//g; s/^/#/; }'
+          end
+          f.close
+          scp_to(hostname, f.path, "/tmp/fixbroker.sed", 600, 10)
+          ssh(hostname, "sed -i -f /tmp/fixbroker.sed /var/www/openshift/broker/config/environments/development.rb", 240)
+          ssh(hostname, "/sbin/service rhc-broker restart", 240)
+        ensure
+          f.close
+          f.unlink
+        end
+      end
+
+      def update_facts(hostname)
+        puts "Updating instance facts and running libra-data to set the public ip..."
+        ssh(hostname, "sed -i \"s/.*PUBLIC_IP_OVERRIDE.*/#PUBLIC_IP_OVERRIDE=/g\" /etc/openshift/node.conf; sed -i \"s/.*PUBLIC_HOSTNAME_OVERRIDE.*/#PUBLIC_HOSTNAME_OVERRIDE=/g\" /etc/openshift/node.conf; /usr/libexec/mcollective/update_yaml.rb /etc/mcollective/facts.yaml; service libra-data start")
+        puts 'Done'
+      end
+
+      def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
+        ssh(hostname, "cp -n #{repo_parent_dir}/openshift-test/controller/test/cucumber/*.feature #{repo_parent_dir}/openshift-test/tests/.; mkdir -p #{repo_parent_dir}/openshift-test/broker/tmp/cache; mkdir -p #{repo_parent_dir}/openshift-test/rhc-broker/tmp/cache ", 60, false, 2, user)
+      end
+
+      def setup_verifier(hostname, branch)
+        print "Initializing git repo for syncing..."
+        init_repos(hostname)
+        puts "Done"
+        update_remote_tests(hostname, branch)
+      end
+
+      def rpm_manifest(hostname)
+        print "Retrieving RPM manifest.."
+        manifest, exit_code = ssh(hostname, 'rpm -qa | grep rhc-', 60, true)
+        if exit_code != 0 && !manifest.empty?
+          puts "Error retrieving manifest #{manifest}"
+          exit 1
+        end
+        manifest = manifest.split("\n").sort.join(" / ")
+        # Trim down the output to 255 characters
+        manifest.gsub!(/rhc-([a-z])/, '\1')
+        manifest.gsub!('.el6.noarch', '')
+        manifest.gsub!('.el6_1.noarch', '')
+        manifest.gsub!('cartridge', 'c-')
+        manifest = manifest[0..254]
+        puts "Done"
+        return manifest
+      end
 
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
-        `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
-        scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/log/*", "rhc/log/broker", 60, ssh_user)
-        scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, ssh_user)
-        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
-        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
-        puts "Done"
-
-        puts "Creating dummy Cucumber test result file..."
-        `mkdir -p rhc/log/cucumber_results > /dev/null`
-        File.open("rhc/log/cucumber_results/TEST_dummy.xml", 'w') do |dummy| dummy.write <<-"EOF"
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Dummy" tests="1" time="0" failures="0" errors="0" skipped="0" assertions="1">
-  <testcase name="test_dummy" time="0" assertions="1">
-  </testcase>
-  <system-out>
-  </system-out>
-  <system-err>
-  </system-err>
-</testsuite>
-EOF
-        end
+        `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p site/test/reports site/test/coverage broker/test/coverage origin-broker/test/coverage node/test/coverage mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
+        scp_from(hostname, "/tmp/rhc/*", "rhc/log")
+        scp_from(hostname, "/var/log/openshift/site/*", "rhc/log/site")
+        scp_from(hostname, "/root/openshift-test/site/test/reports/*", "rhc/log/site/test/reports")
+        scp_from(hostname, "/root/openshift-test/site/log/*", "rhc/log/site")
+        scp_from(hostname, "/root/openshift-test/site/test/coverage/*", "rhc/log/site/test/coverage")
+        scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker")
+        scp_from(hostname, "/var/log/openshift/node/*", "rhc/log/node")
+        scp_from(hostname, "/var/log/node-web-proxy/*", "rhc/log/node-web-proxy")
+        scp_from(hostname, "/root/openshift-test/rhc-broker/log/*", "rhc/log/broker")
+        scp_from(hostname, "/root/openshift-test/rhc-broker/test/coverage/*", "rhc/log/broker/test/coverage")
+        scp_from(hostname, "/root/openshift-test/broker/log/*", "rhc/log/origin-broker")
+        scp_from(hostname, "/root/openshift-test/broker/test/coverage/*", "rhc/log/origin-broker/test/coverage")
+        scp_from(hostname, "/root/openshift-test/node/test/coverage/*", "rhc/log/node/test/coverage")
+        scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log")
+        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective")
+        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log")
+        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log")
+        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log")
+        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log")
+        scp_from(hostname, "/var/log/dmesg", "rhc/log/system/dmesg.log")
+        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log")
+        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log")
+        scp_from(hostname, "/tmp/rhc/screenshots/*", "rhc/log/screenshots")
+        scp_from(hostname, "/root/openshift-test/selenium/output/*", "rhc/log/selenium")
+        scp_from(hostname, "/var/lib/openshift/*/*/jbossas-7/standalone/tmp/*.log", "rhc/log/jbossas")
+        scp_from(hostname, "/var/lib/openshift/*/*/jbosseap-6.0/standalone/tmp/*.log", "rhc/log/jbosseap")
+        scp_from(hostname, "/tmp/rhc/benchmark.csv", "rhc/log")
+        scp_from(hostname, "/tmp/broker-profiler/*", "rhc/log/broker-profiler")
+        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage")
         puts "Done"
       end
-      
-      # launch also calls this to perform some kind of validation of instance state
-      def validate_instance(hostname, num_tries=2)
-        # here we will check that it has access to the yum repos
+
+      def validate_instance(hostname, num_tries=1)
+        # Validate the node installation
         puts "Validating instance..."
+        (1..num_tries).each do |i|
+          unless is_valid?(hostname)
+            if i == num_tries
+              puts "ERROR - instance is not valid"
+              exit 1
+            elsif i == 1
+              output = ssh(hostname, %{
+# TODO: improve this
+#echo "show collections" | mongo -u openshift -p mooo openshift_broker_dev
+#if [ $? -ne 0 ]
+#then
+#  service rhc-datastore restart
+#  sleep 5
+#fi
+echo > /var/log/openshift/broker/development.log
+echo > /var/log/openshift/broker/httpd/error_log
+service openshift-broker restart
+echo > /var/log/openshift/site/development.log
+echo > /var/log/openshift/site/httpd/error_log
+service openshift-console restart
+service httpd restart
+service openshift-port-proxy restart
+}, 60)
+            puts output
+            end
+            sleep 5
+          else
+            break
+          end
+        end
+        puts "Done"
+      end
 
-        validation_output = ssh(hostname, 'yum info openshift-origin-broker --cacheonly', 30)
-        if validation_output =~ /Name\s*:\s*openshift-origin-broker/
-          puts "Instance is valid."
-        else
-          puts "ERROR - instance is not valid"
-          puts "Node Acceptance Output:"
-          puts validation_output
-          exit 1
+      def test_impl(tag, hostname, instance, conn, options, image_id=nil)
+        begin
+
+          validate_instance(hostname, 4)
+
+          disable_charlie(hostname) if options.disable_charlie?
+
+          mcollective_logs(hostname) if options.mcollective_logs?
+
+          idle_all_gears(hostname) unless options.official?
+
+          reset_test_dir(hostname)
+
+          #broker_profiler(hostname) if options.profile_broker?
+
+          test_queues = [[], [], [], []]
+
+          extended_tests = nil
+          if options.include_extended
+            extended_tests = []
+            extended_tests = options.include_extended.split(",").map do |extended_test|
+              extended_test.strip
+            end
+          end
+
+          if options.include_extended
+            extended_tests.each do |extended_test|
+              case extended_test
+              when 'broker'
+                test_queues[0] << ["REST API Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 openshift-test/tests", {:retry_individually => true}]
+                test_queues[1] << ["REST API Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 openshift-test/tests", {:retry_individually => true}]
+                test_queues[2] << ["REST API Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 openshift-test/tests", {:retry_individually => true}]
+                test_queues[3] << ["REST API Group 4", "cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 openshift-test/tests", {:retry_individually => true}]
+                test_queues[0] << ["Broker Domain System", "cd openshift-test/rhc-broker; rake test:domain_system_test", {:retry_individually => true}]
+                test_queues[2] << ["OpenShift Broker Functionals Ext", "cd openshift-test/broker; rake test:functionals_ext", {:retry_individually => true}]
+                test_queues[3] << ["Broker Usage", "cd openshift-test/rhc-broker; rake test:usage"]
+                test_queues[0] << ["Broker Application System", "cd openshift-test/rhc-broker; rake test:application_system_test", {:retry_individually => true}]
+                test_queues[2] << ["Broker Cartridge System", "cd openshift-test/rhc-broker; rake test:cartridge_system_test", {:retry_individually => true}]
+              when 'runtime'
+                test_queues[0] << ["Extended Runtime Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 openshift-test/tests"]
+                test_queues[1] << ["Extended Runtime Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 openshift-test/tests"]
+                test_queues[2] << ["Extended Runtime Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 openshift-test/tests"]
+              when 'runtime_other'
+                output = ssh(hostname, "mkdir -p /var/lib/openshift/.settings; touch /var/lib/openshift/.settings/v2_cartridge_format; echo 'Rails.cache.clear' | /var/www/openshift/broker/script/rails console development && service rhc-broker restart")
+                test_queues[0] << ["Extended Runtime Other Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 openshift-test/tests"]
+                test_queues[1] << ["Extended Runtime Other Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 openshift-test/tests"]
+                test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 openshift-test/tests"]
+                test_queues[0] << ["Runtime Unit", "cd openshift-test/node; rake test"]
+                (1..4).each do |i|
+                  test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other_#{i.to_s} openshift-test/tests"]
+                end
+                test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other openshift-test/tests"]
+              when 'site'
+                test_queues[0] << ["Site Extended", "cd openshift-test/site; rake test:extended"]
+              when 'rhc'
+                test_queues[0] << ["RHC Extended", "cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended openshift-test/tests", {:retry_individually => true}]
+                test_queues[1] << ["RHC Integration", "cd openshift-test/rhc; bundle install --path=gems; RHC_SERVER=localhost QUIET=1 bundle exec \"cucumber #{CUCUMBER_OPTIONS} features\"", {:retry_individually => true}]
+              else
+                puts "Not supported for extended: #{extended_test}"
+                exit 1
+              end
+            end
+          elsif options.include_cucumber
+            timeout = @@SSH_TIMEOUT
+            timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
+            # TODO: The cucumber tests need env.rb fixed.
+            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} openshift-test/tests", {:timeout => timeout}]
+          else
+
+            unless options.exclude_broker?
+              test_queues[0] << ["Broker Unit", "cd openshift-test/rhc-broker; rake test:units"]
+              test_queues[1] << ["Broker Functional", "cd openshift-test/rhc-broker; rake test:functionals"]
+              test_queues[0] << ["Broker Integration", "cd openshift-test/rhc-broker; rake test:integration"]
+              test_queues[1] << ["OpenShift Broker Units", "cd openshift-test/broker; rake test:units"]
+              test_queues[0] << ["OpenShift Broker Integration", "cd openshift-test/broker; rake test:integration"]
+              test_queues[2] << ["OpenShift Broker Functional", "cd openshift-test/broker; rake test:functionals"]
+              test_queues[3] << ["Broker Cucumber", "cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@fedora-only openshift-test/tests"]
+            end
+
+            unless options.exclude_runtime?
+              test_queues[0] << ["Runtime Unit", "cd openshift-test/node; rake test"]
+              (1..4).each do |i|
+                test_queues[i-1] << ["Runtime Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} openshift-test/tests"]
+              end
+            end
+
+            unless options.exclude_site?
+              test_queues[0].unshift ["Site Check Applications",         'cd openshift-test/site; rake test:check:applications']
+              test_queues[1].unshift ["Site Check Base",            'cd openshift-test/site; rake test:check:base']
+              test_queues[1] << ["Site Check Cartridges",           'cd openshift-test/site; rake test:check:cartridges']
+              test_queues[2] << ["Site Check Miscellaneous 1",      'cd openshift-test/site; rake test:check:misc1']
+              test_queues[3] << ["Site Check REST API Integration", 'cd openshift-test/site; rake test:check:restapi_integration']
+            end
+
+            unless options.exclude_rhc?
+                test_queues[0].unshift(["RHC Spec", 'cd openshift-test/rhc; bundle install --path=/tmp/rhc_bundle && bundle exec rake spec'])
+            end
+          end
+
+          threads = []
+          failures = []
+
+          retry_threshold = 0
+          test_queues.each do |test_queue|
+            titles = []
+            cmds = []
+            retry_individually = []
+            timeouts = []
+            test_queue.each do |test|
+              titles << test[0]
+              cmds << test[1]
+              opts = test[2] || {}
+              retry_individually << opts[:retry_individually] ? true : false
+              timeouts << opts[:timeout] ? opts[:timeout] : @@SSH_TIMEOUT
+              retry_threshold += 8
+            end
+            add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, retry_individually, timeouts)
+          end
+
+          threads.each do |t|
+            t[0].join
+          end
+
+          failures.uniq!
+
+          begin
+            if failures.length > 0 && failures.length <= retry_threshold
+              idle_all_gears(hostname)
+              retry_test_failures(hostname, failures, 2)
+            elsif failures.length > retry_threshold
+              exit 1
+            end
+
+            # These are special tests that cannot be written to work concurrently
+            if options.include_extended
+              extended_tests.each do |extended_test|
+                case extended_test
+                when 'broker'
+                when 'runtime', 'runtime_other'
+                  idle_all_gears(hostname)
+                  singleton_queue = ['Singletons', "cucumber #{CUCUMBER_OPTIONS} -t @singleton openshift-test/tests"]
+                  output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1])
+                  retry_test_failures(hostname, [singleton_queue], 2) if 0 != exit_code
+                when 'site'
+                when 'rhc'
+                else
+                  puts "Not supported for extended: #{extended_test}"
+                  exit 1
+                end
+              end
+            end
+
+            validate_instance(hostname, 4)
+          end
+
+          if options.official?
+            image_id = image_id ? image_id : instance.image_id
+            # Mark the image as verified
+            image = conn.images[image_id]
+            verify_image(image)
+
+            puts "Sending QE ready email..."
+            begin
+              send_verified_email(image_id, image.name)
+            rescue Exception => e
+              puts "Failed sending email with message: #{e.message}"
+            end
+          elsif !options.terminate?
+            idle_all_gears(hostname)
+          end
+
+          broker_profiler(hostname, enable=false) if options.profile_broker?
+
+          puts "Done"
+
+        ensure
+          if options.terminate? || options.official?
+            download_artifacts(hostname)
+          end
+          if options.terminate?
+            terminate_instance(instance)
+          end
         end
       end
-      
+
+      def build_impl(name, build_num, image, conn, options)
+        puts "Launching instance of AMI: #{image.id} - #{image.name}"
+        instance = launch_instance(image, name + '_' + build_num)
+        hostname = instance.dns_name
+
+        puts "Building on: #{hostname}"
+
+        begin
+          manifest = nil
+          begin
+            if options.install_required_packages?
+              puts "Updating all packages on the system..."
+              output = ssh(hostname, "yum clean metadata; yum update -y --exclude='rhc*' 2>&1", 1800)
+              puts "Done"
+              print_highlighted_output('Update Output', output)
+              
+              output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
+              print_highlighted_output('Install OpenSSH Clients Output', output)
+              exit 1 unless exit_code == 0
+            end
+
+            if options.reboot?
+              reboot(instance)
+            end
+
+            puts "Uploading devenv script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+
+            if options.install_required_packages?
+              puts "Uploading yum client certificates..."
+              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
+              scp_to(hostname, pem_path, "/var/lib/yum/")
+              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
+              scp_to(hostname, pem_path, "/var/lib/yum/")
+              scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
+              ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+              puts "Done"
+            end
+            
+            # BASE_RELEASE_BRANCH isn't used here for Enterprise.
+            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo} #{BASE_RELEASE_BRANCH};", 1800)
+            
+            puts "Updating all packages on the system..."
+            output = ssh(hostname, "yum clean metadata; yum update -y --exclude='rhc*' 2>&1", 1800)
+            puts "Done"
+            print_highlighted_output('Update Output', output)
+
+            puts "Uploading openshift-amz.sh script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../../openshift-extras/enterprise/install-scripts/amazon/openshift-amz.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+
+            output = ''
+            clone_commands = repo_clone_commands(hostname)
+            cmd = "set -ex;"
+            if options.install_from_source? || options.install_from_local_source?
+              if options.install_from_source?
+                puts "Performing clean install from source..."
+              elsif options.install_from_local_source?
+                puts "Performing clean install from local source..."
+              end
+              init_repos(hostname)
+              sync_repos(hostname) if options.install_from_local_source?
+              cmd += "#{clone_commands}\n"
+              cmd += "mkdir -p /tmp/tito;"
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "pushd /root/#{repo_name}; git checkout #{options.branch}; popd;"
+              end if options.install_from_source?
+
+              cmd += %{
+
+pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  echo "Building all specs on the server..."
+  build/devenv find_and_build_specs 2>&1
+popd > /dev/null
+
+mkdir /root/devenv-local/
+
+cat > /etc/yum.repos.d/local.repo <<EOF
+[devenv-local]
+name=devenv-local
+baseurl=file:///root/devenv-local/
+enabled=0
+gpgcheck=0
+priority=1
+EOF
+            
+cp /tmp/tito/x86_64/*.rpm /root/devenv-local/
+cp /tmp/tito/noarch/*.rpm /root/devenv-local/
+createrepo /root/devenv-local/
+
+# TODO: enterprise doesn't need this
+# yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
+
+CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true CONF_NO_REPOS=true /bin/bash ~/openshift-amz.sh 2>&1
+
+pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  build/devenv write_sync_history 2>&1
+popd > /dev/null
+                
+rm -rf /tmp/tito; mkdir -p /root/.source_build;
+}
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "rm -rf /root/#{repo_name}-bare; rm -rf /root/.source_build/#{repo_name}; mv /root/#{repo_name} /root/.source_build/#{repo_name};"
+              end
+            elsif options.install_required_packages?
+              puts "Installing bootstrap packages..."
+
+              output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk ruby193-rubygem-thor ruby193-rubygem-parseconfig ruby193-rubygem-json ruby193-rubygem-aws-sdk scl-utils-build createrepo yum-priorities", 600, true)
+              print_highlighted_output('Install Bootstrap Packages Output', output)
+              exit 1 unless exit_code == 0
+              puts "Done"
+
+              puts "Installing requires..."
+              init_repos(hostname)
+              cmd += %{
+
+#{clone_commands}
+# TODO We probably want to verify our install script handles this sort of stuff
+
+# Enable RHUI JBoss repos for cartridge rebase on core EAP packages
+yum -y install rh-amazon-rhui-client-jbeap6
+
+# Don't pull in JBoss' httpd package, it breaks things
+cat >> /etc/yum.repos.d/redhat-rhui-jbeap6.repo <<EOF
+exclude=httpd* mod_ssl
+EOF
+
+# Enable RHUI JB EWS1 repos for Tomcat6 cartridge
+yum -y install rh-amazon-rhui-client-jbews1
+
+# Don't pull in JBoss' httpd package, it breaks things
+cat >> /etc/yum.repos.d/redhat-rhui-jbews1.repo <<EOF
+exclude=httpd* mod_ssl
+EOF
+
+# Enable RHUI JB EWS2 repos for Tomcat7 cartridge
+yum -y install rh-amazon-rhui-client-jbews2
+
+# Don't pull in JBoss' httpd package, it breaks things
+cat >> /etc/yum.repos.d/redhat-rhui-jbews2.repo <<EOF
+exclude=httpd* mod_ssl
+EOF
+
+# Install the 32 bit java before anything else
+yum -y install java-1.6.0-openjdk.i686 java-1.6.0-openjdk-devel.i686
+yum -y remove java-1.6.0-openjdk.x86_64
+set +e
+rpm -e --nodeps java-1.7.0-openjdk java-1.7.0-openjdk-devel
+set -e
+yum -y install java-1.7.0-openjdk.i686 java-1.7.0-openjdk-devel.i686
+
+pushd #{DEV_TOOLS_EXT_REPO}
+  build/devenv install_required_packages 2>&1
+popd
+
+# Extras
+yum -y install rubygem-commander rubygem-highline rubygem-httpclient rubygem-net-ssh rubygem-open4 rubygem-archive-tar-minitar haproxy jenkins js mcollective mms-agent bind rubygem-test-unit
+
+# Update the Virus Definitions
+/usr/bin/freshclam
+}
+              SIBLING_REPOS.each_key do |repo_name|
+                cmd += "rm -rf /root/#{repo_name}; rm -rf /root/#{repo_name}-bare;"
+              end
+            else
+              raise "ERROR: this command isn't supported for Enterprise."
+              #TODO Our openshift-amz.sh script handles most of what rhc-devenv does
+              #puts "Performing clean install with the last published rpms..."
+              #cmd += "yum -y install rhc-devenv;"
+            end
+            cmd += 'sed -i "/nameserver 127.0.0.1/d" /etc/resolv.conf;'
+                  
+            output, exit_code = ssh(hostname, cmd, 3600, true)
+
+            print_highlighted_output('Install Output', output)
+            puts "Done"
+
+            exit exit_code unless exit_code == 0
+
+            validate_instance(hostname, 4) unless options.install_required_packages?
+
+            manifest = rpm_manifest(hostname)
+          rescue SystemExit => e
+            download_artifacts(hostname) if options.terminate? || options.official?
+            raise
+          end
+
+          output = ssh(hostname, "yum list installed", 120)
+
+          print_highlighted_output('Installed Packages', output)
+
+          image_id = nil
+          if options.register?
+            image = register_image(conn, instance, name + '_' + build_num, manifest)
+            image_id = image.id
+          end
+
+          unless options.skip_verify? || options.install_required_packages?
+            scp_remote_tests(hostname)
+            test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
+          end
+        ensure
+          terminate_instance(instance) if options.terminate?
+        end
+      end
+
       def restart_services()
         run("service mcollective restart; service rhc-broker restart; service rhc-site restart", :verbose => options.verbose?)
       end
-      
-      def enterprise_repo_version(repo_name)
-        repo_version = repo_name
-        if repo_name =~ /enterprise-(\d.\d)/
-          repo_version = $1
-        end
-        repo_version
-      end
-      
+
       def sync_impl(name, options)
 
         hostname = get_host_by_name_or_tag(name, options)
@@ -131,7 +843,7 @@ pushd #{DEV_TOOLS_EXT_REPO} > /dev/null
 popd > /dev/null
 
 rm -rf #{working_dirs}
-#{options.clean_metadata? ? "yum update -y rhc* *openshift* 2>&1;" : ''}
+#{options.clean_metadata? ? "yum update -y --exclude='rhc-devenv' rhc-* *openshift* 2>&1;" : ''}
 
 # End shell code
 ################
@@ -147,447 +859,41 @@ rm -rf #{working_dirs}
           puts "Done"
         end
       end
-      
-      def build_impl(name, build_num, image, conn, options)
-        puts "Launching instance of AMI: #{image.id} - #{image.name}"
-        instance = launch_instance(image, name + '_' + build_num)
-        hostname = instance.dns_name
 
-        puts "Building on: #{hostname}"
+      def sanity_check_impl(tag, hostname, instance, conn, options)
+        validate_instance(hostname)
 
-        begin
-          manifest = nil
-          begin
-            if options.install_required_packages?
-              puts "Updating all packages on the system..."
-              output = ssh(hostname, "yum clean metadata; yum update -y 2>&1", 1800)
-              puts "Done"
-              print_highlighted_output('Update Output', output)
-            
-              output, exit_code = ssh(hostname, "yum -y install openssh-clients", 240, true)
-              print_highlighted_output('Install OpenSSH Clients Output', output)
-              exit 1 unless exit_code == 0
-            end
+        threads = []
+        failures = []
+        site_titles = ["Site Sanity"]
+        site_cmds = ["cd openshift-test/site; rake test:sanity"]
+        add_ssh_cmd_to_threads(hostname, threads, failures, site_titles, site_cmds)
+        titles = ["Broker Sanity",
+          "OpenShift Broker Sanity",
+          "OpenShift Node Unit"]
 
-            if options.reboot?
-              reboot(instance)
-            end
+        cmds = ["cd openshift-test/rhc-broker; rake test:sanity",
+          "cd openshift-test/broker; rake test:sanity",
+          "cd openshift-test/node; rake test"]
+        add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds)
+        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity openshift-test/tests/")
 
-            puts "Uploading update-ip-address.sh script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/update-ip-address.sh")
-            scp_to(hostname, script_path, "~/")
-            puts "Done"
-
-            puts "Uploading devenv script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
-            scp_to(hostname, script_path, "~/")
-            puts "Done"
-
-            if options.install_required_packages?
-              puts "Uploading yum client certificates..."
-              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
-              scp_to(hostname, pem_path, "/var/lib/yum/")
-              pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
-              scp_to(hostname, pem_path, "/var/lib/yum/")
-              scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
-              ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
-              puts "Done"
-            end
-
-            # TODO actually pass in the version
-            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{enterprise_repo_version(options.yum_repo)};")
-            
-            puts "Updating all packages on the system..."
-            output = ssh(hostname, "yum clean metadata; yum update -y 2>&1", 1800)
-            puts "Done"
-            print_highlighted_output('Update Output', output)
-
-            output = ''
-            clone_commands = repo_clone_commands(hostname)
-            cmd = "set -ex;"
-            if options.install_from_source? || options.install_from_local_source?
-              if options.install_from_source?
-                puts "Performing clean install from source..."
-              elsif options.install_from_local_source?
-                puts "Performing clean install from local source..."
-              end
-              init_repos(hostname)
-              sync_repos(hostname) if options.install_from_local_source?
-              cmd += "#{clone_commands}\n"
-              cmd += "mkdir -p /tmp/tito;"
-              SIBLING_REPOS.each_key do |repo_name|
-                cmd += "pushd /root/#{repo_name}; git checkout #{options.branch}; popd;"
-              end
-
-              cmd += %{
-
-pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
-  echo "Building all specs on the server..."
-  build/devenv find_and_build_specs 2>&1
-popd > /dev/null
-
-mkdir /root/devenv-local/
-
-cat > /etc/yum.repos.d/local.repo <<EOF
-[devenv-local]
-name=devenv-local
-baseurl=file:///root/devenv-local/
-enabled=0
-gpgcheck=0
-priority=1
-EOF
-
-cp /tmp/tito/x86_64/*.rpm /root/devenv-local/
-cp /tmp/tito/noarch/*.rpm /root/devenv-local/
-createrepo /root/devenv-local/
-
-#TODO
-#yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
-pushd /root/devenv-local/
-  yum install -y *.rpm 2>&1
-popd
-
-pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
-  # TODO this doesn't even exist and fails silently
-  build/devenv write_sync_history 2>&1
-popd > /dev/null
-
-rm -rf /tmp/tito; mkdir -p /root/.source_build;
-}
-              SIBLING_REPOS.each_key do |repo_name|
-                cmd += "rm -rf /root/#{repo_name}-bare; rm -rf /root/.source_build/#{repo_name}; mv /root/#{repo_name} /root/.source_build/#{repo_name};"
-              end
-            elsif options.install_required_packages?
-              puts "Installing bootstrap packages..."
-
-              output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk createrepo yum-priorities charlie java-devel ruby193-build", 600, true)
-              print_highlighted_output('Install Bootstrap Packages Output', output)
-              exit 1 unless exit_code == 0
-              puts "Done"
-
-              puts "Installing requires..."
-              init_repos(hostname)
-              cmd += %{
-
-#{clone_commands}
-              
-# Enable RHUI JBoss repos for cartridge rebase on core EAP packages
-yum -y install rh-amazon-rhui-client-jbeap6
-              
-# Enable RHUI JB EWS repos for Tomcat cartridge
-yum -y install rh-amazon-rhui-client-jbews1
-
-yum -y install java-1.6.0-openjdk.x86_64 java-1.6.0-openjdk-devel.x86_64
-yum -y install java-1.7.0-openjdk.x86_64 java-1.7.0-openjdk-devel.x86_64
-
-pushd #{DEV_TOOLS_EXT_REPO}
-  build/devenv install_required_packages 2>&1
-popd
-}
-              SIBLING_REPOS.each_key do |repo_name|
-                cmd += "rm -rf /root/#{repo_name}; rm -rf /root/#{repo_name}-bare;"
-              end
-            else
-              puts "Performing clean install with the latest code..."
-              #TODO Our openshift-amz.sh script handles most of what rhc-devenv does
-              #cmd += "yum -y install rhc-devenv;"
-            end
-                  
-            output, exit_code = ssh(hostname, cmd, 3600, true)
-
-            print_highlighted_output('Install Output', output)
-            puts "Done"
-
-            exit exit_code unless exit_code == 0
-
-            validate_instance(hostname, 4) unless options.install_required_packages?
-
-            manifest = rpm_manifest(hostname)
-          rescue SystemExit => e
-            download_artifacts(hostname) if options.terminate? || options.official?
-            raise
-          end
-
-          output = ssh(hostname, "yum list installed", 120)
-
-          print_highlighted_output('Installed Packages', output)
-
-          unless options.install_required_packages?
-            puts "Uploading openshift-amz.sh script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../../openshift-extras/enterprise/install-scripts/amazon/openshift-amz.sh")
-            scp_to(hostname, script_path, "~/")
-            puts "Done"
-
-            puts "Running openshift-amz.sh..."
-            out, ret = ssh(hostname, "CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true " +
-                                     "CONF_NO_REPOS=true " +
-                                     "/bin/bash ~/openshift-amz.sh 2>&1", 60 * 30, true)
-            print_highlighted_output('openshift-amz.sh Output', out)
-            print_and_exit(ret, out) if ret != 0
-            puts "Done"
-            
-            puts "Validating...."
-            #TODO Temporary workaround
-            out, ret = ssh(hostname, "service openshift-broker restart", 60 * 30, true, 10)
-            print_and_exit(ret, out) if ret != 0
-            #out, ret = ssh(hostname, "oo-accept-node; oo-accept-broker", 60 * 30, true, 10)
-            #print_and_exit(ret, out) if ret != 0
-            puts "Done"
-          end
-
-          image_id = nil
-          if options.register?
-            image = register_image(conn, instance, name + '_' + build_num, manifest)
-            image_id = image.id
-          end
-
-          unless options.skip_verify? || options.install_required_packages?
-            scp_remote_tests(hostname, options.branch)
-            test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
-          end
-        ensure
-          terminate_instance(instance) if options.terminate?
+        threads.each do |t|
+          t[0].join
         end
-      end
-      
-      def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
-        ssh(hostname, "rm -f #{repo_parent_dir}/openshift-test/tests; ln -s #{repo_parent_dir}/openshift-test/controller/test/cucumber #{repo_parent_dir}/openshift-test/tests ;", 60, false, 2, user)
-      end
-      
-      def setup_verifier(hostname, branch)
-        print "Initializing git repo for syncing..."
-        init_repos(hostname)
-        puts "Done"
-        update_remote_tests(hostname, branch)
-      end
-      
-      def test_impl(tag, hostname, instance, conn, options, image_id=nil)
-        begin
-          
-          validate_instance(hostname, 4)
-  
-          #disable_charlie(hostname) if options.disable_charlie?
-          
-          mcollective_logs(hostname) if options.mcollective_logs?
-  
-          #idle_all_gears(hostname) unless options.official?
-          
-          reset_test_dir(hostname)
-  
-          #broker_profiler(hostname) if options.profile_broker?
-  
-          test_queues = [[], [], [], []]
-            
-          extended_tests = nil
-          if options.include_extended
-            extended_tests = []
-            extended_tests = options.include_extended.split(",").map do |extended_test|
-              extended_test.strip
-            end
-          end
-  
-          if options.include_extended
-            extended_tests.each do |extended_test|
-              case extended_test
-              when 'broker'
-                # The following tests need env.rb fixed.
-                #test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 openshift-test/tests\"", {:retry_individually => true}]
-                #test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 openshift-test/tests\"", {:retry_individually => true}]
-                #test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 openshift-test/tests\"", {:retry_individually => true}]
-                #test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 openshift-test/tests\"", {:retry_individually => true}]
-                
-                # The broker_key initializer in controller needs to be fixed before the test below can pass
-                # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
-                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd openshift-test/broker; bundle exec rake test:oo_unit_ext1", {:retry_individually => true}]
-              when 'runtime'
-                # The following tests need env.rb fixed.
-                #test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 openshift-test/tests\""]
-                #test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 openshift-test/tests\""]
-                #test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 openshift-test/tests\""]
-              when 'site'
-                puts "Warning: Site tests are currently not supported"
-              when 'rhc'
-                # The following tests need env.rb fixed.
-                #test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended openshift-test/tests\"", {:retry_individually => true}]
-                base_str = "QUIET=1 RHC_SERVER=localhost cucumber #{CUCUMBER_OPTIONS} openshift-test/features"
-                tags = [
-                  [ :client, :domain, :sshkey ],
-                  [ :application ],
-                  [ :single_cartridge ],
-                  [ :multiple_cartridge ]
-                ]
-                (0..3).each do |q|
-                  tags[q].each do |tag|
-                    #test_queues[q] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag} "]
-                  end
-                end
 
-                # TODO: Tests need to run serially until they are totally isolated
-                #  eg - some will destroy a domain or app that another is working on
-                tags.flatten.each do |tag|
-                  #test_queues[0] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag}", {:retry_individually => true}]
-                end
-
-              else
-                puts "Not supported for extended: #{extended_test}"
-                exit 1
-              end
-            end
-          elsif options.include_coverage?
-            test_queues[0] << ["OpenShift Origin Node Unit Coverage", "cd openshift-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
-            # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
-            #test_queues[1] << ["OpenShift Origin Broker Unit and Functional Coverage", "cd openshift-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
-          elsif options.include_cucumber
-            timeout = @@SSH_TIMEOUT
-            timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
-            # The cucumber tests need env.rb fixed.
-            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} openshift-test/tests", {:timeout => timeout}]
-          elsif options.include_web?
-            puts "Warning: Tests for the website are currently not supported"
-          else
-  
-            unless options.exclude_broker?
-              test_queues[0] << ["OpenShift Origin Broker Functional", "cd openshift-test/broker; su -c \"bundle exec rake test:functionals\""]
-              # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
-              #test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; su -c \"bundle exec rake test:integration\""]
-              test_queues[1] << ["OpenShift Origin Broker Unit 1", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit1\""]
-              # The following test needs https://github.com/openshift/origin-server/commit/013b9698d406cf3a3d36594992612c5dbaca201d
-              #test_queues[1] << ["OpenShift Origin Broker Unit 2", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit2\""]
-              # The following test needs env.rb fixed.
-              #test_queues[2] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin -t ~@not-enterprise openshift-test/tests\""]
-            end
-
-            unless options.exclude_runtime?
-              test_queues[3] << ["Runtime Unit", "cd openshift-test/node; su -c \"rake unit_test\""]
-              (1..4).each do |i|
-                # The following tests need env.rb fixed.
-                #test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} openshift-test/tests\""]
-              end
-            end
-  
-            unless options.exclude_site?
-            end
-
-            unless options.exclude_rhc?
-            end
-          end
-  
-          threads = []
-          failures = []
-  
-          retry_threshold = 0
-          test_queues.each do |test_queue|
-            titles = []
-            cmds = []
-            retry_individually = []
-            timeouts = []
-            test_queue.each do |test|
-              titles << test[0]
-              cmds << test[1]
-              opts = test[2] || {}
-              retry_individually << opts[:retry_individually] ? true : false
-              timeouts << opts[:timeout] ? opts[:timeout] : @@SSH_TIMEOUT
-              retry_threshold += 8
-            end
-            add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, retry_individually, timeouts, ssh_user)
-          end
-  
-          threads.each do |t|
-            t[0].join
-          end
-  
+        unless failures.empty?
           failures.uniq!
-  
-          begin
-            if failures.length > 0 && failures.length <= retry_threshold 
-              #idle_all_gears(hostname)
-              retry_test_failures(hostname, failures, 2, timeout=@@SSH_TIMEOUT, ssh_user)
-            elsif failures.length > retry_threshold
-              exit 1
-            end
-  
-            # These are special tests that cannot be written to work concurrently
-            if options.include_extended
-              extended_tests.each do |extended_test|
-                case extended_test
-                when 'broker'
-                when 'runtime'
-                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton openshift-test/tests\""]
-                  # These tests need env.rb fixed.
-                  #output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1], timeout=@@SSH_TIMEOUT, ssh_user)
-                  #retry_test_failures(hostname, [singleton_queue], 2, timeout=@@SSH_TIMEOUT, ssh_user) if 0 != exit_code
-                when 'site'
-                when 'rhc'
-                else
-                  puts "Not supported for extended: #{extended_test}"
-                  exit 1
-                end
-              end
-            end
-  
-            validate_instance(hostname, 4)
-          end
-  
-          if options.official?
-            image_id = image_id ? image_id : instance.image_id
-            # Mark the image as verified
-            image = conn.images[image_id]
-            verify_image(image)
-  
-            puts "Sending QE ready email..."
-            begin
-              send_verified_email(image_id, image.name)
-            rescue Exception => e
-              puts "Failed sending email with message: #{e.message}"
-            end
-          end
-  
-          puts "Done"
-  
-        ensure
-          download_artifacts(hostname)
-          
-          begin
-            terminate_instance(instance) if options.terminate?
-          rescue
-            # suppress termination errors - they have been logged already
-          end
+          retry_test_failures(hostname, failures, 1)
         end
+        validate_instance(hostname)
       end
-      
+
       def update_facts_impl(hostname)
-        #TODO
+        update_facts(hostname)
       end
-      
-      def post_launch_setup(hostname)
-        puts "Updating IP addresses in configuration files..."
-        out, ret = ssh(hostname, "/bin/bash ~/update-ip-address.sh", 60, true)
-        puts "Done"
-
-        if ret != 0
-          puts "Exiting with error code #{ret}"
-          puts "Output: #{out}"
-          exit ret
-        end
-      end
-      
-      def rpm_manifest(hostname, sshuser="root")
-        print "Retrieving RPM manifest.."
-        manifest = ssh(hostname, 'rpm -qa | grep -E "(openshift)" | grep -v cartridge', 60, false, 1, sshuser)
-        manifest = manifest.split("\n").sort.join(" / ")
-        # Trim down the output to 255 characters
-        manifest.gsub!(/rubygem-([a-z])/, '\1')
-        manifest.gsub!('openshift-origin-', '')
-        manifest.gsub!('mcollective-', 'mco-')
-        manifest.gsub!('.noarch', '')
-        manifest.gsub!(/\.git\.[a-z0-9\.]+/, '')
-        manifest = manifest[0..254]
-        puts "Done"
-        return manifest
-      end
-
     end # no_tasks end
   end # class end
 end # module end
 
-DevOps::BuilderPlugin.start
+Enterprise::BuilderPlugin.start
