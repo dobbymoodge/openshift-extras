@@ -248,6 +248,7 @@ pushd /root/devenv-local/
 popd
 
 pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  # TODO this doesn't even exist and fails silently
   build/devenv write_sync_history 2>&1
 popd > /dev/null
 
