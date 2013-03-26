@@ -703,7 +703,7 @@ createrepo /root/devenv-local/
 # TODO: enterprise doesn't need this
 # yum -y install rhc-devenv --enablerepo=devenv-local 2>&1
 
-CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true CONF_NO_REPOS=true /bin/bash ~/openshift-amz.sh 2>&1
+CONF_NO_DATASTORE_AUTH_FOR_LOCALHOST=true CONF_NO_REPOS=true /bin/bash /root/openshift-amz.sh 2>&1
 
 pushd /root/#{DEV_TOOLS_EXT_REPO} > /dev/null
   build/devenv write_sync_history 2>&1
