@@ -410,6 +410,7 @@ retries = 0
         puts "Done"
         puts "Hostname: #{hostname}"
 
+=begin
         if(BASE_OS == "rhel" or BASE_OS == "centos")
           puts "TODO: remove this stuff..."
           out, ret = ssh(hostname, "su -c \"yum clean all; yum install -y ruby193-rubygem-aws-sdk\"", 60 * 20, true, 1, ssh_user)
@@ -420,6 +421,7 @@ retries = 0
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
         end
+=end
 
         ret, out = 0, nil
         begin
