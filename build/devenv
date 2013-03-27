@@ -410,30 +410,6 @@ retries = 0
         puts "Done"
         puts "Hostname: #{hostname}"
 
-        if(BASE_OS == "rhel" or BASE_OS == "centos")
-          puts "Setting up ruby193..."
-          out, ret = ssh(hostname, "su -c \"yum install -y scl-utils ruby193-ruby\"", 60 * 20, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
-
-          out, ret = ssh(hostname, %{
-cat<<EOF > /etc/profile.d/scl193.sh
-# Setup PATH, LD_LIBRARY_PATH and MANPATH for ruby-1.9
-ruby19_dir=$(dirname `scl enable ruby193 "which ruby"`)
-export PATH=$ruby19_dir:$PATH
-
-ruby19_ld_libs=$(scl enable ruby193 "printenv LD_LIBRARY_PATH")
-export LD_LIBRARY_PATH=$ruby19_ld_libs:$LD_LIBRARY_PATH
-
-ruby19_manpath=$(scl enable ruby193 "printenv MANPATH")
-export MANPATH=$ruby19_manpath:$MANPATH
-EOF
-          }, 60 * 2, true, 1, ssh_user)
-          puts "Done"
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
-        end
-        
         ret, out = 0, nil
         begin
           if options.install_required_packages?
