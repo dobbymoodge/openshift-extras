@@ -410,6 +410,17 @@ retries = 0
         puts "Done"
         puts "Hostname: #{hostname}"
 
+        if(BASE_OS == "rhel" or BASE_OS == "centos")
+          puts "TODO: remove this stuff..."
+          out, ret = ssh(hostname, "su -c \"yum install -y ruby193-rubygem-aws-sdk\"", 60 * 20, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+
+          puts "Done"
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+        end
+
         ret, out = 0, nil
         begin
           if options.install_required_packages?
