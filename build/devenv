@@ -388,7 +388,7 @@ retries = 0
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_REPO}; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
 
           out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
@@ -490,7 +490,7 @@ retries = 0
           
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
-            out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_REPO}; build/devenv 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; build/devenv 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
           end
         
@@ -499,7 +499,7 @@ retries = 0
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_REPO}; #{cmd} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; #{cmd} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           
           print_highlighted_output("Install Output", out)
@@ -584,7 +584,7 @@ EOF
               if(BASE_OS == "rhel" or BASE_OS == "centos")
                 cmd = "scl enable ruby193 \\\"#{cmd}\\\""
               end
-              out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_REPO}; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+              out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
               print_and_exit(ret, out) if ret != 0
             
               out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)

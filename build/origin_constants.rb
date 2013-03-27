@@ -92,7 +92,7 @@ SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterp
                         'openshift-extras' => 'git@github.com:openshift/openshift-extras.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'
-DEV_TOOLS_EXT_REPO = DEV_TOOLS_REPO
+DEV_TOOLS_EXT_REPO = 'enterprise'
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO]
 ACCEPT_DEVENV_SCRIPT = 'true'
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
