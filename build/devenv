@@ -424,10 +424,6 @@ retries = 0
 =end
 
 =begin
-            puts "Uploading devenv script..."
-            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
-            scp_to(hostname, script_path, "~/")
-            puts "Done"
 =end
 
         ret, out = 0, nil
@@ -437,16 +433,23 @@ retries = 0
             pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
             scp_to(hostname, pem_path, "/var/lib/yum/")
             pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
+            # needed for init_repos
             scp_to(hostname, pem_path, "/var/lib/yum/")
             scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
             ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+            puts "Done"
+
+            puts "Setting up yum repos..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
+            scp_to(hostname, script_path, "~/")
+            ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo};", 1800)
             puts "Done"
 
             puts "Starting yum update..."
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "su -c \"yum install -y ruby ruby-irb ruby-libs ruby-devel rubygem-thor\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum install -y ruby193-ruby ruby193-rubygem-thor\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
             out, ret = ssh(hostname, "su -c \"yum erase -y epel-release\"", 60 * 20, true, 1, ssh_user)
@@ -508,7 +511,7 @@ retries = 0
           
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
-            out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; build/devenv 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; scl enable ruby193 'build/devenv' 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
           end
         
