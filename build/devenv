@@ -423,9 +423,25 @@ retries = 0
         end
 =end
 
+=begin
+            puts "Uploading devenv script..."
+            script_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/setup-devenv-repos.sh")
+            scp_to(hostname, script_path, "~/")
+            puts "Done"
+=end
+
         ret, out = 0, nil
         begin
           if options.install_required_packages?
+            puts "Uploading yum client certificates..."
+            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
+            scp_to(hostname, pem_path, "/var/lib/yum/")
+            pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-key.pem")
+            scp_to(hostname, pem_path, "/var/lib/yum/")
+            scp_to(hostname, "misc/devenv/root/.ssh/*", "/root/.ssh/")
+            ssh(hostname, "chmod 0600 /root/.ssh/id_rsa; chmod 0644 /root/.ssh/id_rsa.pub /root/.ssh/known_hosts;")
+            puts "Done"
+
             puts "Starting yum update..."
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
