@@ -9,7 +9,7 @@ baseurl=http://mirror1.ops.rhcloud.com/mirror/epel/6/\$basearch/
 failovermethod=priority
 enabled=1
 gpgcheck=0
-exclude=rubygem-term-ansicolor rubygem-passenger rubygem-passenger-native rubygem-passenger-native-libs rubygem-stomp mongodb*
+exclude=rubygem-term-ansicolor rubygem-passenger rubygem-passenger-native rubygem-passenger-native-libs rubygem-stomp mongodb* puppet* facter
 priority=4
 EOF
 
