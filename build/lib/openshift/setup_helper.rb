@@ -15,7 +15,7 @@ module SetupHelper
 
     create_openshift_deps_rpm_repository
     if `rpm -q puppet`.match(/is not installed/)
-      system "yum install -y --enablerepo puppetlabs-products facter puppet"
+      system "yum install -y --enablerepo=puppetlabs-products --disablerepo=Node facter puppet"
     end
 
     base_os = guess_os
