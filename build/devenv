@@ -481,7 +481,7 @@ retries = 0
 
           if options.install_from_local_source?
             puts "Performing clean install from local source..."
-            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
+            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user, options.branch)
           else
             SIBLING_REPOS.each do |repo_name, repo_dirs|
               working_dirs += "#{repo_name} "
@@ -509,6 +509,7 @@ retries = 0
             end
           end
           
+          # TODO: this doesn't need to run for install_from_source
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
             out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; scl enable ruby193 'build/devenv' 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
@@ -618,7 +619,7 @@ EOF
               print_and_exit(ret, out) if ret != 0
               out, ret = ssh(hostname, 'su -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'TSIG_KEY=`su -c "cat /var/named/Kexample.com.*.key") | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'TSIG_KEY=`su -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
               
               post_launch_setup(hostname)
