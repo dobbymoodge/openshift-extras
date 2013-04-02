@@ -481,7 +481,7 @@ retries = 0
 
           if options.install_from_local_source?
             puts "Performing clean install from local source..."
-            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user, options.branch)
+            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", options.branch, ssh_user)
           else
             SIBLING_REPOS.each do |repo_name, repo_dirs|
               working_dirs += "#{repo_name} "
