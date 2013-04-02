@@ -35,6 +35,7 @@ OPTIONS = {
     "amis"            => {"us-east-1" =>"ami-cc5af9a5"},
     "devenv_name"     => "enterprise",
     "ssh_user"        => "root",
+    # TODO: fix these!!
     "ignore_packages" => [
       'rubygem-openshift-origin-auth-kerberos',
       'openshift-origin-util',
@@ -51,6 +52,7 @@ OPTIONS = {
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
+      'avahi-cname-manager',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@jboss',    
