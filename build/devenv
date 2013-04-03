@@ -594,7 +594,7 @@ class { "openshift_origin" :
   install_repo        => "file:///root/origin-rpms",
   development_mode    => true,
   configure_cgroups   => true,
-
+  use_v2_carts        => true,
 }
 EOF
             }, 60 * 2, true, 1, ssh_user)
