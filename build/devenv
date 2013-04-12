@@ -225,8 +225,9 @@ retries = 0
           ssh(hostname, wrap_test_command("echo 'export REGISTER_USER=1' > /etc/profile.d/testenv.sh") , 60, false, 2, SSH_USER)
           ssh(hostname, wrap_test_command("echo 'export RHC_DOMAIN=example.com' >> /etc/profile.d/testenv.sh"), 60, false, 2, SSH_USER)
           ssh(hostname, wrap_test_command("echo 'export RHC_SERVER=#{hostname}' >> /etc/profile.d/testenv.sh"), 60, false, 2, SSH_USER)
-          ssh(hostname, "oo-register-user -ladmin -padmin --username user_with_multiple_gear_sizes@test.com --userpass test" , 60, false, 2, SSH_USER)
-          ssh(hostname, "oo-register-user -ladmin -padmin --username user_with_extra_storage@test.com --userpass test" , 60, false, 2, SSH_USER)
+          # TODO: is this needed?
+          # ssh(hostname, "oo-register-user -ladmin -padmin --username user_with_multiple_gear_sizes@test.com --userpass test" , 60, false, 2, SSH_USER)
+          # ssh(hostname, "oo-register-user -ladmin -padmin --username user_with_extra_storage@test.com --userpass test" , 60, false, 2, SSH_USER)
             
           extended_tests = nil
           if options.include_extended
@@ -595,6 +596,7 @@ class { "openshift_origin" :
   development_mode    => true,
   configure_cgroups   => true,
   use_v2_carts        => true,
+  broker_auth_plugin  => "htpasswd",
 }
 EOF
             }, 60 * 2, true, 1, ssh_user)
@@ -701,6 +703,8 @@ su -c \"service named restart\"
         print_and_exit(ret, out) if ret != 0
         
         out, ret = ssh(hostname, "su -c \"puppet apply --verbose ~#{SSH_USER}/configure_origin.pp\"", 60 * 20, true, 1, ssh_user)
+        # TODO: activemq is failing to start or crashing
+        out, ret = ssh(hostname, "su -c \"service activemq restart; sleep 10; service mcollective restart\"", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
         print_highlighted_output( "Origin setup", out)
         restart_services_remote(hostname)
