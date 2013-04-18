@@ -486,11 +486,32 @@ retries = 0
             ssh(hostname, "/bin/bash ~/setup-devenv-repos.sh #{options.yum_repo};", 1800)
             puts "Done"
 
+            puts "Setting up yum priorities..."
+            out, ret = ssh(hostname, "su -c \"yum -y install yum-plugin-priorities\"", 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Update Output", out)
+            repo = 'rhui-us-east-1-rhel-server-releases'
+            out, ret = ssh(hostname, "su -c \"yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save\"", 60 * 20, 
+                           true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Update Output", out)
+            out, ret = ssh(hostname, "su -c \"yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews1 rh-amazon-rhui-client-jbews2\"", 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Update Output", out)
+            repos = ['rhui-us-east-1-jbeap-6-rhui-rhel-6-rpms', 'rhui-us-east-1-rhel-server-6-jbews1', 
+                     'rhui-us-east-1-rhel-server-6-jbews2']
+            repos.each do |repo|
+              out, ret = ssh(hostname, "su -c \"yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save\"", 
+                             60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+              print_highlighted_output("Update Output", out)
+            end
+
             puts "Starting yum update..."
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "su -c \"yum install -y ruby193-ruby ruby193-rubygem-thor rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews1 rh-amazon-rhui-client-jbews2\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum install -y ruby193-ruby ruby193-rubygem-thor\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
             out, ret = ssh(hostname, "su -c \"yum erase -y epel-release\"", 60 * 20, true, 1, ssh_user)
@@ -562,7 +583,7 @@ retries = 0
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; #{cmd} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd /data/#{DEV_TOOLS_EXT_REPO}; #{cmd} 2>&1 \"", 60 * 20, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           
           print_highlighted_output("Install Output", out)
