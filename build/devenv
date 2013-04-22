@@ -131,6 +131,7 @@ baseurl = file:///root/origin-rpms
 gpgcheck= 0
 enabled = 1
 retries = 0
+priority= 1
           }
         end
         run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
