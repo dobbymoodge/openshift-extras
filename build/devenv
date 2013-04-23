@@ -242,14 +242,14 @@ priority= 1
           # all in the runtime_other extended tests.  Jenkins doesn't run these
           # by default so we have explicitly made them the default.
           output = ssh(hostname, "mkdir -p /var/lib/openshift/.settings; touch /var/lib/openshift/.settings/v2_cartridge_format; echo 'Rails.cache.clear' | /var/www/openshift/broker/script/rails console development && service rhc-broker restart")
-          test_queues[0] << ["Extended Runtime Other Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 openshift-test/tests"]
-          test_queues[1] << ["Extended Runtime Other Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 openshift-test/tests"]
-          test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 openshift-test/tests"]
-          test_queues[0] << ["Runtime Unit", "cd openshift-test/node; rake test"]
+          test_queues[0] << ["Extended Runtime Other Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 /data/openshift-test/tests"]
+          test_queues[1] << ["Extended Runtime Other Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 /data/openshift-test/tests"]
+          test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 /data/openshift-test/tests"]
+          test_queues[0] << ["Runtime Unit", "cd /data/openshift-test/node; rake test"]
           (1..4).each do |i|
-            test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other_#{i.to_s} openshift-test/tests"]
+            test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other_#{i.to_s} /data/openshift-test/tests"]
           end
-          test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other openshift-test/tests"]
+          test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other /data/openshift-test/tests"]
 
           if options.include_extended
             extended_tests.each do |extended_test|
@@ -272,14 +272,14 @@ priority= 1
                 test_queues[2] << ["Extended Runtime Group 3", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 /data/openshift-test/tests")]
               when 'runtime_other'
                 output = ssh(hostname, "mkdir -p /var/lib/openshift/.settings; touch /var/lib/openshift/.settings/v2_cartridge_format; echo 'Rails.cache.clear' | /var/www/openshift/broker/script/rails console development && service rhc-broker restart")
-                test_queues[0] << ["Extended Runtime Other Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 openshift-test/tests"]
-                test_queues[1] << ["Extended Runtime Other Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 openshift-test/tests"]
-                test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 openshift-test/tests"]
-                test_queues[0] << ["Runtime Unit", "cd openshift-test/node; rake test"]
+                test_queues[0] << ["Extended Runtime Other Group 1", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 /data/openshift-test/tests"]
+                test_queues[1] << ["Extended Runtime Other Group 2", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 /data/openshift-test/tests"]
+                test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 /data/openshift-test/tests"]
+                test_queues[0] << ["Runtime Unit", "cd /data/openshift-test/node; rake test"]
                 (1..4).each do |i|
-                  test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other_#{i.to_s} openshift-test/tests"]
+                  test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other_#{i.to_s} /data/openshift-test/tests"]
                 end
-                test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other openshift-test/tests"]
+                test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_other /data/openshift-test/tests"]
               when 'rhc'
                 # TODO: BROKEN blocked on cartridge work
                 test_queues[0] << ["RHC Extended", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests"), {:retry_individually => true}]
