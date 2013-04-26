@@ -1,0 +1,41 @@
+#!/bin/bash -x
+
+#assumption: running in production mode.
+#assumption: single broker. if multiple brokers, SESSION_SECRET must be reused!
+conf=/etc/openshift/broker.conf
+
+### TODO: track down why this was removed
+#Log resource usage information to syslog
+#ENABLE_USAGE_TRACKING_SYSLOG="false"
+
+# user action log location has changed
+sed -i '/^USER_ACTION_LOG_FILE/ cUSER_ACTION_LOG_FILE="/var/log/openshift/broker/user_action.log"' $conf || exit 1
+
+# tracking audit log is new with this release.
+# ability to supply a message for maintenance mode.
+# TODO: document how to use AUTH_SCOPE_TIMEOUTS https://bugzilla.redhat.com/show_bug.cgi?id=958192
+cat <<EOF >> $conf
+
+#Log resource usage information
+ENABLE_USAGE_TRACKING_AUDIT_LOG="false"
+USAGE_TRACKING_AUDIT_LOG_FILE="/var/log/openshift/broker/usage.log"
+
+#Enable/disable maintenance mode
+ENABLE_MAINTENANCE_MODE="false"
+MAINTENANCE_NOTIFICATION_FILE="/etc/openshift/outage_notification.txt"
+
+#set timeouts on user sessions
+AUTH_SCOPE_TIMEOUTS="session=1.days|7.days, *=1.months|6.months"
+
+
+EOF
+
+# oo-accept-broker now complains if SESSION_SECRET is not set - set it if not already set.
+if ! grep '^\s*SESSION_SECRET=' $conf; then
+  sed -i "/SESSION_SECRET=/ cSESSION_SECRET=`openssl rand -hex 64`" $conf
+fi
+
+# format for mongo replica sets changed from space separators to comma separators
+sed -i '/MONGO_HOST_PORT/ s/\b\s\s*\b/,/g' $conf
+
+exit 0

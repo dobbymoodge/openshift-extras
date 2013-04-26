@@ -1,0 +1,15 @@
+#!/bin/bash -x
+
+# assumption: v1 ruby-1.9 or v2 ruby cartridge is installed on node
+# otherwise, fixfiles won't have much to work on here
+
+fixfiles -R ruby193-rubygem-passenger restore
+fixfiles -R ruby193-mod_passenger restore
+restorecon -rv /opt
+
+# TODO: it is not clear that this is needed at all:
+mkdir -p /var/log/passenger-analytics
+chmod 750 /var/log/passenger-analytics
+chown apache:apache /var/log/passenger-analytics
+
+exit 0

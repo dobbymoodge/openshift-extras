@@ -1,0 +1,11 @@
+#!/bin/bash -x
+
+# assumption: repos are named as in our script and point to /latest/ puddle
+
+for i in openshift-client.repo openshift-jboss.rep openshift-infrastructure.repo  openshift-node.repo
+do
+  file=/etc/yum.repos.d/$i
+  [[ -f $file ]] && sed -i 's/1\.1\.[xz]/1.2/' $file
+done
+
+exit 0

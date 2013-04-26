@@ -1,0 +1,9 @@
+#!/bin/bash -x
+
+# assumption: you were using the dns-bind plugin rather than something custom
+
+yum remove -y rubygem-openshift-origin-dns-bind || exit 1
+yum install -y rubygem-openshift-origin-dns-nsupdate || exit 1
+mv /etc/openshift/plugins.d/openshift-origin-dns-{bind,nsupdate}.conf || exit 1
+
+exit 0

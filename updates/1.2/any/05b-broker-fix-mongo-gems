@@ -1,0 +1,8 @@
+#!/bin/bash -x
+
+# get rid of the mongo rubygem as it conflicts with deps
+yum remove -y ruby193-rubygem-mongo || exit 1
+# upgrade the bson gem to match bson_ext
+yum update -y ruby193-rubygem-bson || exit 1
+
+exit 0

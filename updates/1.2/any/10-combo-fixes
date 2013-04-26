@@ -1,0 +1,28 @@
+#!/bin/bash -x
+
+# need these workarounds when broker and node are installed together
+
+# mod_rewrite acts before proxypass so need to incorporate the previous proxy rules as rewriterules.
+  cat <<EOF >> /var/lib/openshift/.httpd.d/nodes.txt || exit 1
+__default__ REDIRECT:/console
+__default__/console TOHTTPS:127.0.0.1:8118/console
+__default__/broker TOHTTPS:127.0.0.1:8080/broker
+EOF
+
+  httxt2dbm -f DB -i /etc/httpd/conf.d/openshift/nodes.txt -o /etc/httpd/conf.d/openshift/nodes.db || exit 1
+  chown root:apache /etc/httpd/conf.d/openshift/nodes.txt /etc/httpd/conf.d/openshift/nodes.db || exit 1
+  chmod 750 /etc/httpd/conf.d/openshift/nodes.txt /etc/httpd/conf.d/openshift/nodes.db || exit 1
+
+# work around node polyinstantiation complications for broker
+  user_list="root,adm,apache"
+  for user in gdm activemq mongodb; do
+      id -u "$user" >/dev/null 2>&1
+      if [ X"$?" == X"0" ]; then
+          user_list="${user_list},${user}"
+      fi
+  done
+  echo "/tmp        \$HOME/.tmp/      user:iscript=/usr/sbin/oo-namespace-init ${user_list}" > /etc/security/namespace.d/tmp.conf
+  echo "/dev/shm  tmpfs  tmpfs:mntopts=size=5M:iscript=/usr/sbin/oo-namespace-init ${user_list}" > /etc/security/namespace.d/shm.conf
+
+
+exit 0

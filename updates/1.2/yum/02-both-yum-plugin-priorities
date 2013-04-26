@@ -1,0 +1,19 @@
+#!/bin/bash -x
+
+# assumption: repos are named as in our script e.g. [rhel6] [openshift_node] etc
+
+yum install -y yum-plugin-priorities || exit 1
+
+# set priorities on existing yum repos
+for repo in openshift_{infrastructure,node,jbosseap,client}; do
+	yum-config-manager --setopt=$repo.priority=1 $repo --save || exit 1
+done
+for repo in rhel6{,_optional}; do
+	yum-config-manager --setopt=$repo.priority=2 $repo --save || exit 1
+done
+for repo in jbosseap jbossews; do
+	yum-config-manager --setopt=$repo.priority=3 $repo --save || exit 1
+done
+
+yum clean all
+exit 0

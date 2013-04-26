@@ -1,0 +1,12 @@
+#!/bin/bash -x
+
+# have bundler fix the gem usage so we can use the rails environment
+cd /var/www/openshift/broker
+rm -rf Gemfile.lock
+scl enable ruby193 "bundle install --local" || exit 1
+chown apache:apache Gemfile.lock || exit 1
+
+# clear the cache
+oo-admin-broker-cache --clear || exit 1
+
+exit 0
