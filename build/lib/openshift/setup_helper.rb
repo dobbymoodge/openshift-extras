@@ -1,6 +1,6 @@
 module SetupHelper
   BUILD_REQUIREMENTS = ["tito","yum-plugin-priorities","git","make","wget","vim-enhanced","rubygems","ruby-devel","rubygems-devel"]
-  BUILD_GEM_REQUIREMENTS = {"aws-sdk"=>"","rake"=>"","thor"=>"","parseconfig"=>"","yard"=>"","redcarpet"=>""}
+  BUILD_GEM_REQUIREMENTS = {"aws-sdk"=>"","rake"=>"","thor"=>"","parseconfig"=>"","yard"=>""}
 
   # Ensure that openshift mirror repository and all build requirements are installed.
   # On RHEL6, it also verifies that the build script is running within SCL-Ruby 1.9.3.

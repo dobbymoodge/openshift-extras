@@ -490,7 +490,8 @@ retries = 0
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "su -c \"yum install -y ruby193-ruby ruby193-rubygem-thor rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews1 rh-amazon-rhui-client-jbews2\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum install -y ruby193-ruby ruby193-rubygem-thor rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews1 rh-amazon-rhui-client-jbews2 ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock\"", 60 * 20, true, 1, ssh_user)
+
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
             out, ret = ssh(hostname, "su -c \"yum erase -y epel-release\"", 60 * 20, true, 1, ssh_user)
