@@ -9,7 +9,6 @@ baseurl=http://mirror1.ops.rhcloud.com/mirror/epel/6/\$basearch/
 failovermethod=priority
 enabled=1
 gpgcheck=0
-exclude=rubygem-term-ansicolor rubygem-passenger rubygem-passenger-native rubygem-passenger-native-libs rubygem-stomp mongodb* libmongodb puppet* facter mod_cluster*
 EOF
 
 # TODO EPEL ships a broken rubygem-aws-sdk that requires a newer version of rubygem-httparty than exists in EPEL
@@ -56,6 +55,7 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
+#priority=3
 
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
@@ -70,6 +70,7 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
+#priority=3
 
 [Test_Dependencies]
 name=Client repo for Enterprise Linux 6 - $basearch
@@ -106,6 +107,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=1
 
 [Infrastructure]
 name=Infrastructure repo for Enterprise Linux 6 - $basearch
@@ -118,6 +120,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=1
 
 [JBoss_EAP6_Cartridge]
 name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - $basearch
@@ -130,6 +133,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=1
 
 [Node]
 name=Node repo for Enterprise Linux 6 - $basearch
@@ -142,5 +146,6 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=1
 
 EOF
