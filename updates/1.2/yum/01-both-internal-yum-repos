@@ -8,4 +8,8 @@ do
   [[ -f $file ]] && sed -i 's/1\.1\.[xz]/1.2/' $file
 done
 
+# for v2 we need to point to the jboss ews 2 repo
+file=/etc/yum.repos.d/jbossews.repo
+[[ -f $file ]] && sed -i 's/jbews\/1/jbews\/2/' $file
+
 exit 0

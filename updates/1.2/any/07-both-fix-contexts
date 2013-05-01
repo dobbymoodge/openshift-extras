@@ -7,7 +7,8 @@ fixfiles -R ruby193-rubygem-passenger restore
 fixfiles -R ruby193-mod_passenger restore
 restorecon -rv /opt
 
-# TODO: it is not clear that this is needed at all:
+# TODO: fix the ruby193 scl passenger so it does not require this
+# (this file is owned by the native passenger)
 mkdir -p /var/log/passenger-analytics
 chmod 750 /var/log/passenger-analytics
 chown apache:apache /var/log/passenger-analytics
