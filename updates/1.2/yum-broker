@@ -5,7 +5,6 @@ yum/02-both-yum-plugin-priorities || exit
 any/03-broker-shutdown-services || exit
 any/04-both-yum-update || exit
 any/05a-broker-update-dns-plugin || exit
-any/05b-broker-fix-mongo-gems || exit
 any/05c-broker-adjust-rails || exit
 any/06-broker-mongodb-migration || exit
 any/07-both-fix-contexts || exit

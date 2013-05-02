@@ -1,0 +1,33 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+
+# Get broker configurable params
+$config = Rails.application.config.datastore
+
+def mongo_connect
+  if $config[:replica_set]
+    con = Mongo::ReplSetConnection.new(*$config[:host_port] \
+                                       << {:read => :secondary})
+  else
+    con = Mongo::Connection.new(*$config[:host_port].split(":"))
+  end
+  db = con.db($config[:db])
+  db.authenticate($config[:user], $config[:password])
+  db
+end
+
+db = mongo_connect
+
+puts "Updating mongo indices"
+#db.applications.ensureIndex( { "domain_id": 1 }, {background: true} )
+db.collection('applications').create_index('domain_id')
+#db.domains.ensureIndex( { "user_ids": 1 }, {background: true} )
+db.collection('domains').create_index('user_ids')
+#db.domains.ensureIndex( { "owner_id": 1 }, {background: true} )
+db.collection('domains').create_index('owner_id')
+#db.locks.ensureIndex( { "user_id": 1 }, {background: true} )
+db.collection('locks').create_index('user_id')
+

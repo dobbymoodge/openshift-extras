@@ -51,6 +51,7 @@ yum install -y $carts || exit 1
 # we could run the script but don't really want to restart the broker if there is one at this point
 
 # just place the marker file
+mkdir -p /var/lib/openshift/.settings
 touch /var/lib/openshift/.settings/v2_cartridge_format
 
 exit 0

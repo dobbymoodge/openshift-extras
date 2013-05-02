@@ -1,0 +1,107 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+#####################
+# This migrate script will migrate all env vars and ssh keys in all apps and domains 
+#####################
+
+if ARGV.include? "--verbose"
+  $verbose = true
+else
+  $verbose = false
+end
+
+def mongo_connect
+  $db = OpenShift::DataStore.db
+end
+
+def fix_domain(domain_id, comp_id)
+  $dom.find({ "_id" => domain_id }, { :fields => ["env_vars", "system_ssh_keys"] }) do |cursor|
+    cursor.each do |d|
+      d["env_vars"].each { |env_var| env_var["component_id"] = comp_id } 
+      d["system_ssh_keys"].each { |sys_key| sys_key["component_id"] = comp_id }
+      env_attrs = d["env_vars"].dup
+      keys_attrs = d["system_ssh_keys"].dup
+      $dom.update( {"_id" => domain_id}, { "$set" => { system_ssh_keys: keys_attrs, env_vars: env_attrs }})
+    end
+  end
+end
+
+def migrate_apps
+  $coll = $db.collection('applications')
+  $dom = $db.collection('domains')
+  query = { "$or" => [{"component_instances.cartridge_name" => "jenkins-1.4"}, {"scalable" => true}] }
+  selection = {:fields => ["component_instances.cartridge_name",
+                         "component_instances._id",
+                         "app_ssh_keys",
+                         "scalable",
+                         "domain_id"], :timeout => false}
+
+  total = 0
+  scalable_app_count = 0
+  jenkins_domain_count = 0
+  $coll.find(query, selection) do |cursor|
+    cursor.each do |app|
+      print "Migrating app #{app.inspect}.. " if $verbose
+      begin
+        if app['scalable']
+          print "."
+          # change app_ssh_keys
+          # find haproxy component first
+          component_id = nil
+          app["component_instances"].each do |comp|
+            if comp["cartridge_name"]=="haproxy-1.4"
+              component_id = comp["_id"]
+              break
+            end
+          end
+          if component_id.nil?
+            puts "ERROR : haproxy cartridge not found in scalable app #{app['_id'].to_s}"
+            next
+          end
+          if app['app_ssh_keys'].nil? or app['app_ssh_keys'].empty?
+            puts "ERROR : No app_ssh_keys found in scalable app #{app['_id'].to_s}"
+            next
+          end
+          new_keys = []
+          app['app_ssh_keys'].each { |key|
+            new_key = key.dup
+            new_key["component_id"] = component_id
+            new_keys << new_key
+          }
+          $coll.update({ "_id" => app["_id"] }, { "$set" => { "app_ssh_keys" => new_keys} } ) if new_keys.length > 0 and app["_id"]
+          scalable_app_count +=1
+        else
+          print "-"
+          # get the domain and change domain_ssh_keys and domain_env var
+          component_id = nil
+          app["component_instances"].each do |comp|
+            if comp["cartridge_name"]=="jenkins-1.4"
+              component_id = comp["_id"]
+              break
+            end
+          end
+          if component_id.nil?
+            puts "ERROR : jenkins cartridge not found in app #{app['_id'].to_s}"
+            next
+          end
+          fix_domain(app["domain_id"], component_id)
+          jenkins_domain_count +=1
+        end
+      rescue Exception=>e
+        puts
+        puts "Exception (#{e.message}) while migrating app #{app.inspect}"
+        print e.backtrace
+      end
+    end
+  end
+  puts
+  puts "Mongo migrated #{scalable_app_count} scalable applications, and #{jenkins_domain_count} domains with jenkins applications"
+end
+
+puts "Starting migration"
+mongo_connect
+migrate_apps
+puts "Done!"

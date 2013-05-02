@@ -1,0 +1,99 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+#####################
+# This migrate script will migrate aliases for all existing apps
+#####################
+
+if ARGV.include? "--verbose"
+  $verbose = true
+else
+  $verbose = false
+end
+
+def mongo_connect
+  $db = OpenShift::DataStore.db
+end
+
+def migrate_apps
+  $coll = $db.collection('applications')
+  query = {"aliases.0" => {"$exists" => true}}
+  selection = {:fields => ["name",
+                         "aliases",
+                         "uuid"], :timeout => false}
+
+  total = 0
+  $coll.find(query, selection) do |cursor| 
+    cursor.each do |app|
+      new_aliases = []
+      app["aliases"].each do |old_alias|
+        if old_alias.is_a?(Hash) and old_alias.has_key? "_id" and old_alias.has_key? "fqdn"
+          if old_alias.has_key? "has_private_ssl_certificate"
+            new_alias = { "_id" => old_alias["_id"], "fqdn" => old_alias["fqdn"], "certificate_added_at" => old_alias["certificate_added_at"], "has_private_ssl_certificate" => old_alias["has_private_ssl_certificate"]} 
+          else
+            new_alias = { "_id" => old_alias["_id"], "fqdn" => old_alias["fqdn"], "has_private_ssl_certificate" => false} 
+          end
+          new_aliases << new_alias 
+        elsif old_alias.is_a?(String)
+          new_aliases << { "_id" => BSON::ObjectId.new, "fqdn" => old_alias,  "has_private_ssl_certificate" => false }
+        else
+          raise Exception.new("Alias #{old_alias} for app #{app["name"]} does not follow any of the expected formats")
+        end
+      end
+      print "."
+      print "Migrating app #{app['name']}/#{app['uuid']}.. " if $verbose
+      $coll.update({ "_id" => app["_id"] }, { "$set" => { "aliases" => new_aliases } } ) if new_aliases.length > 0 and app["_id"]
+      total += 1
+      print "done" if $verbose
+    end
+  end
+  puts
+  puts "Mongo migrated #{total} apps"
+end
+
+def migrate_users
+  $coll = $db.collection('cloud_users')
+  query = {"plan_id" => "silver"}
+  selection = {:fields => ["login",
+                         "capabilities",
+                         "_id"], :timeout => false}
+
+  total = 0
+  $coll.find(query, selection) do |cursor| 
+    cursor.each do |user|
+      if user["capabilities"]["private_ssl_certificates"].nil? or user["capabilities"]["private_ssl_certificates"] == false
+        user["capabilities"]["private_ssl_certificates"] = true
+        print "."
+        print "Migrating user #{user['login']}/#{user['_id']}.. " if $verbose
+        $coll.update({ "_id" => user["_id"] }, { "$set" => { "capabilities" => user["capabilities"] } } )
+        total += 1
+        print "done" if $verbose
+      end
+    end
+  end
+  puts
+  puts "Mongo migrated #{total} users"
+end
+
+def migrate_plans
+  users = $db.collection('cloud_users')
+  options = {
+    "freeshift" => "free",
+    "megashift" => "silver",
+  }
+  options.each_pair do |from, to|
+    total = 0
+    print "Migrating user plan_id #{from} => #{to}.. "
+    users.update({:plan_id => from}, {'$set' => {:plan_id => to}}, :multi => true)
+    puts " migrated"
+  end
+end
+
+puts "Starting migration"
+mongo_connect
+migrate_apps
+migrate_plans
+migrate_users
+puts "Done!"

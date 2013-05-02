@@ -3,7 +3,8 @@
 # assumptions: everything is installed on the broker
 # although actually the services that aren't installed will simply fail to stop and complain
 
-for svc in activemq crond httpd mongod openshift-broker openshift-console 
+#for svc in activemq crond httpd mongod openshift-broker openshift-console 
+for svc in activemq crond httpd openshift-broker openshift-console 
 do
 	service $svc stop
 done
