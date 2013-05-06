@@ -38,6 +38,8 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 #gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 #ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 #sslverify=0
+#priority=2
+#exclude=tomcat6*
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
 # We have to be careful that this only shadows the rhui RHEL when we actually need it
