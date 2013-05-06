@@ -74,7 +74,7 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 
 [Test_Dependencies]
 name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/Test_Dependencies/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories_devenv/Test_Dependencies/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -86,7 +86,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 
 [Client-ruby193]
 name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/Client-ruby193/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories_devenv/Client-ruby193/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
