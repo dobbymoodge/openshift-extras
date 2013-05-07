@@ -180,7 +180,7 @@ def create_applications(user, domain_obj)
       end if uapp["comp_instances"]
       app.aliases = []
       uapp["aliases"].each do |al|
-        app.aliases << al.downcase
+        app.aliases << Alias.new(fqdn: al.downcase)
       end if uapp["aliases"]
       group_overrides = create_group_instances(app, uapp)
       #  app.group_overrides = uapp["group_overrides"] if uapp["group_overrides"]
