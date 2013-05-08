@@ -62,8 +62,8 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
 #name=Devenv EWS repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-1-for-rhel-6-server-rpms
-#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-1-for-rhel-6-server-rpms
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-2-for-rhel-6-server-rpms
+#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-2-for-rhel-6-server-rpms
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
