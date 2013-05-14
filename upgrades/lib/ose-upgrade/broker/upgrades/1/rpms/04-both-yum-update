@@ -1,0 +1,5 @@
+#!/bin/bash -x
+
+yum update -y || exit 1
+
+exit 0

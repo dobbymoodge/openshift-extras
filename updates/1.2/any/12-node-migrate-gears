@@ -1,4 +1,0 @@
-#!/bin/bash -x
-
-echo TODO: migrate all the gears
-exit 0

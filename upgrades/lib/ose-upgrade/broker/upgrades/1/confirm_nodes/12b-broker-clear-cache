@@ -1,0 +1,4 @@
+#!/bin/bash -x
+
+# we need to make sure the cartridge cache is cleared
+oo-admin-broker-cache --clear

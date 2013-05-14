@@ -1,0 +1,494 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+#require 'open4'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+
+$users_failed = []
+$apps_failed = []
+$parallel_exit = 0
+$session = nil
+$global_cart_cache =  CartridgeCache.cartridges
+$web_framework_carts = CartridgeCache.cartridge_names("web_framework")
+$parent_login_map = {}
+$phase1 = false
+$phase2 = false
+$serial = false
+$user_index = 0
+$total_processes = 4
+      
+def usage
+  puts "#{$0} [options]"
+  puts "options -"
+  puts "  --serial : Do not spawn processes, but run everything serially (ignores all other options)"
+  puts "  --num_processes <int> : Number of processes to spawn (default: 4)"
+  exit 1
+end
+
+if ARGV.include? "--help" or ARGV.include? "-h"
+  usage
+end
+
+class CartridgeCache
+  def self.cartridges
+    return $global_cart_cache 
+  end
+end
+
+def get_mongo_session
+  # Get Mongo session
+  config = Mongoid::Config.sessions["default"]
+  session = Moped::Session.new(config["hosts"])
+  session.use config["database"]
+  session.login(config["username"], config["password"])
+  session
+end
+
+def release_mongo_session(session)
+  # Exit session
+  session.logout
+end
+
+def create_cloud_user(user)
+  if user['apps'].nil? or user['apps'].empty?
+    if user["parent_user_login"] # Delete subaccounts without apps
+      puts "Skipping subaccount user without apps: #{user['login']}"
+      return nil
+    end
+    if (user["ssh_keys"].nil? or user['ssh_keys'].empty?) and user["max_gears"] == 3 and (user["domains"].nil? or user["domains"].empty?) 
+      if (user["capabilities"].nil? or user["capabilities"].empty?)
+        puts "Skipping user without apps, domains, ssh_keys, or capabilities: #{user['login']}"
+        return nil
+      else
+        user_cap = user["capabilities"]
+        if (user_cap["gear_sizes"].nil? or user_cap["gear_sizes"].length == 1) and !user_cap["subaccounts"] and !user_cap["max_storage_per_gear"]
+          puts "Skipping user without apps, domains, ssh_keys, or special capabilities: #{user['login']}"
+          return nil
+        end
+      end
+    end
+  end
+  cu = CloudUser.new
+  cu.login = user["login"]
+  cu.consumed_gears = user["consumed_gears"]
+  cu.capabilities["max_gears"] = user["max_gears"]
+  if user["capabilities"]
+    user_cap = user["capabilities"]
+    cu.capabilities["subaccounts"] = user_cap["subaccounts"] if user_cap["subaccounts"]
+    cu.capabilities["gear_sizes"] = user_cap["gear_sizes"] if user_cap["gear_sizes"]
+    cu.capabilities["max_storage_per_gear"] = user_cap["max_storage_per_gear"] if user_cap["max_storage_per_gear"]
+    cu.capabilities["inherit_on_subaccounts"] = user_cap["inherit_on_subaccounts"] if user_cap["inherit_on_subaccounts"]
+  end
+  user["ssh_keys"].each do |ssh_key_name, ssh_key|
+    sk = UserSshKey.new
+    sk.name = ssh_key_name
+    sk.type = ssh_key["type"]
+    sk.content = ssh_key["key"]
+    cu.ssh_keys << sk
+  end if user["ssh_keys"]
+  begin
+    plogin = user["parent_user_login"]
+    if plogin
+      p_id = $parent_login_map[plogin]
+      if p_id.nil?
+        p_id = CloudUser.find_by(login: plogin)._id
+        $parent_login_map[plogin] = p_id
+      end
+      cu.parent_user_id = p_id
+    end
+  rescue Exception => e
+    raise Exception.new "Unable to find parent user #{user["parent_user_login"]}"
+  end
+  cu.plan_id = user["plan_id"]  if user["plan_id"]
+  cu.pending_plan_id = user["pending_plan_id"]  if user["pending_plan_id"]
+  cu.pending_plan_uptime = user["pending_plan_uptime"]  if user["pending_plan_uptime"]
+  cu.usage_account_id = user["usage_account_id"] if user["usage_account_id"]
+  cu.save!(validate: false)
+  Lock.create_lock(cu)
+  cu
+end
+
+def create_domains(user, cloud_user_obj)
+  dm = nil
+  if user["domains"]
+    num_doms = user["domains"].length
+    return nil if num_doms==0
+    dom_index = 0
+    if num_doms > 1
+      domain_map = {}
+      user['apps'].each { |a|
+        domain_map[a['domain']['namespace']] = a if a['domain'] and a['domain']['namespace']
+      } if user['apps']
+      if domain_map.length > 1
+        raise Exception.new "Found more than 1 domain in use" 
+      end
+      dom_index = user["domains"].index { |dom| dom["namespace"]==domain_map.keys[0] }  if domain_map.length==1
+      dom_index = 0
+    end
+    domain = user["domains"][dom_index]
+    dm = Domain.new
+    dm.namespace = domain["namespace"]
+    dm.canonical_namespace = dm.namespace.downcase
+    dm.owner_id = cloud_user_obj._id
+    dm.user_ids << cloud_user_obj._id 
+    user["system_ssh_keys"].each do |ssh_key_name, ssh_key|
+      ssk = SystemSshKey.new
+      ssk.name = ssh_key_name
+      ssk.type = "ssh-rsa"
+      ssk.content = ssh_key
+      dm.system_ssh_keys << ssk
+    end if user["system_ssh_keys"]
+    #dm.env_vars =
+    dm.save!(validate: false)
+  end
+  dm
+end
+
+def create_applications(user, domain_obj)
+  user["apps"].each do |uapp|
+    begin
+      app = Application.new(domain: domain_obj)
+      #app._id = Moped::BSON::ObjectId.from_string(uapp["uuid"].to_s)
+      app.uuid = uapp["uuid"]
+      app.name = uapp["name"]
+      app.created_at = Time.parse(uapp["creation_time"])
+      app.canonical_name = app.name.downcase
+      app.scalable = uapp["scalable"]
+      app.init_git_url = uapp["init_git_url"] if uapp["init_git_url"]
+      app.default_gear_size = uapp["node_profile"]
+      uapp["ssh_keys"].each do |ssh_key_name, ssh_key|
+        ask = ApplicationSshKey.new
+        ask.name = ssh_key_name
+        ask.type = "ssh-rsa"
+        ask.content = ssh_key
+        app.app_ssh_keys << ask
+      end if uapp["ssh_keys"]
+      app.domain_id = domain_obj._id
+      cinst_map = {}
+      uapp["comp_instances"].each do |comp_inst|
+        next if comp_inst["parent_cart_name"] == app.name
+        if cinst_map[comp_inst["parent_cart_name"]]
+          ci = cinst_map[comp_inst["parent_cart_name"]]
+          ci.component_properties = ci.component_properties.merge(comp_inst["cart_properties"]) if comp_inst["cart_properties"]
+        else
+          ci = ComponentInstance.new
+          ci.cartridge_name = comp_inst["parent_cart_name"]
+          cart = CartridgeCache.find_cartridge(ci.cartridge_name) or raise Exception.new "no such cartridge #{ci.cartridge_name}"
+          ci.component_name = cart.profiles[0].components[0].name
+          ci.component_properties = comp_inst["cart_properties"] if comp_inst["cart_properties"]
+          app.component_instances << ci
+          cinst_map[comp_inst["parent_cart_name"]] = ci
+        end
+      end if uapp["comp_instances"]
+      app.aliases = []
+      uapp["aliases"].each do |al|
+        app.aliases << Alias.new(fqdn: al.downcase)
+      end if uapp["aliases"]
+      group_overrides = create_group_instances(app, uapp)
+      #  app.group_overrides = uapp["group_overrides"] if uapp["group_overrides"]
+      fix_connections(app, group_overrides)
+puts "saving app #{app.name}..."
+      app.save!(validate: false) or raise RuntimeError("Couldn't save app")
+    rescue Exception=>e
+      puts "ERROR: Migration failed for User #{user['login']}, Application #{uapp['name']}: #{e.message}"
+      puts e.backtrace
+      $apps_failed << user['login'] + ":" + uapp['name']
+    end
+  end if user["apps"]
+end
+
+def fix_connections(app, group_overrides)
+  features = app.requires
+  group_overrides = group_overrides + (app.scalable ? [] : (app.gen_non_scalable_app_overrides(features)))
+  connections, new_groups, new_group_overrides = app.elaborate(features, group_overrides)
+  app.set_connections(connections)
+  app.group_overrides = new_group_overrides
+end
+
+def create_group_instances(new_app, old_app)
+  new_comp_inst_hash = {}
+  group_override_map = {}
+  new_app.component_instances.each { |ci|
+    new_comp_inst_hash[ci.cartridge_name] = ci
+  }
+
+  old_cinst_hash = {}
+  old_app['comp_instances'].each { |old_ci|
+    old_cinst_hash[old_ci['name']] = old_ci
+  }
+  old_app['group_instances'].each { |old_gi|
+    this_gis_carts = []
+    is_singleton = (not new_app.scalable)
+    is_app_dns = (not new_app.scalable)
+    framework_cart = nil
+    old_gi['component_instances'].each { |comp_name|
+      cartname = old_cinst_hash[comp_name]['parent_cart_name']
+      next if cartname == new_app.name
+      is_app_dns = true if cartname == 'haproxy-1.4' unless is_app_dns
+      cart = CartridgeCache.find_cartridge(cartname) or raise Exception.new "No such cartridge #{cartname}"
+      is_singleton = cart.get_component(new_comp_inst_hash[cartname].component_name).is_singleton? unless is_singleton
+      if framework_cart.nil?
+        framework_cart = { "comp" => new_comp_inst_hash[cartname].component_name, "cart" => cartname } if $web_framework_carts.include? cartname
+      end
+      this_gis_carts << cartname unless this_gis_carts.include? cartname
+    }
+    new_gi_id = nil
+    addtl_fs_gb = nil
+    this_gis_carts.each { |cartname|
+      new_gi_id = new_comp_inst_hash[cartname].group_instance_id
+      break unless new_gi_id.nil?
+    }
+    if not new_gi_id
+      # create a new group instance
+      new_gi = GroupInstance.new(custom_id: Moped::BSON::ObjectId.new) #, gear_size: old_gi['node_profile'])
+      new_app.group_instances.push(new_gi)
+      addtl_fs_gb = old_gi['addtl_fs_gb']
+      new_gi_id = new_gi._id
+    else
+      # gears from old_gi need to be put to new_gi_id
+      new_gi = new_app.group_instances.find(new_gi_id)
+      if addtl_fs_gb.nil? and old_gi['addtl_fs_gb']
+        addtl_fs_gb = old_gi['addtl_fs_gb']
+      elsif old_gi['addtl_fs_gb'] and addtl_fs_gb < old_gi['addtl_fs_gb']
+        # raise warning
+        puts "WARNING : Migration of app '#{new_app.name}'/'#{new_app.uuid}' will have some gears with mismatched additional filesystem storage"
+        addtl_fs_gb = old_gi['addtl_fs_gb']
+      end
+    end
+    count = 0
+    old_gi['gears'].each { |old_gear|
+      count += 1
+      if count == 1 
+        singleton = is_singleton 
+        app_dns = is_app_dns
+      else 
+        singleton = false
+        app_dns = false
+      end
+      if app_dns
+        gear_id = new_app._id
+      else
+        gear_id = Moped::BSON::ObjectId.new
+      end
+      gear = Gear.new(custom_id: gear_id, group_instance: new_gi, host_singletons: singleton, app_dns: app_dns,
+                      uuid: old_gear['uuid'], uid: old_gear['uid'], server_identity: old_gear['server_identity'])
+      new_gi.gears.push(gear)
+    }
+    # finally fix the component instances of the new app to adopt the new group instance and its gears
+    this_gis_carts.each { |cartname|
+      if new_comp_inst_hash[cartname].group_instance_id.nil? 
+        new_comp_inst_hash[cartname].group_instance_id = new_gi_id 
+      elsif new_comp_inst_hash[cartname].group_instance_id != new_gi_id
+        raise Exception.new "Group instance migration failed. app: #{new_app.name}, cart: #{cartname}, expected group_instance_id: #{new_gi_id}, found group_instance_id: #{new_comp_inst_hash[cartname].group_instance_id}"
+      end
+    }
+
+    # calculate group overrides based on scale min/max
+    group_override = group_override_map[new_gi_id.to_s]
+    gi_comps = new_comp_inst_hash.values.select { |ci| ci.group_instance_id==new_gi_id }
+    group_components = gi_comps.map { |ci| { "comp" => ci.component_name, "cart" => ci.cartridge_name } }
+    group_override["components"] = group_components if group_override
+
+    if old_gi['supported_min']!=old_gi['supported_max'] and framework_cart
+      group_override = { "components" => group_components } if group_override.nil?
+      if old_gi['max']!=-1
+        max_gears = old_gi['max']+1
+        group_override['max_gears'] = max_gears
+      end
+      min_gears = old_gi['min']+1
+      group_override['min_gears'] = min_gears
+      group_override_map[new_gi_id.to_s] = group_override
+    end
+
+    # group override for addtl_fs_gb
+    if addtl_fs_gb and addtl_fs_gb > 0
+      group_override = { "components" => group_components } if group_override.nil?
+      group_override["additional_filesystem_gb"] = addtl_fs_gb
+      group_override_map[new_gi_id.to_s] = group_override
+    end
+
+    # add the node_profile to group override if valid
+    if old_gi['node_profile']
+      group_override = { "components" => group_components } if group_override.nil?
+      group_override["gear_size"] = old_gi['node_profile']
+      group_override_map[new_gi_id.to_s] = group_override
+    end
+  }
+  group_override_map.values.dup
+end
+
+def migrate_user(user)
+  puts user['login']
+  begin
+    cu = create_cloud_user(user)
+    if cu
+      dm = create_domains(user, cu)
+      create_applications(user, dm)
+    end
+  rescue Exception => e
+    puts "ERROR: Migration failed for User #{user['login']}: #{e.message}"
+    puts e.backtrace
+    $users_failed << user['login']
+    return 1
+  end
+end
+
+def migrate_district(old_district)
+  nd = District.new(name: old_district['name'], gear_size: old_district['node_profile'])
+  old_district.delete('node_profile')
+  old_district.delete('creation_time')
+  nd.assign_attributes(old_district)
+  nd.available_capacity = nd.available_uids.length
+  nd.save
+  nd
+end
+
+def clean
+  # cleanup if starting from scratch
+  $session[:cloud_users].find.remove_all
+  $session[:applications].find.remove_all
+  $session[:districts].find.remove_all
+  $session[:locks].find.remove_all
+  $session[:domains].find.remove_all
+end
+
+def user_phase1
+  puts "Running phase 1.."
+  t = Time.now
+  users = $session[:user]
+  processed_user_count = 0
+  # Process all users that DOES NOT have a parent user login
+  users.find({"$or"=>[{"parent_user_login"=>{"$exists"=>false}}, {"parent_user_login" => nil}]}).no_timeout.each do |user|
+    if $serial or (!user["login"] && $user_index==0) or (user["login"] && user["login"].sum.modulo($total_processes)==$user_index)
+      migrate_user(user) 
+      processed_user_count += 1
+    end
+  end
+  puts "Time to run phase 1 (#{processed_user_count} users processed) - #{Time.now - t}"
+end
+
+def user_phase2
+  users = $session[:user]
+  puts "Running phase 2.."
+  t = Time.now
+  processed_user_count = 0
+  # Process all user that have a parent user login
+  users.find({"$and"=>[{"parent_user_login"=>{"$exists"=>true}}, {"parent_user_login"=>{"$ne"=>nil}}]}).no_timeout.each do |user|
+    if $serial or (!user["login"] && $user_index==0) or (user["login"] && user["login"].sum.modulo($total_processes)==$user_index)
+      migrate_user(user)
+      processed_user_count += 1
+    end
+  end
+  puts "Time to run phase 2 (#{processed_user_count} users processed) - #{Time.now - t}"
+end
+
+def district_migration
+  puts "Migrating districts..."
+  $session[:district].find.each { |old_district|
+    nd = migrate_district(old_district)
+    if nd.uuid==old_district['uuid']
+      puts "Successfully migrated district #{nd.name} (#{nd.uuid})"
+    else
+      puts "Failed to completely migrate district #{old_district['uuid']}"
+      $users_failed << "District uuid #{old_district['uuid']}"
+    end
+  }
+end
+
+def parallelize
+  t = Time.now
+  $total_processes.times do |i|
+    cmd = "#{__FILE__} --phase1 --index #{i} --num_processes #{$total_processes} >& /tmp/migrate_phase1_#{i}.log"
+    spawn cmd
+  end
+  print "Waiting for phase1 to get over.."
+  status1_arr = Process::waitall
+  puts "done"
+  puts "Half time : #{Time.now - t }"
+  unless status1_arr.all? {|s| s[1].success?}
+    puts "Phase 1 had failures. Look in /tmp/migrate_phase1*.log for details."
+    return 1
+  end
+  $total_processes.times do |i|
+    cmd = "#{__FILE__} --phase2 --index #{i} --num_processes #{$total_processes} >& /tmp/migrate_phase2_#{i}.log"
+    spawn cmd
+  end
+  print "Waiting for phase2 to get over.."
+  status2_arr = Process::waitall
+  puts "done"
+  puts "Total time : #{Time.now - t }"
+  unless status2_arr.all? {|s| s[1].success?}
+    puts "Phase 2 had failures. Look in /tmp/migrate_phase2*.log for details."
+    return 1
+  end
+  return 0
+end
+
+def parse_args
+  if ARGV.include? "--serial"
+    $serial = true
+  end
+  if ARGV.include? "--phase1"
+    $phase1 = true
+  end
+  if ARGV.include? "--phase2"
+    $phase2 = true
+  end
+  if ARGV.include? "--index"
+    ind = ARGV.index("--index")
+    $user_index = ARGV[ind+1].to_i
+  end
+  if ARGV.include? "--num_processes"
+    ind = ARGV.index("--num_processes")
+    $total_processes = ARGV[ind+1].to_i
+  end
+  if $phase1 and $phase2
+    puts "ERROR : Can run either phase1 or phase2, not both" 
+    exit 1
+  end
+end
+
+begin
+  parse_args
+  $session = get_mongo_session
+
+  if not ($phase1 or $phase2) or $serial
+    puts "Migration Started..."
+    clean
+    district_migration
+    $parallel_exit = parallelize if not $serial
+  end
+
+  user_phase1 if $phase1 or $serial
+  user_phase2 if $phase2 or $serial
+
+rescue Exception => e
+  puts e.message
+  puts e.backtrace
+  exit 1
+ensure
+  release_mongo_session($session)
+end
+puts "***************************"
+if $parallel_exit != 0
+  puts "Migration Failed!"
+  puts "Check the logs in /tmp/migrate_phase* for details."
+  puts "***************************"
+  exit 1
+elsif $users_failed.empty? && $apps_failed.empty?
+  puts "Migration Done! - No failures"
+  puts "***************************"
+  exit 0
+else
+  puts "Migration Done! - #{$users_failed.length + $apps_failed.length} failures"
+  unless $users_failed.empty?
+    puts "Failed user logins:"
+    puts $users_failed.join("\n")
+  end
+  unless $apps_failed.empty?
+    puts "Failed app migrations:"
+    puts $apps_failed.join("\n")
+  end
+  exit 1
+end

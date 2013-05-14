@@ -1,0 +1,7 @@
+#!/bin/bash -x
+
+for svc in mcollective openshift-port-proxy openshift-node-web-proxy
+do
+	service $svc start
+done
+exit 0

@@ -1,0 +1,24 @@
+#!/usr/bin/env oo-ruby
+
+#via mcollective, check that every node has gone through the upgrade.
+
+def check_nodes
+  # We would really like to check the status of the steps in a node
+  # upgrade has completed. But for this upgrade, we will assume that
+  # if the new "upgrade" agent is installed and responds to "ping"
+  # then the node has completed its upgrade. We may need to do something
+  # more sophisticated next time.
+  system "mco rpc --agent oseupgrade --action ping"
+  $?.exitstatus
+end
+
+# If any appear behind the times, retry for a minute in case the facter just needed to run.
+rc = 0
+6.times do
+  rc = check_nodes
+  break if rc == 0
+  sleep 10
+end
+
+exit rc
+

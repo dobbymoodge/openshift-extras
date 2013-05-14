@@ -1,0 +1,31 @@
+#!/bin/bash -x
+### TODO ###
+### determine what the channels will be ###
+
+# assumption: yum-plugin-priorities is either in our channel or in RHEL
+
+yum install -y yum-plugin-priorities || exit 1
+
+# set priorities on existing yum repos
+
+     for channel in rhel-server-ose-infra-6-rpms rhel-server-ose-rhc-6-rpms \
+		    rhel-server-ose-node-6-rpms rhel-server-ose-jbosseap-6-rpms
+     do
+       yum-config-manager --setopt=${channel}.priority=1 ${channel} --save || exit 1
+	# note: channel need not exist
+     done
+     for channel in rhel-6-server-rpms
+     do
+       yum-config-manager --setopt=${channel}.priority=2 ${channel} --save || exit 1
+       # disable tomcat6 coming from rhel6; it masks lower-priority jbossews
+       yum-config-manager --setopt=$channel.exclude='tomcat6*' $channel --save || exit 1
+     done
+     for channel in jb-eap-6-for-rhel-6-server-rpms jb-ews-2-for-rhel-6-server-rpms
+     do
+       yum-config-manager --setopt=${channel}.priority=3 ${channel} --save || exit 1
+       # keep http-related items from coming from here
+       yum-config-manager --setopt=$channel.exclude='httpd httpd-tools mod_ssl' $channel --save || exit 1
+     done
+
+yum clean all
+exit 0

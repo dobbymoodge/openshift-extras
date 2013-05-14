@@ -1,8 +1,0 @@
-#!/bin/bash -x
-
-# assumption: mongo is running on the broker, is the primary, hasn't been migrated yet
-service mongod start || exit 1
-sleep 30  # shouldn't take anything like that long
-
-echo TODO: migrate mongodb on the broker
-exit 0

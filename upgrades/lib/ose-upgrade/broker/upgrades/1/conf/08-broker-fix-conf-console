@@ -1,0 +1,19 @@
+#!/bin/bash -x
+
+# assumption: production mode. development mode will require manual updates.
+conf=/etc/openshift/console.conf
+
+### TODO: revisit this once we've rebased the console changes;
+### Make sure DOMAIN_SUFFIX, DISABLE_USER, and SESSION_SECRET survive
+
+if [[ -f $conf ]]; then
+  cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+
+  # oo-accept-broker now complains if SESSION_SECRET is not set - set it if not already set.
+  if ! grep '^\s*SESSION_SECRET=' $conf; then
+    sed -i "/SESSION_SECRET=/ cSESSION_SECRET=`openssl rand -hex 64`" $conf || exit 1
+  fi
+
+fi
+
+exit 0
