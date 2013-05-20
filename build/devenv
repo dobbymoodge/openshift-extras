@@ -247,9 +247,8 @@ priority= 1
           #test_queues[2] << ["Extended Runtime Other Group 3", "cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 /data/openshift-test/tests"]
           test_queues[0] << ["Runtime Unit", "cd /data/openshift-test/node; rake test"]
           (1..4).each do |i|
-            test_queues[3] << ["Runtime Other Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} /data/openshift-test/tests"]
+            test_queues[3] << ["Runtime Group #{i.to_s}", "cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} /data/openshift-test/tests"]
           end
-          test_queues[3] << ["Runtime Other Group", "cucumber #{CUCUMBER_OPTIONS} -t @runtime /data/openshift-test/tests"]
 
           if options.include_extended
             extended_tests.each do |extended_test|
