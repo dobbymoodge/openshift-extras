@@ -1,0 +1,57 @@
+#!/bin/bash -x
+
+# assumption: you want to use the same v2 cartridges as v1 (otherwise, modify this list)
+
+# Embedded cron support. This is required on node hosts.
+carts="openshift-origin-cartridge-cron"
+
+# diy app.
+rpm -q --quiet openshift-origin-cartridge-diy-0.1 && carts="$carts openshift-origin-cartridge-diy"
+
+# haproxy support.
+rpm -q --quiet openshift-origin-cartridge-haproxy-1.4 && carts="$carts openshift-origin-cartridge-haproxy"
+
+# JBossEWS support.
+rpm -q --quiet openshift-origin-cartridge-jbossews-1.0 && carts="$carts openshift-origin-cartridge-jbossews"
+
+# JBossEAP support.
+rpm -q --quiet openshift-origin-cartridge-jbosseap-6.0 && carts="$carts openshift-origin-cartridge-jbosseap"
+
+# Jenkins server for continuous integration.
+rpm -q --quiet openshift-origin-cartridge-jenkins-1.4 && carts="$carts openshift-origin-cartridge-jenkins"
+# Embedded jenkins client.
+rpm -q --quiet openshift-origin-cartridge-jenkins-client-1.4 && carts="$carts openshift-origin-cartridge-jenkins-client"
+
+# Embedded MySQL.
+rpm -q --quiet openshift-origin-cartridge-mysql-5.1 && carts="$carts openshift-origin-cartridge-mysql"
+
+# mod_perl support.
+rpm -q --quiet openshift-origin-cartridge-perl-5.10 && carts="$carts openshift-origin-cartridge-perl"
+
+# PHP support.
+rpm -q --quiet openshift-origin-cartridge-php-5.3 && carts="$carts openshift-origin-cartridge-php"
+
+# Embedded PostgreSQL.
+rpm -q --quiet openshift-origin-cartridge-postgresql-8.4 && carts="$carts openshift-origin-cartridge-postgresql"
+
+# Python support.
+rpm -q --quiet openshift-origin-cartridge-python-2.6 && carts="$carts openshift-origin-cartridge-python"
+
+# Ruby Rack support running on Phusion Passenger
+rpm -q --quiet openshift-origin-cartridge-ruby-1.8 || \
+rpm -q --quiet openshift-origin-cartridge-ruby-1.9 && carts="$carts openshift-origin-cartridge-ruby"
+
+
+#yum install -y --skip-broken $carts || exit 1
+# we would like to know about it if we can't install same v2 carts as v1
+# so don't --skip-broken, just fail
+yum install -y $carts || exit 1
+
+#oo-cart-version -c v2 || exit 1
+# we could run the script but don't really want to restart the broker if there is one at this point
+
+# just place the marker file
+mkdir -p /var/lib/openshift/.settings
+touch /var/lib/openshift/.settings/v2_cartridge_format
+
+exit 0

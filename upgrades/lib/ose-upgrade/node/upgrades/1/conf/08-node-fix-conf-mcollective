@@ -1,0 +1,16 @@
+#!/bin/bash -x
+
+cp /etc/mcollective/server.cfg{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+
+# use the ruby193 SCL-ized mcollective directory
+# use direct addressing
+# bump loglevel to info
+sed -i '/^libdir/ c\
+libdir = /opt/rh/ruby193/root/usr/libexec/mcollective
+/^direct_addressing/d
+/^loglevel/ c\
+loglevel = info
+/^collectives/ a\
+direct_addressing = 1' /etc/mcollective/server.cfg || exit 1
+
+exit 0

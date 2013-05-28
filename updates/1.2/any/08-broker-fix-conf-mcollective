@@ -1,5 +1,0 @@
-#!/bin/bash -x
-
-sed -i '/^libdir/ clibdir = /opt/rh/ruby193/root/usr/libexec/mcollective' /etc/mcollective/client.cfg || exit 1
-
-exit 0

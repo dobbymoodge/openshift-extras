@@ -1,0 +1,11 @@
+#!/bin/bash -x
+
+# /etc/cgconfig.conf now is copied from /opt/rh/ruby193/root/usr/share/gems/doc/openshift-origin-node-*/cgconfig.conf and includes some changes from the previously released version
+
+# in case you customized it somehow, it's saved
+mv /etc/cgconfig.conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+
+cp -vf /opt/rh/ruby193/root/usr/share/gems/doc/openshift-origin-node-*/cgconfig.conf /etc/cgconfig.conf || exit 1
+restorecon -rv /etc/cgconfig.conf || exit 1
+
+exit 0

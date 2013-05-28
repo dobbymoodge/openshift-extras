@@ -1,0 +1,249 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+#####################
+# This migrate script will add 'begin' usage records for all existing apps.
+#####################
+
+$session = nil
+# Write usage records to mongo in chunks for efficiency
+# Defines chunk size
+$bulk_rec_threshold = 25
+$cur_time = Time.now
+$premium_carts = ['jbosseap-6.0']
+$valid_gear_sizes = Rails.configuration.openshift[:gear_sizes]
+$usage_recs = []
+$cur_rec_count = 0
+$failure_count = 0
+$total_rec_count = 0
+$create_rec_count = 0
+$domain_hash = {}
+$user_hash = {}
+      
+def get_mongo_session
+  # Get Mongo session
+  config = Mongoid::Config.sessions["default"]
+  session = Moped::Session.new(config["hosts"])
+  session.use config["database"]
+  session.login(config["username"], config["password"])
+  session
+end
+
+def release_mongo_session(session)
+  # Exit session
+  session.logout
+end
+
+# Write chunk of records to usage_records and usage collection
+def write_usage_records
+  # Populate usage collection records
+  usage = []
+  $usage_recs.each do |urec|
+    u = {'user_id' => urec['user_id'], 'app_name' => urec['app_name'],
+         'gear_id' => urec['gear_id'], 'usage_type' => urec['usage_type'],
+         'begin_time' => urec['time'], 'created_at' => urec['created_at'], 'updated_at' => urec['updated_at']}
+    u['_id'] = Moped::BSON::ObjectId.new 
+    u['gear_size'] = urec['gear_size'] if urec['gear_size']
+    u['addtl_fs_gb'] = urec['addtl_fs_gb'] if urec['addtl_fs_gb']
+    u['cart_name'] = urec['cart_name'] if urec['cart_name']
+    usage << u
+  end
+
+  $total_rec_count += $cur_rec_count
+  begin
+    # Write bulk records to usage_records collection
+    begin
+      $session.with(safe: true)[:usage_records].insert($usage_recs)
+      $create_rec_count += $cur_rec_count
+    rescue Moped::Errors::OperationFailure => e
+      # There can be duplicate key error index, try one at a time
+      # This happens when usage record already exists for the gear
+      $usage_recs.each do |urec|
+        begin
+          $session.with(safe: true)[:usage_records].insert(urec)
+          $create_rec_count += 1
+        rescue Moped::Errors::OperationFailure => e
+          #Ignore
+        end
+      end
+    end
+
+    # Write bulk records to usage collection
+    begin
+      $session.with(safe: true)[:usage].insert(usage)
+    rescue Moped::Errors::OperationFailure => e
+      # There can be duplicate key error index, try one at a time
+      usage.each do |urec|
+        begin
+          $session.with(safe: true)[:usage].insert(urec)
+        rescue Moped::Errors::OperationFailure => e
+          #Ignore
+        end
+      end
+    end
+  ensure
+    $cur_rec_count = 0
+    $usage_recs = []
+  end
+end
+
+# Get parent user id for the given user id
+def get_parent_user_id(user_id)
+  unless $user_hash[user_id.to_s]
+    user_obj = $session[:cloud_users].find(_id: user_id).select(parent_user_id: 1).first
+    if user_obj
+      $user_hash[user_id.to_s] = user_obj['parent_user_id']
+    end
+  end
+  $user_hash[user_id.to_s]
+end
+
+# Get user id for the given domain id
+def get_user_id(domain_id)
+  unless $domain_hash[domain_id.to_s]
+    domain_obj = $session[:domains].find(_id: domain_id).select(owner_id: 1).first
+    if domain_obj
+      $domain_hash[domain_id.to_s] = domain_obj['owner_id']
+    end
+  end
+  $domain_hash[domain_id.to_s]
+end
+
+def process_app(app)
+  begin
+    # Validations
+    user_id = get_user_id(app['domain_id'])
+    unless user_id and app['name']
+      raise Exception.new "Invalid user_id/app_name."
+    end
+    return if get_parent_user_id(user_id)  # Skip subaccount users
+ 
+    app_info = {}
+    # Process component instances and find premium carts
+    app['component_instances'].each do |ci|
+      gid = ci['group_instance_id']
+      if $premium_carts.include?(ci['cartridge_name'])
+        app_info[gid] = {} unless app_info[gid]
+        app_info[gid]['cart_name'] = ci['cartridge_name']
+      end
+    end
+
+    # Process group overrides and find gear_size, addtl_fs_gb overrides
+    app['group_overrides'].each do |go|
+      next unless go['gear_size'] or go['additional_filesystem_gb']
+      next if go['components'].nil? or go['components'].empty?
+      app['component_instances'].each do |ci|
+        if (ci['cartridge_name'] == go['components'][0]['cart']) and
+           (ci['component_name'] == go['components'][0]['comp'])
+          gid = ci['group_instance_id']
+          app_info[gid] = {} unless app_info[gid]
+          app_info[gid]['gear_size'] = go['gear_size'] if go['gear_size']
+          app_info[gid]['addtl_fs_gb'] = go['additional_filesystem_gb'] if go['additional_filesystem_gb']
+          break
+        end
+      end 
+    end
+    usage_rec_template = {'user_id' => user_id, 'app_name' => app['name'],
+                          'event' => UsageRecord::EVENTS[:begin], 'time' => $cur_time, 
+                          'created_at' => $cur_time, 'updated_at' => $cur_time}
+    # Create usage records
+    app['group_instances'].each do |gi|
+      gear_size = app['default_gear_size']
+      addtl_fs_gb = nil
+      cart_name = nil
+      gid = gi['_id']
+      if app_info[gid]
+        gear_size = app_info[gid]['gear_size'] if app_info[gid]['gear_size']
+        addtl_fs_gb = app_info[gid]['addtl_fs_gb'] if app_info[gid]['addtl_fs_gb']
+        cart_name = app_info[gid]['cart_name'] if app_info[gid]['cart_name']
+      end
+      unless $valid_gear_sizes.include?(gear_size)
+        raise Exception.new "Invalid gear size '#{gear_size}' for app: '#{app['name']}'."
+      end
+      if addtl_fs_gb and (addtl_fs_gb < 0)
+        raise Exception.new "Invalid additional storage '#{addtl_fs_gb}' for app: '#{app['name']}'."
+      end
+      gi['gears'].each do |gear|
+        raise Exception.new "Invalid gear_id." unless gear['_id']
+        usage_rec = usage_rec_template.dup
+        usage_rec['_id'] = Moped::BSON::ObjectId.new 
+        usage_rec['gear_id'] = gear['_id']
+        usage_rec['usage_type'] = UsageRecord::USAGE_TYPES[:gear_usage]
+        usage_rec['gear_size'] = gear_size
+        $usage_recs << usage_rec
+        $cur_rec_count += 1
+
+        if addtl_fs_gb
+          usage_rec = usage_rec_template.dup
+          usage_rec['_id'] = Moped::BSON::ObjectId.new 
+          usage_rec['gear_id'] = gear['_id']
+          usage_rec['usage_type'] = UsageRecord::USAGE_TYPES[:addtl_fs_gb]
+          usage_rec['addtl_fs_gb'] = addtl_fs_gb
+          $usage_recs << usage_rec
+          $cur_rec_count += 1
+        end
+
+        if cart_name
+          usage_rec = usage_rec_template.dup
+          usage_rec['_id'] = Moped::BSON::ObjectId.new 
+          usage_rec['gear_id'] = gear['_id']
+          usage_rec['usage_type'] = UsageRecord::USAGE_TYPES[:premium_cart]
+          usage_rec['cart_name'] = cart_name
+          $usage_recs << usage_rec
+          $cur_rec_count += 1
+        end
+        write_usage_records if $cur_rec_count >= $bulk_rec_threshold
+      end
+    end
+  rescue Exception => e
+    puts "Failed for app, #{app['name']}: #{e.message}"
+    puts e.backtrace.inspect
+    $failure_count += 1
+    return 1
+  end
+end
+
+usage_index_fields = {user_id: 1, gear_id: 1, usage_type: 1, event: 1}
+begin
+  $session = get_mongo_session
+
+  # Create index to ensure that we don't create duplicate begin record entries
+  $session.with(safe: true, consistency: :strong)[:usage_records].indexes.create(usage_index_fields, {unique: true})
+
+  # Populate domain id => user id cache
+  $session[:domains].find.select(owner_id: 1).no_timeout.each do |domain|
+    $domain_hash[domain['_id'].to_s] = domain['owner_id']
+  end
+
+  # Populate user id => parent user id cache
+  $session[:cloud_users].find.select(parent_user_id: 1).no_timeout.each do |user|
+    $user_hash[user['_id'].to_s] = user['parent_user_id']
+  end
+
+  # Cursor over all applications
+  $session[:applications].find({"group_instances.gears.0" => { "$exists" => true}}).select(domain_id: 1, name: 1, default_gear_size: 1, component_instances: 1, 
+                                      group_instances: 1, group_overrides: 1).no_timeout.each do |app|
+    process_app(app)
+  end
+  write_usage_records if $cur_rec_count >= 0
+rescue Exception => e
+  puts e.message
+  puts e.backtrace
+  exit 1
+ensure
+  if $session
+    $session.with(safe: true, consistency: :strong)[:usage_records].indexes.drop(usage_index_fields)
+    release_mongo_session($session)
+  end
+end
+
+puts "***************************"
+if $failure_count == 0
+  puts "Migration Done! - No Failures"
+else
+  puts "Migration Done! - #{$failure_count} Failures"
+end
+puts "Usage records - Created: #{$create_rec_count}, Duplicates: #{$total_rec_count-$create_rec_count}"
+puts "***************************"

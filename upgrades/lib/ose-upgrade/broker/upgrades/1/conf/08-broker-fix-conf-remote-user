@@ -1,0 +1,14 @@
+#!/bin/bash -x
+
+conf=/var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
+
+if [ -f $conf ]; then
+  cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+
+  # add a passthrough line for auth tokens
+  sed -i '/^\s*BrowserMatchNoCase/ i\
+    SetEnvIfNoCase Authorization Bearer passthrough' $conf || exit 1
+
+fi
+
+exit 0

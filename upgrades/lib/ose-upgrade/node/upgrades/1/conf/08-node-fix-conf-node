@@ -1,0 +1,25 @@
+#!/bin/bash -x
+
+
+conf=/etc/openshift/node.conf
+cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+
+sed -i '/APACHE_ACCESS_LOG/ c\
+APACHE_ACCESS_LOG="/var/log/httpd/openshift_log"     # idler looks here for node httpd log file' $conf || exit 1
+
+cat <<EOF >> $conf || exit 1
+# Uncomment and use the following line if you want to gear users to be members of
+# additional groups besides the one with the same id as the uid. The other group
+# should be an existing group.
+#GEAR_SUPL_GRPS="another_group"  # Supplementary groups for gear UIDs (comma separated list)
+ 
+ENABLE_CGROUPS=1                                             # constrain gears in cgroups (1=yes, 0=no)
+
+# Feel free to change log levels to INFO or WARN
+PLATFORM_LOG_FILE=/var/log/openshift/node/platform.log
+PLATFORM_LOG_LEVEL=DEBUG
+PLATFORM_TRACE_LOG_FILE=/var/log/openshift/node/platform-trace.log
+PLATFORM_TRACE_LOG_LEVEL=DEBUG
+EOF
+
+exit 0

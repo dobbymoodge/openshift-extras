@@ -1,0 +1,11 @@
+#!/bin/bash -x
+
+# assumptions: console is installed on the broker
+# although actually services that aren't installed will simply fail to stop and complain
+
+#for svc in activemq crond httpd mongod openshift-broker openshift-console 
+for svc in httpd openshift-broker openshift-console 
+do
+	service $svc stop
+done
+exit 0

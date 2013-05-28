@@ -1,0 +1,18 @@
+#!/bin/bash -x
+
+# assumption: repos are named as in our script and point to /latest/ puddle
+
+for i in openshift-client.repo openshift-jboss.rep openshift-infrastructure.repo  openshift-node.repo
+do
+  file=/etc/yum.repos.d/$i
+  # RHOSE from 1.1.* to 1.2
+  [[ -f $file ]] && sed -i 's/1\.1\.[xz]/1.2/' $file
+done
+
+# for v2 we need to point to the jboss ews 2 repo
+file=/etc/yum.repos.d/jbossews.repo
+[[ -f $file ]] && sed -i 's/jbews\/1/jbews\/2/' $file
+
+yum clean all
+
+exit 0

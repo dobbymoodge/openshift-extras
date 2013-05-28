@@ -1,0 +1,24 @@
+#!/bin/bash -x
+
+# TODO: figure out how to update RHN classic channels
+exit 0
+
+for i in rhel-server-ose-{infrastructure,node,jbosseap,rhc}-6-rpms
+do
+  if #channel already subscribed
+  then
+    # all channels need to move to version 2
+    new_channel=${i/1/2}
+    # subscribe to new_channel
+  fi
+done
+
+if # jboss ews 1 repo subscribed
+then
+    # for v2 we need to point to the jboss ews 2 repo
+    new_channel=${i/jbews\/1/jbews\/2}
+fi
+
+yum clean all
+
+exit 0

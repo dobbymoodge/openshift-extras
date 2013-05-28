@@ -1,0 +1,9 @@
+#!/bin/bash -x
+
+# assumptions: console is installed on the broker and desired to be running - if not, will fail
+
+for svc in httpd openshift-broker openshift-console 
+do
+	service $svc start
+done
+exit 0

@@ -1,0 +1,62 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+#####################
+# This migrate script will migrate all scalable apps which have the db gear info wrongly populated
+#####################
+
+if ARGV.include? "--verbose"
+  $verbose = true
+else
+  $verbose = false
+end
+
+def mongo_connect
+  $db = OpenShift::DataStore.db
+end
+
+def migrate_apps
+  $coll = $db.collection('applications')
+  query = {"scalable" => true, "$or" => [{"component_instances.cartridge_name" => "mongodb-2.2"}, {"component_instances.cartridge_name" => "mysql-5.1"}, {"component_instances.cartridge_name" => "postgresql-8.4"}] }
+  selection = {:fields => ["component_instances.cartridge_name",
+                         "component_instances.component_properties",
+                         "component_instances._id",
+                         "uuid"], :timeout => false}
+
+  total = 0
+  mongo_url = "mongodb://$OPENSHIFT_MONGODB_DB_HOST:$OPENSHIFT_MONGODB_DB_PORT/"
+  mysql_url = "mysql://$OPENSHIFT_MYSQL_DB_HOST:$OPENSHIFT_MYSQL_DB_PORT/"
+  postgres_url = "postgresql://$OPENSHIFT_POSTGRESQL_DB_HOST:$OPENSHIFT_POSTGRESQL_DB_PORT/"
+  $coll.find(query, selection) do |cursor|
+    cursor.each do |app|
+      print "."
+      print "Migrating app #{app['uuid']}.. " if $verbose
+      comp_index = 0
+      did_migrate = false
+      app['component_instances'].each { |ci|
+        conn_url = nil
+        case ci['cartridge_name'] 
+          when "mongodb-2.2"
+            conn_url = mongo_url if ci['component_properties']['connection_url'] != mongo_url
+          when "mysql-5.1"
+            conn_url = mysql_url if ci['component_properties']['connection_url'] != mysql_url
+          when "postgresql-8.4"
+            conn_url = postgres_url if ci['component_properties']['connection_url'] != postgres_url
+        end
+        (did_migrate = true and $coll.update({ "uuid" => app["uuid"], "component_instances.#{comp_index}._id" => ci["_id"] }, { "$set" => { "component_instances.#{comp_index}.component_properties.connection_url" => conn_url } }) ) if conn_url
+        comp_index += 1
+      }
+      total += 1 if did_migrate
+      print "done" if $verbose
+    end
+  end
+  puts
+  puts "Mongo migrated #{total} apps"
+end
+
+puts "Starting migration"
+mongo_connect
+migrate_apps
+puts "Done!"
