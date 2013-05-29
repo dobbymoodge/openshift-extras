@@ -1,0 +1,10 @@
+#!/bin/bash -x
+
+# known problem version that is installed by default from
+# JBoss channel. With new yum conf, this should get us back
+# to the RHEL version.
+if rpm -q httpd-2.2.22-14.ep6.el6; then
+	yum downgrade -y httpd httpd-tools mod_ssl || exit 1
+fi
+
+exit 0
