@@ -173,14 +173,14 @@ module OSEUpgrader
 
     # shortcut for File.dirname(__FILE__) + script
     def run_script_relative(from, *script)
-      run_script File.join(File.dirname(from), *script)
+      run_script File.join(File.dirname(from), *script.map {|s| s.to_s})
     end
 
     # shortcut for File.dirname(__FILE__) + dir + scripts
     # If any fail (nonzero rc), execution ends
     def run_scripts_in(from, *dir)
       rc, output = 0, ""
-      dir = File.join(File.dirname(from), *dir)
+      dir = File.join(File.dirname(from), *dir.map {|s| s.to_s})
       verbose "Running upgrade scripts in #{dir}"
       any_ran = false
       Dir.entries(dir).sort.each do |script|

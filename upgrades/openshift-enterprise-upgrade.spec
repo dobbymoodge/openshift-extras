@@ -94,7 +94,7 @@ This package contains mechanisms for upgrading an OpenShift Enterprise installat
 
 %defattr(0500,root,root,700)
 %_bindir/ose-upgrade
-%upgrade_path/ose-upgrade/channels/
+%upgrade_path/ose-upgrade/host/
 
 #############################
 %post -n openshift-enterprise-version

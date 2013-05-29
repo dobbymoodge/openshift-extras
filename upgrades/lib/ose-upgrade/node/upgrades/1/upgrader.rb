@@ -5,17 +5,11 @@ module OSEUpgrader
     class Number1 < Node
 
       def implemented_steps
-        %w[ pre yum rpms conf start_node ]
+        %w[ pre rpms conf start_node ]
       end
 
       def run_upgrade_step_pre(state)
         rc, o = run_scripts_in(__FILE__, 'pre')
-        return rc
-      end
-
-      def run_upgrade_step_yum(state)
-        source = @params[:main_upgrader].detect_package_source
-        rc, o = run_scripts_in(__FILE__, 'yum', source.to_s)
         return rc
       end
 

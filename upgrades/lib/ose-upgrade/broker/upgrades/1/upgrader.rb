@@ -11,19 +11,13 @@ module OSEUpgrader
 
       def implemented_steps
         @params[:node_upgrader] ?
-        %w[ pre yum rpms conf start_node confirm_nodes data start_broker gears] :
-        %w[ pre yum rpms conf confirm_nodes data start_broker gears ]
+        %w[ pre rpms conf start_node confirm_nodes data start_broker gears] :
+        %w[ pre rpms conf confirm_nodes data start_broker gears ]
       end
 
       def run_upgrade_step_pre(state)
         rc, o = run_scripts_in(__FILE__, 'pre')
         do_warn "Please upgrade nodes in parallel, prior to the confirm_nodes step" if rc == 0
-        return rc
-      end
-
-      def run_upgrade_step_yum(state)
-        source = @params[:main_upgrader].detect_package_source
-        rc, o = run_scripts_in(__FILE__, 'yum', source.to_s)
         return rc
       end
 

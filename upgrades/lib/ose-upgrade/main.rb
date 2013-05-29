@@ -44,7 +44,7 @@ module OSEUpgrader
     end
 
     def implemented_steps
-      %w[ channels ]
+      %w[ channels yum ]
     end
 
     def is_complete?
@@ -101,8 +101,14 @@ module OSEUpgrader
 
     def run_upgrade_step_channels(state)
       source = self.detect_package_source
-      rc, output = run_script_relative(__FILE__, "channels", @params[:number].to_s, source.to_s)
+      rc, o = run_script_relative(__FILE__, "host", "upgrades", @params[:number], "channels", source)
       rc
+    end
+
+    def run_upgrade_step_yum(state)
+      source = self.detect_package_source
+      rc, o = run_scripts_in(__FILE__, "host", "upgrades", @params[:number], "yum", source)
+      return rc
     end
 
   ######## SETUP #############
