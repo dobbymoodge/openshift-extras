@@ -21,6 +21,9 @@ module OSEUpgrader
   class Main < Abstract
 
     STATE_FILE = ENV['OPENSHIFT_UPGRADE_STATE'] || '/etc/openshift/upgrade/state.yaml'
+    VERSION_MAP = {
+        1  => "1.2",
+    }
     require 'rubygems'
     require 'yaml'
     require 'pp'
@@ -44,7 +47,7 @@ module OSEUpgrader
     end
 
     def implemented_steps
-      %w[ channels yum ]
+      %w[ subscription ]
     end
 
     def is_complete?
@@ -99,16 +102,14 @@ module OSEUpgrader
       return 0
     end
 
-    def run_upgrade_step_channels(state)
+    def run_upgrade_step_subscription(state)
       source = self.detect_package_source
-      rc, o = run_script_relative(__FILE__, "host", "upgrades", @params[:number], "channels", source)
+      rc, o = run_scripts_in(__FILE__, "host", "upgrades", @params[:number], source)
+      File.open('/etc/openshift-enterprise-version', 'w') do |file|
+        file.write "OpenShift Enterprise #{VERSION_MAP[@params[:number]]}\n"
+        verbose "updating /etc/openshift-enterprise-version"
+      end if rc == 0
       rc
-    end
-
-    def run_upgrade_step_yum(state)
-      source = self.detect_package_source
-      rc, o = run_scripts_in(__FILE__, "host", "upgrades", @params[:number], "yum", source)
-      return rc
     end
 
   ######## SETUP #############
