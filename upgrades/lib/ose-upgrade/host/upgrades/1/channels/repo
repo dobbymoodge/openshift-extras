@@ -5,8 +5,14 @@
 for i in openshift-client.repo openshift-jboss.repo openshift-infrastructure.repo  openshift-node.repo
 do
   file=/etc/yum.repos.d/$i
-  # RHOSE from 1.1.* to 1.2
-  [[ -f $file ]] && sed -i 's/1\.1\.[xz]/1.2/' $file
+  if [ -f $file ]; then
+    # RHOSE from 1.1.* to 1.2
+    sed -i 's/1\.1\.[xz]/1.2/' $file
+
+    # Some puddles use datestamps to reference puddle.  Here we ensure they are
+    # using the 'latest' symlink since we know that will always exist
+    sed -i 's/[[:digit:]]\{4\}-[[:digit:]]\{2\}-[[:digit:]]\{2\}\.[[:digit:]]\{1,2\}/latest/' $file
+  fi
 done
 
 # for v2 we need to point to the jboss ews 2 repo
