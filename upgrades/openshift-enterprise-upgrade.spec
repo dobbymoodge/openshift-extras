@@ -1,7 +1,7 @@
 Name:      openshift-enterprise-upgrade
 
 # items that will likely be shared between RPMs
-Version:   1.0.0
+Version:   1.2
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -102,7 +102,7 @@ This package contains mechanisms for upgrading an OpenShift Enterprise installat
 vfile=/etc/openshift-enterprise-version
 if [ ! -f $vfile ]; then
   # create the initial version file
-  echo "OpenShift Enterprise 1.2" > $vfile
+  echo "OpenShift Enterprise %version" > $vfile
   chmod 644 $vfile
 fi
 
