@@ -2,7 +2,7 @@
 
 # assumption: repos are named as in our script and point to /latest/ puddle
 
-for i in openshift-client.repo openshift-jboss.rep openshift-infrastructure.repo  openshift-node.repo
+for i in openshift-client.repo openshift-jboss.repo openshift-infrastructure.repo  openshift-node.repo
 do
   file=/etc/yum.repos.d/$i
   # RHOSE from 1.1.* to 1.2
