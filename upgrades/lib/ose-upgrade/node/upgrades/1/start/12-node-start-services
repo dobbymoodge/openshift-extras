@@ -4,4 +4,7 @@ for svc in mcollective openshift-port-proxy openshift-node-web-proxy
 do
 	service $svc start
 done
+
+service httpd graceful 
+
 exit 0

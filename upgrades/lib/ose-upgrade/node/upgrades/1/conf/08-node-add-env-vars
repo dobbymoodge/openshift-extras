@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# create the directory where env vars go (should be there already, though)
+dir='/etc/openshift/env'
+mkdir -p $dir || exit 1
+
+# populate with current node.conf values
+. /etc/openshift/node.conf || exit 1
+echo $CLOUD_DOMAIN > "$dir/OPENSHIFT_CLOUD_DOMAIN" || exit 1
+echo $BROKER_HOST > "$dir/OPENSHIFT_BROKER_HOST" || exit 1
+
+exit 0

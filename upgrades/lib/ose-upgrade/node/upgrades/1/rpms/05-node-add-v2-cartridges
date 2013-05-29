@@ -47,11 +47,4 @@ rpm -q --quiet openshift-origin-cartridge-ruby-1.9 && carts="$carts openshift-or
 # so don't --skip-broken, just fail
 yum install -y $carts || exit 1
 
-#oo-cart-version -c v2 || exit 1
-# we could run the script but don't really want to restart the broker if there is one at this point
-
-# just place the marker file
-mkdir -p /var/lib/openshift/.settings
-touch /var/lib/openshift/.settings/v2_cartridge_format
-
 exit 0
