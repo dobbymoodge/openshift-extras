@@ -1,0 +1,20 @@
+#!/usr/bin/env oo-ruby
+require 'rubygems'
+$:.unshift('/var/www/openshift/broker')
+require 'config/environment'
+
+begin
+  db = OpenShift::DataStore.db(:primary)
+
+  # multi update to unset the connections field
+  db["applications"].update({"connections" => {"$exists" => true}}, {"$unset" => {"connections" => true}}, {:multi => true})
+
+  # multi update to unset the externally_reserved_uids_size field in the districts collection 
+  db["districts"].update({"externally_reserved_uids_size" => {"$exists" => true}}, {"$unset" => {"externally_reserved_uids_size" => 1}}, {:multi => true})
+  
+rescue Exception => e
+  puts e.message
+  puts e.backtrace
+  exit 1
+end
+puts "Migration Done!"
