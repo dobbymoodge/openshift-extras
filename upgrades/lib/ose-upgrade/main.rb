@@ -36,7 +36,7 @@ module OSEUpgrader
       @rpms = {}
       @host_is = {} # :broker, :node, :broker_node
       @upgrader = self
-      @package_source = nil # :repo, :rhn, :sam
+      @package_source = nil # :repo, :rhn, :rhsm
       @upgrade_state = {}
 
       load_upgrader
@@ -176,7 +176,7 @@ module OSEUpgrader
         @package_source = :rhn
         verbose "RHN subscription detected."
       elsif @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null') == 0
-        @package_source = :sam
+        @package_source = :rhsm
         verbose "Subscription-manager subscription detected."
       else
         @package_source = :repo

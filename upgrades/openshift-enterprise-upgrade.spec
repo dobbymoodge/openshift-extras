@@ -112,7 +112,7 @@ Summary:   Upgrade capabilities for OpenShift Enterprise brokers and installatio
 Group:     Network/Daemons
 Requires:  openshift-origin-broker-util
 Requires:  openshift-origin-broker
-Requires:  openshift-enterprise-version
+Requires:  openshift-enterprise-version >= %version
 
 %description broker
 
@@ -131,7 +131,7 @@ Summary:   Upgrade capabilities for OpenShift Enterprise node hosts
 Group:     Network/Daemons
 Requires:  openshift-origin-node-util
 Requires:  rubygem-openshift-origin-node
-Requires:  openshift-enterprise-version
+Requires:  openshift-enterprise-version >= %version
 %description node
 
 This contains mechanisms for upgrading an OpenShift Enterprise node host.

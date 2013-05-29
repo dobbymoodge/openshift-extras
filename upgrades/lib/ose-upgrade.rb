@@ -43,7 +43,7 @@ module OSEUpgrader
     def set_step_status(step, to)
       state = get_step_state_data(step)
       state['previous_status'] = state['status']
-      verbose "Setting #{self.upgrade_target} step #{step} status to #{to}"
+      verbose "Setting #{self.upgrade_target} step '#{step}' status to #{to}"
       state['status'] = to
     end
 
@@ -106,7 +106,7 @@ module OSEUpgrader
             rc
           rescue Exception => e
             set_step_status(step, 'FAILED')
-            do_fail "The #{step} upgrade step failed: #{e.pretty_inspect}"
+            do_fail "The '#{step}' upgrade step failed: #{e.pretty_inspect}"
           end
         end
       else
