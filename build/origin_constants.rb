@@ -32,12 +32,14 @@ OPTIONS = {
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
   },
   "rhel"   => {
-    "amis"            => {"us-east-1" =>"ami-cc5af9a5"},
+    "amis"            => {"us-east-1" =>"ami-7b0c6312"},
     "devenv_name"     => "enterprise",
-    "ssh_user"        => "root",
+    "ssh_user"        => "ec2-user",
     "ignore_packages" => [
       'avahi-cname-manager',
       'openshift-origin-cartridge-10gen-mms-agent',
+      'openshift-origin-cartridge-10gen-mms-agent-0.1',
+      'openshift-origin-cartridge-community-python-2.7',
       'openshift-origin-cartridge-community-python-3.3',
       'openshift-origin-cartridge-cron-1.4',
       'openshift-origin-cartridge-jbossas',
@@ -99,7 +101,7 @@ SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterp
                         'enterprise' => 'git@github.com:openshift/enterprise.git',
                         'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git',
                         # TODO: fork this
-                        'puppet-openshift_origin' => 'https://github.com/brenton/puppet-openshift_origin.git',
+                        'puppet-openshift_origin' => 'https://github.com/detiber/puppet-openshift_origin.git',
                         'openshift-extras' => 'git@github.com:openshift/openshift-extras.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'

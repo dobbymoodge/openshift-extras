@@ -1,5 +1,6 @@
 module SetupHelper
-  BUILD_REQUIREMENTS = ["tito","yum-plugin-priorities","git","make","wget","vim-enhanced","rubygems","ruby-devel","rubygems-devel"]
+  EPEL_REQUIREMENTS = ["tito"]
+  BUILD_REQUIREMENTS = ["yum-plugin-priorities","git","make","wget","vim-enhanced","rubygems","ruby-devel"]
   BUILD_GEM_REQUIREMENTS = {"aws-sdk"=>"","rake"=>"","thor"=>"","parseconfig"=>"","yard"=>""}
 
   # Ensure that openshift mirror repository and all build requirements are installed.
@@ -13,9 +14,16 @@ module SetupHelper
       system "yum install -y #{packages.join(" ")}"
     end
 
+    packages = EPEL_REQUIREMENTS.select{ |rpm| `rpm -q #{rpm}`.match(/is not installed/) }
+    if packages.length > 0
+      puts "You are the following packages which are required to run this build script. Installing..."
+      puts packages.map{|p| "\t#{p}"}.join("\n")
+      system "yum install --enablerepo=epel -y #{packages.join(" ")}"
+    end
+
     create_openshift_deps_rpm_repository
     if `rpm -q puppet`.match(/is not installed/)
-      system "yum install -y --enablerepo=puppetlabs-products --disablerepo=Node facter puppet"
+      system "yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21"
     end
 
     base_os = guess_os
