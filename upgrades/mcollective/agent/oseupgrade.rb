@@ -27,7 +27,7 @@ module MCollective
       # Migrate a gear from previous to current migration number
       #
       def migrate_action
-        Log.instance.debug("migrate_action call / request = #{request.pretty_inspect}")
+        Log.instance.info("migrate_action call / request = #{request.pretty_inspect}")
         validate :uuid, /^[a-zA-Z0-9]+$/
         validate :gear_name, /^[a-zA-Z0-9]+$/
         validate :number, /^\d+$/
@@ -48,7 +48,7 @@ module MCollective
           exitcode = 1
           output += "Gear failed to migrate with exception: #{e.message}\n#{e.backtrace}\n"
         end
-        Log.instance.debug("migrate_action (#{exitcode})\n------\n#{output}\n------)")
+        Log.instance.info("migrate_action (#{exitcode})\n------\n#{output}\n------)")
 
         reply[:output] = output
         reply[:exitcode] = exitcode
@@ -56,7 +56,7 @@ module MCollective
       end
 
       def ping_action
-        Log.instance.debug("ping_action call / request = #{request.pretty_inspect}")
+        Log.instance.info("ping_action call / request = #{request.pretty_inspect}")
         reply[:exitcode] = 0
       end
 
