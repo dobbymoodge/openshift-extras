@@ -101,7 +101,7 @@ SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterp
                         'enterprise' => 'git@github.com:openshift/enterprise.git',
                         'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git',
                         # TODO: fork this
-                        'puppet-openshift_origin' => 'https://github.com/brenton/puppet-openshift_origin.git',
+                        'puppet-openshift_origin' => 'https://github.com/detiber/puppet-openshift_origin.git',
                         'openshift-extras' => 'git@github.com:openshift/openshift-extras.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'
