@@ -108,7 +108,7 @@ module OpenShiftMigration
 
         progress = MigrationProgress.new(params[:uuid])
         exitcode = 0
-
+        
         unless (File.exists?(params[:gear_home]) && !File.symlink?(params[:gear_home]))
           exitcode = 127
           progress.log "Application not found to migrate: #{params[:gear_home]}"
@@ -121,7 +121,7 @@ module OpenShiftMigration
 
         begin
           progress.log 'Beginning V1 -> V2 migration'
-          inspect_gear_state(progress, params[:gear_home])
+          inspect_gear_state(progress, params[:uuid], params[:gear_home])
           migrate_stop_lock(progress, params[:uuid], params[:gear_home])
           stop_gear(progress, params[:hostname], params[:uuid])
           migrate_pam_nproc_soft(progress, params[:uuid])
@@ -158,20 +158,47 @@ module OpenShiftMigration
         (OpenShift::Utils::Sdk.new_sdk_app?(gear_home) && migration_metadata.size == 0)
       end
 
-      def self.inspect_gear_state(progress, gear_home)
+      def self.inspect_gear_state(progress, uuid, gear_home)
         progress.log "Inspecting gear at #{gear_home}"
 
         if progress.incomplete? 'inspect_gear_state'
           app_state = File.join(gear_home, 'app-root', 'runtime', '.state')
           save_state = File.join(gear_home, 'app-root', 'runtime', PREMIGRATION_STATE)
+
           FileUtils.cp(app_state, save_state)
+
+          premigration_state = OpenShift::Utils::MigrationApplicationState.new(uuid, PREMIGRATION_STATE)
+          progress.log "Pre-migration state: #{premigration_state.value}"
           progress.mark_complete('inspect_gear_state')
         end
       end
 
       def self.migrate_stop_lock(progress, uuid, gear_home)
         if progress.incomplete? 'detect_v1_stop_lock'
-          stop_lock_found = !Dir.glob(File.join(gear_home, '*-*', 'run', 'stop_lock')).empty?
+
+          v1_carts = v1_cartridges(gear_home)
+
+          carts_to_check = v1_carts[:framework_carts]
+
+          if carts_to_check.empty?
+            carts_to_check = v1_carts[:db_carts]
+          end
+
+          stop_lock_found = false
+
+          progress.log "Checking for V1 stop lock in #{carts_to_check}"
+
+          carts_to_check.each do |cart|
+            next if File.symlink?(File.join(gear_home, cart))
+
+            stop_glob = Dir.glob(File.join(gear_home, cart, 'run', 'stop_lock'))
+            stop_lock_found = !stop_glob.empty?
+
+            if stop_lock_found
+              progress.log "Stop lock found: #{stop_glob.to_s}"
+              break
+            end
+          end
 
           if stop_lock_found
             config = OpenShift::Config.new
@@ -211,7 +238,16 @@ module OpenShiftMigration
         progress.log "Starting gear with uuid '#{uuid}' on node '#{hostname}'"
 
         if progress.incomplete? 'start_gear'
-          OpenShift::ApplicationContainer.from_uuid(uuid).start_gear(user_initiated: false)
+          container = OpenShift::ApplicationContainer.from_uuid(uuid)
+
+          begin
+            output = container.start_gear(user_initiated: false)  
+            progress.log "Start gear output: #{output}"
+          rescue Exception => e
+            progress.log "Start gear failed with an exception: #{e.message}"
+            raise
+          end
+
           progress.mark_complete('start_gear')
         end
       end
@@ -283,6 +319,7 @@ module OpenShiftMigration
         if progress.incomplete? 'typeless_translated_vars'
           progress.log 'Migrating TYPELESS_TRANSLATED_VARS to discrete variables'
           user = OpenShift::UnixUser.from_uuid(uuid)
+          blacklist = %w(OPENSHIFT_GEAR_CTL_SCRIPT)
           vars_file = File.join(gear_home, '.env', 'TYPELESS_TRANSLATED_VARS')
 
           if File.exists?(vars_file)
@@ -297,12 +334,17 @@ module OpenShiftMigration
                 value = line[(index + 1)..-1]
                 value.gsub!(/\A["']|["']\Z/, '')
 
+                if blacklist.include?(key)
+                  progress.log " Skipping #{key} because it is in the blacklist"
+                  next
+                end
+
                 if value[0] == '$'
                   referenced_var = value[1..-1]
                   value = env[referenced_var]
 
                   if value.nil?
-                    progress.log " Unable to resolve #{referenced_var}; skipping #{key}."
+                    progress.log " Unable to resolve $#{referenced_var}; skipping #{key}."
                     next
                   end
                 end
@@ -380,11 +422,11 @@ module OpenShiftMigration
       end
 
       def self.migrate_cartridges(progress, gear_home, uuid, cartridge_migrators)
-        carts_to_migrate = v1_cartridges(gear_home)
+        carts_to_migrate = v1_cartridges(gear_home, progress)
 
         progress.log "Carts to migrate: #{carts_to_migrate}"
 
-        carts_to_migrate.each do |cartridge_name|
+        carts_to_migrate.values.each do |cartridge_name|
           tokens = cartridge_name.split('-')
           version = tokens.pop
           name = tokens.join('-')
@@ -393,11 +435,13 @@ module OpenShiftMigration
         end
       end
 
-      def self.v1_cartridges(gear_home)
-        framework_carts = []
-        plugin_carts    = []
-        db_carts        = []
-        leftover_carts  = []
+      def self.v1_cartridges(gear_home, progress = nil)
+        carts = Hash.new { |h, k| h[k] = [] }
+
+        def carts.values
+          # Establish the correct configure order for the migrated carts
+          self[:framework_carts] + self[:plugin_carts] + self[:db_carts] + self[:leftover_carts]
+        end
 
         Dir.glob(File.join(gear_home, '*-*')).each do |entry|
           # Account for app-root and V2 carts matching the glob which already may be installed
@@ -406,19 +450,18 @@ module OpenShiftMigration
           cart_name = File.basename(entry)
 
           if FRAMEWORK_CARTS.include?(cart_name)
-            framework_carts << cart_name
+            carts[:framework_carts] << cart_name
           elsif PLUGIN_CARTS.include?(cart_name)
-            plugin_carts << cart_name
+            carts[:plugin_carts] << cart_name
           elsif DB_CARTS.include?(cart_name)
-            db_carts << cart_name
+            carts[:db_carts] << cart_name
           else
             # should be haproxy...
-            leftover_carts << cart_name
+            carts[:leftover_carts] << cart_name
           end
         end
 
-        # Establish the correct configure order for the migrated carts
-        framework_carts + plugin_carts + db_carts + leftover_carts
+        carts
       end
 
       def self.migrate_cartridge(progress, name, version, uuid, cartridge_migrators)
@@ -428,11 +471,6 @@ module OpenShiftMigration
 
         cart_model = OpenShift::V2MigrationCartridgeModel.new(config, user, state)
         cartridge  = OpenShift::CartridgeRepository.instance.select(name, version)
-
-        # Special case: zend has new endpoints in V2
-        if name == 'zend'
-          progress.log create_v2_zend_endpoints(progress, user)
-        end
 
         OpenShift::Utils::Cgroups.with_no_cpu_limits(uuid) do
           if progress.incomplete? "#{name}_create_directory"
@@ -466,7 +504,7 @@ module OpenShiftMigration
 
               if progress.incomplete? "#{name}_ownership"
                 target = File.join(user.homedir, c.directory)
-                cart_model.secure_cartridge(user.uid, user.gid, target)
+                cart_model.secure_cartridge(c.short_name, user.uid, user.gid, target)
                 progress.mark_complete("#{name}_ownership")
               end
             end
@@ -481,15 +519,6 @@ module OpenShiftMigration
         FileUtils.rm_rf(File.join(user.homedir, "#{name}-#{version}"))
 
         FileUtils.ln_s(File.join(user.homedir, name), File.join(user.homedir, "#{name}-#{version}"))
-      end
-
-      def self.create_v2_zend_endpoints(progress, user)
-        if progress.incomplete? 'zend_endpoints'
-          Util.add_gear_env_var(user, 'OPENSHIFT_ZEND_CONSOLE_PORT', '16081')
-          Util.add_gear_env_var(user, 'OPENSHIFT_ZEND_ZENDSERVER_PORT', '16083')
-
-          progress.mark_complete('zend_endpoints')
-        end
       end
 
       def self.validate_gear(progress, uuid, gear_home)
@@ -576,7 +605,7 @@ module OpenShiftMigration
 
         begin
           progress.log "Beginning #{version} migration for #{uuid}"
-          inspect_gear_state(progress, gear_home)
+          inspect_gear_state(progress, uuid, gear_home)
 
           migrate_cartridges_v2v2(progress, gear_home, gear_env, uuid, hostname)
 
@@ -671,13 +700,13 @@ module OpenShiftMigration
         progress.mark_complete("#{name}_remove_erb")
 
         cart_model.unlock_gear(next_manifest) do |m|
-          cart_model.secure_cartridge(user.uid, user.gid, target)
+          cart_model.secure_cartridge(next_manifest.short_name, user.uid, user.gid, target)
         end
       end
 
       def self.incompatible_migration(progress, cart_model, next_manifest, version, target, user)
         OpenShift::CartridgeRepository.overlay_cartridge(next_manifest, target)
-        cart_model.secure_cartridge(user.uid, user.gid, target)
+        cart_model.secure_cartridge(next_manifest.short_name, user.uid, user.gid, target)
 
         cart_model.unlock_gear(next_manifest) do |m|
           if progress.incomplete? "#{name}_setup"
