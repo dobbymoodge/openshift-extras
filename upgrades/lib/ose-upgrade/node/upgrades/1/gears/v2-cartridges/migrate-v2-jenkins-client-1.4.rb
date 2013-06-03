@@ -1,4 +1,6 @@
 module OpenShiftMigration
+  module Number1
+    module V2Carts
   class JenkinsClient14Migration
     def post_process(user, progress, env)
       output = "applying jenkins-client-1.4 migration post-process\n"
@@ -8,5 +10,7 @@ module OpenShiftMigration
 
       output
     end
+  end
+end
   end
 end
