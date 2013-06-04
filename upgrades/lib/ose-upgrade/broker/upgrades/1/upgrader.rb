@@ -11,8 +11,8 @@ module OSEUpgrader
 
       def implemented_steps
         @params[:node_upgrader] ?
-        %w[ pre rpms conf start_node confirm_nodes data start_broker gears] :
-        %w[ pre rpms conf confirm_nodes data start_broker gears ]
+        %w[ pre rpms conf start_node confirm_nodes data gears start_broker] :
+        %w[ pre rpms conf confirm_nodes data gears start_broker]
       end
 
       def run_upgrade_step_pre(state)
