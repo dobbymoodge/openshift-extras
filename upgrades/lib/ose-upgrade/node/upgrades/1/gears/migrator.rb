@@ -1,5 +1,6 @@
-require_relative 'httpd-frontend/migrate-frontend'
-require_relative 'v2-cartridges/migrate-v2'
+require_relative '22-postgres/migrate'
+require_relative '24-httpd-frontend/migrate-frontend'
+require_relative '28-v2carts/migrate-v2'
 
 module OpenShiftMigration
   module Number1
@@ -15,10 +16,16 @@ module OpenShiftMigration
     #    hostname: hostname for this node (for logging)
     # Return values: output to report back to broker, return code for this migration
     def migrate(params = {})
-      o1, r = OpenShiftMigration::Number1::FrontEnd.migrate(params)
-      return o1, r if r != 0
-      o2, r = OpenShiftMigration::Number1::V2Carts.migrate(params)
-      return o1 + o2, r
+      o = ""
+      out, r = OpenShiftMigration::Number1::Postgres.migrate(params)
+      o += out
+      return o, r if r != 0
+      out, r = OpenShiftMigration::Number1::FrontEnd.migrate(params)
+      o += out
+      return o, r if r != 0
+      out, r = OpenShiftMigration::Number1::V2Carts.migrate(params)
+      o += out
+      return o, r
     end
   end
 end
