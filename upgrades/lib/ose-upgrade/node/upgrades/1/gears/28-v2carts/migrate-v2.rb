@@ -48,7 +48,8 @@ module OpenShift
 
       Dir[PathUtils.join(@user.homedir, "*")].each do |cart_dir|
         next if cart_dir.end_with?('app-root') || cart_dir =~ /-\d/ || cart_dir.end_with?('git') ||
-            (not File.directory? cart_dir)
+            (not File.directory? cart_dir) || (File.symlink? cart_dir) ||
+            !File.exist?(PathUtils.join(cart_dir, "metadata", "manifest.yml"))
         yield cart_dir
       end
     end
@@ -108,7 +109,9 @@ module OpenShiftMigration
 
         progress = MigrationProgress.new(params[:uuid])
         exitcode = 0
-        
+        uuid = params[:uuid] # keep merging code that uses local var
+        gear_home = params[:gear_home] # ditto
+
         unless (File.exists?(params[:gear_home]) && !File.symlink?(params[:gear_home]))
           exitcode = 127
           progress.log "Application not found to migrate: #{params[:gear_home]}"
@@ -119,9 +122,20 @@ module OpenShiftMigration
           return "Skipping V1 -> V2 migration because gear appears to already be V2\n", 0
         end
 
+        #TODO: keep this from failing when quotas aren't enabled
+        #filesystem, quota, quota_soft, quota_hard, inodes, inodes_soft, inodes_hard = OpenShift::Node.get_quota(uuid)
         begin
           progress.log 'Beginning V1 -> V2 migration'
+
+          if detect_malformed_gear(progress, gear_home)
+            progress.log 'Deleting migration metadata because this gear appears not to have any cartridges'
+            progress.done
+            return [progress.report, exitcode]
+          end
+
           inspect_gear_state(progress, params[:uuid], params[:gear_home])
+          #progress.log "Beginning quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
+          #OpenShift::Node.set_quota(uuid, quota_hard.to_i * 2, inodes_hard.to_i * 2)
           migrate_stop_lock(progress, params[:uuid], params[:gear_home])
           stop_gear(progress, params[:hostname], params[:uuid])
           migrate_pam_nproc_soft(progress, params[:uuid])
@@ -148,9 +162,26 @@ module OpenShiftMigration
           progress.log "Caught an exception during internal migration steps: #{e.message}"
           progress.log e.backtrace.join("\n")
           exitcode = 1
+        ensure
+          #progress.log "Resetting quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
+          #OpenShift::Node.set_quota(uuid, quota_hard.to_i, inodes_hard.to_i)
         end
 
         [progress.report, exitcode]
+      end
+
+      def self.detect_malformed_gear(progress, gear_home)
+        if progress.incomplete? 'detect_malformed_gear'
+          v1_carts = v1_cartridges(gear_home)
+
+          if v1_carts.values.empty?
+            return true
+          end
+
+          progress.mark_complete 'detect_malformed_gear'
+        end
+
+        return false
       end
 
       def self.v2_gear?(gear_home)
@@ -241,7 +272,7 @@ module OpenShiftMigration
           container = OpenShift::ApplicationContainer.from_uuid(uuid)
 
           begin
-            output = container.start_gear(user_initiated: false)  
+            output = container.start_gear(user_initiated: false)
             progress.log "Start gear output: #{output}"
           rescue Exception => e
             progress.log "Start gear failed with an exception: #{e.message}"
@@ -518,7 +549,7 @@ module OpenShiftMigration
 
         FileUtils.rm_rf(File.join(user.homedir, "#{name}-#{version}"))
 
-        FileUtils.ln_s(File.join(user.homedir, name), File.join(user.homedir, "#{name}-#{version}"))
+        FileUtils.ln_sf(File.join(user.homedir, name), File.join(user.homedir, "#{name}-#{version}"))
       end
 
       def self.validate_gear(progress, uuid, gear_home)
@@ -547,9 +578,14 @@ module OpenShiftMigration
               while true do
                 http = Net::HTTP.new(uri.host, uri.port)
                 request = Net::HTTP::Get.new(uri.request_uri)
-                response = http.request(request)
-                # Give the app a chance to start fully
-                if response.code == '503' && num_tries < 5
+
+                begin
+                  response = http.request(request)
+                rescue
+                  # ignore it
+                end
+                # Give the app a chance to start fully but ignore request failures (due to timeout/etc)
+                if response && response.code == '503' && num_tries < 5
                   sleep num_tries
                 else
                   break
@@ -557,7 +593,7 @@ module OpenShiftMigration
                 num_tries += 1
               end
 
-              progress.log "Post-migration response code: #{response.code}"
+              progress.log "Post-migration response code: #{response ? response.code : 'nil'}"
             end
 
             problem, status = cart_model.gear_status

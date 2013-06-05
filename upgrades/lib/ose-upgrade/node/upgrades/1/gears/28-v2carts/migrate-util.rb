@@ -42,7 +42,9 @@ module OpenShiftMigration
     end
 
     def self.get_env_var_value(app_home, env_var_name)
-      file_contents = file_to_string("#{app_home}/.env/#{env_var_name}").chomp
+      fn = "#{app_home}/.env/#{env_var_name}"
+      return nil unless File.exists?(fn)
+      file_contents = file_to_string(fn).chomp
       eq_index = file_contents.index('=')
 
       return file_contents unless eq_index
@@ -182,9 +184,11 @@ module OpenShiftMigration
     end
 
     def self.make_user_owned(target, user)
-      mcs_label = OpenShift::Utils::SELinux.get_mcs_label(user.uid)
-      PathUtils.oo_chown_R(user.uid, user.gid, target)
-      OpenShift::Utils::SELinux.set_mcs_label_R(mcs_label, target)
+      if File.exists?(target)
+        mcs_label = OpenShift::Utils::SELinux.get_mcs_label(user.uid)
+        PathUtils.oo_chown_R(user.uid, user.gid, target)
+        OpenShift::Utils::SELinux.set_mcs_label_R(mcs_label, target)
+      end
     end
 
     def self.move_directory_between_carts(user,
