@@ -449,7 +449,7 @@ priority= 1
         $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
 
         if options.install_required_packages?
-          $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:ec2-user \!requiretty >> /etc/sudoers"
+          $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:root,ec2-user \!requiretty >> /etc/sudoers"
         end
         puts "Launching AMI: #{image.id} - #{image.name}"
         instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
@@ -777,6 +777,12 @@ sudo -s service named restart
         print_and_exit(ret, out) if ret != 0
         
         out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 20, true, 1, ssh_user)
+
+        # Needed since puppet is removing all the v1 carts and we need the 
+        # php-5.3 cart for the V1 Cart model functional test
+        out, ret = ssh(hostname, "sudo -s yum install -y openshift-origin-cartridge-php-5.3", 60 * 10, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
+
         # TODO: activemq is failing to start or crashing
         out, ret = ssh(hostname, "sudo -s service activemq restart; sleep 10; sudo -s service mcollective restart", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
