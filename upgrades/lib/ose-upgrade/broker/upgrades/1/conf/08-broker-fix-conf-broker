@@ -7,6 +7,18 @@ cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
 
 # user action log location has changed
 sed -i '/^USER_ACTION_LOG_FILE/ cUSER_ACTION_LOG_FILE="/var/log/openshift/broker/user_action.log"' $conf || exit 1
+touch /var/log/openshift/broker/user_action.log || exit 1
+# when we get the cartridge list later, that creates this log with ownership
+# that oo-accept-node complains about, so fix that.
+chown apache:apache /var/log/openshift/broker/user_action.log || exit 1
+
+# oo-accept-broker now complains if SESSION_SECRET is not set - set it if not already set.
+if ! grep '^\s*SESSION_SECRET=' $conf; then
+  sed -i "/SESSION_SECRET=/ cSESSION_SECRET=`openssl rand -hex 64`" $conf
+fi
+
+# format for mongo replica sets changed from space separators to comma separators
+sed -i '/MONGO_HOST_PORT/ s/\b\s\s*\b/,/g' $conf
 
 # tracking audit log is new with this release.
 # ability to supply a message for maintenance mode.
@@ -14,7 +26,7 @@ cat <<EOF >> $conf
 
 #Log resource usage information
 # Log usage to the DB for oo-admin-{ctl-,}usage
-ENABLE_USAGE_TRACKING_DATASTORE="false"
+ENABLE_USAGE_TRACKING_DATASTORE="true"
 # Log usage to a file
 ENABLE_USAGE_TRACKING_AUDIT_LOG="false"
 USAGE_TRACKING_AUDIT_LOG_FILE="/var/log/openshift/broker/usage.log"
@@ -59,13 +71,5 @@ AUTH_SCOPE_TIMEOUTS="session=1.days|7.days, *=1.months|6.months"
 
 
 EOF
-
-# oo-accept-broker now complains if SESSION_SECRET is not set - set it if not already set.
-if ! grep '^\s*SESSION_SECRET=' $conf; then
-  sed -i "/SESSION_SECRET=/ cSESSION_SECRET=`openssl rand -hex 64`" $conf
-fi
-
-# format for mongo replica sets changed from space separators to comma separators
-sed -i '/MONGO_HOST_PORT/ s/\b\s\s*\b/,/g' $conf
 
 exit 0

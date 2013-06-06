@@ -4,7 +4,7 @@
 # although actually services that aren't installed will simply fail to stop and complain
 
 #for svc in activemq crond httpd mongod openshift-broker openshift-console 
-for svc in httpd openshift-broker openshift-console 
+for svc in openshift-broker openshift-console 
 do
 	service $svc stop
 done
