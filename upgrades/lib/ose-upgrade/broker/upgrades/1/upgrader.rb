@@ -63,7 +63,8 @@ module OSEUpgrader
 
       def run_upgrade_step_gears(state)
         do_warn "This may take a while."
-        rc, o = run_script("#{File.dirname(__FILE__)}/gears/migrator --number=1")
+        continue = state['steps']['broker']['gears']['previous_status'] == 'FAILED'
+        rc, o = run_script("#{File.dirname(__FILE__)}/gears/migrator --number=1 #{continue ? '--continue' : ''}")
         return rc
       end
 

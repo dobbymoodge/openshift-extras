@@ -477,6 +477,7 @@ def migrate(number, continue=false, target_server_identity=nil, migrate_position
   puts "Time gathering active gears: #{gather_active_gears_total_time.to_f/1000}s"
   puts "Total execution time: #{total_time.to_f/1000}s"
   puts "#####################################################"
+  return @failures.length > 0 ? 1 : 0
 end
 
 def write_node_to_file(server_identity, gears, number)
@@ -767,7 +768,8 @@ else
       migrate_position = 1
     end
     if opt['continue']
-      migrate(opt['number'], true, nil, migrate_position, num_migrators)
+      rc = migrate(opt['number'], true, nil, migrate_position, num_migrators)
+      exit rc
     elsif File.exists?(WORK_DIR)
       puts <<-WARNING
 !!!!!!!!!!!!!!!!!!!! EXISTING MIGRATION DATA FOUND !!!!!!!!!!!!!!!!!!!!
@@ -777,7 +779,8 @@ where it left off with '#{__FILE__} --continue'.
 WARNING
       exit 1
     else
-      migrate(opt['number'], false, nil, migrate_position, num_migrators)
+      rc = migrate(opt['number'], false, nil, migrate_position, num_migrators)
+      exit rc
     end
   else
     puts "--number is required"
