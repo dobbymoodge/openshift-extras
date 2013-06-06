@@ -1,6 +1,6 @@
 module SetupHelper
   EPEL_REQUIREMENTS = ["tito"]
-  BUILD_REQUIREMENTS = ["git","make","wget","vim-enhanced","rubygems","ruby-devel"]
+  BUILD_REQUIREMENTS = ["yum-plugin-priorities","git","make","wget","vim-enhanced","rubygems","ruby-devel"]
   BUILD_GEM_REQUIREMENTS = {"aws-sdk"=>"","rake"=>"","thor"=>"","parseconfig"=>"","yard"=>""}
 
   # Ensure that openshift mirror repository and all build requirements are installed.
