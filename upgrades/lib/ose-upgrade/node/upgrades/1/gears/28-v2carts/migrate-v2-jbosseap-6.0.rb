@@ -61,7 +61,7 @@ module OpenShiftMigration
       active_deployments_dir = File.join(cartridge_dir, 'standalone/deployments')
 
       Dir.glob(File.join(repo_deployments_dir, '*')).each do |file|
-        FileUtils.cp(file, active_deployments_dir)
+        FileUtils.cp_r(file, active_deployments_dir, :remove_destination => true)
       end
 
       output << Util.move_directory_between_carts(user, 'jbosseap-6.0', 'jbosseap', ['logs'])

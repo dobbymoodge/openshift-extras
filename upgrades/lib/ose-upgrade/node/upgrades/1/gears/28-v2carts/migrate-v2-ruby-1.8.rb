@@ -23,7 +23,7 @@ module OpenShiftMigration
       FileUtils.mkdir_p File.join(ruby_dir, 'template')
 
       Dir.chdir File.join(ruby_dir, 'template') do
-      	FileUtils.cp_r File.join(ruby_dir, 'versions', RUBY_VERSION, 'template'), ruby_dir
+      	FileUtils.cp_r File.join(ruby_dir, 'versions', RUBY_VERSION, 'template'), ruby_dir, :remove_destination => true
       end
 
      	Util.add_cart_env_var(user, 'ruby', 'OPENSHIFT_RUBY_VERSION', RUBY_VERSION)
