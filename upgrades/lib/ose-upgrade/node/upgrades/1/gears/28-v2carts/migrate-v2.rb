@@ -276,7 +276,7 @@ module OpenShiftMigration
             progress.log "Start gear output: #{output}"
           rescue Exception => e
             progress.log "Start gear failed with an exception: #{e.message}"
-            raise
+            #raise
           end
 
           progress.mark_complete('start_gear')
