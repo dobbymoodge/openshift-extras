@@ -60,7 +60,7 @@ module OpenShiftMigration
       # Replace a couple of v2 links with physical files as the old apps didn't contain these files
       ['catalina.policy', 'postgresql_module.xml'].each do |conf|
         FileUtils.rm_f(File.join(cart_dir, 'conf', conf))
-        FileUtils.cp(File.join(cart_dir, 'versions', 'shared', 'configuration', conf), File.join(cart_dir, 'conf', conf))
+        FileUtils.cp_r(File.join(cart_dir, 'versions', 'shared', 'configuration', conf), File.join(cart_dir, 'conf', conf), :remove_destination => true)
       end
 
       # Link the old nested jbossews-1.0 cart subdirectory to the gear level directory

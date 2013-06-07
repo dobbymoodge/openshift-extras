@@ -49,11 +49,11 @@ module OpenShiftMigration
           # Make sure not to overwrite an existing backup in case we are rerunning
           FileUtils.cp(src, bak) unless File.exists?(bak)
         end
-        FileUtils.cp(src, PathUtils.join(cart_dir,'data'))
+        FileUtils.cp_r(src, PathUtils.join(cart_dir,'data'), :remove_destination => true)
       end
 
       PathUtils.join(user.homedir,'.psqlrc').tap do |target|
-        FileUtils.cp(PathUtils.join(conf_dir,'psqlrc'), target )
+        FileUtils.cp_r(PathUtils.join(conf_dir,'psqlrc'), target, :remove_destination => true)
         Util.make_user_owned(target, user)
       end
 
