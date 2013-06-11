@@ -1,0 +1,15 @@
+#!/bin/bash -x
+
+# Record the chkconfig status of the openshift-console service in
+# /etc/openshift/upgrade/console-chkconfig-state
+
+STATEFILE=/etc/openshift/upgrade/console-chkconfig-state
+
+# Fail silently if openshift-console isn't installed/managed by
+# chkconfig
+
+STATE=$(/sbin/chkconfig --list openshift-console) || exit 0
+
+# Blow away console-chkconfig-state
+
+/bin/echo "${STATE}" | /bin/cut --fields=2- | /usr/bin/xargs --max-args=1 echo > $STATEFILE

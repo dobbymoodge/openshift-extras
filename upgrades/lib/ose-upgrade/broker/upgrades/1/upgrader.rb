@@ -16,7 +16,7 @@ module OSEUpgrader
       end
 
       def run_upgrade_step_outage(state)
-        rc, o = run_scripts_in(__FILE__, 'pre')
+        rc, o = run_scripts_in(__FILE__, 'outage')
         do_warn "Please upgrade nodes in parallel, prior to the confirm_nodes step" if rc == 0
         return rc
       end

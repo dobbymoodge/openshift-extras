@@ -1,0 +1,32 @@
+#!/bin/bash -x
+
+# Restore the chkconfig status of the openshift-console service from
+# /etc/openshift/upgrade/console-chkconfig-state
+
+STATEFILE="/etc/openshift/upgrade/console-chkconfig-state"
+
+# Store the current runlevel, or at least a reasonable assumption
+CUR_RUNLEVEL="$(/sbin/runlevel | cut --delimiter=' ' --fields=2)" || CUR_RUNLEVEL="3"
+
+# Fail silently if STATEFILE doesn't exist
+[ -e "${STATEFILE}" ] || exit 0
+
+for ii in $(/bin/cat $STATEFILE)
+do
+    RUNLEVEL="$(/bin/echo ${ii} | /bin/cut --fields=1 --delimiter=':')"
+    STATE="$(/bin/echo ${ii} | /bin/cut --fields=2 --delimiter=':')"
+    # TODO: Sanity check these values?
+    # TODO: Capture and handle exit status?
+    /sbin/chkconfig --level $RUNLEVEL openshift-console $STATE
+
+    # If openshift-console was previously enabled for the current
+    # runlevel, then start the openshift-console service
+    if [ "${CUR_RUNLEVEL}" == "${RUNLEVEL}" -a "${STATE}" == "on" ] 
+    then
+        /sbin/service openshift-console start
+    fi
+done
+
+# Clean up
+
+/bin/rm $STATEFILE
