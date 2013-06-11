@@ -15,7 +15,7 @@ module OSEUpgrader
         %w[ outage rpms conf confirm_nodes data gears start_broker]
       end
 
-      def run_upgrade_step_pre(state)
+      def run_upgrade_step_outage(state)
         rc, o = run_scripts_in(__FILE__, 'pre')
         do_warn "Please upgrade nodes in parallel, prior to the confirm_nodes step" if rc == 0
         return rc
