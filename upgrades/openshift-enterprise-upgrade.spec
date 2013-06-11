@@ -64,31 +64,31 @@ touch %buildroot/var/log/openshift/upgrade.log
 
 # create the version file
 mkdir -p %buildroot%etc
-touch %buildroot%etc/openshift-enterprise-version
+touch %buildroot%etc/openshift-enterprise-release
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 
-############################# version ###############################
-%package -n openshift-enterprise-version
+############################# release ###############################
+%package -n openshift-enterprise-release
 
 # items that have to be specified for each RPM
 Summary:   Version and upgrade capabilities for OpenShift Enterprise installations
 Group:     Network/Daemons
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
-%description -n openshift-enterprise-version
+%description -n openshift-enterprise-release
 This package contains mechanisms for upgrading an OpenShift Enterprise installation.
 
 #############################
-%files -n openshift-enterprise-version
+%files -n openshift-enterprise-release
 %defattr(644,root,root,700)
 %dir %etc_upgrade
 %ghost %etc_upgrade/state.yaml
 %ghost /var/log/openshift/upgrade.log
 # for some reason the build requires the explicit %attr below
-%attr(644,-,-) %ghost /etc/openshift-enterprise-version
+%attr(644,-,-) %ghost /etc/openshift-enterprise-release
 
 # mcollective ddl file is required for both client and agent
 %mco_root/agent/oseupgrade.ddl
@@ -101,11 +101,11 @@ This package contains mechanisms for upgrading an OpenShift Enterprise installat
 %upgrade_path/ose-upgrade/host/
 
 #############################
-%post -n openshift-enterprise-version
+%post -n openshift-enterprise-release
 
 # If the version file doesn't exist, this is a new installation, so create it.
 # Otherwise, leave as-is for the upgrade to handle.
-vfile=/etc/openshift-enterprise-version
+vfile=/etc/openshift-enterprise-release
 if [ ! -f $vfile ]; then
   # create the initial version file
   echo "OpenShift Enterprise %version" > $vfile
@@ -122,7 +122,7 @@ Summary:   Upgrade capabilities for OpenShift Enterprise brokers and installatio
 Group:     Network/Daemons
 Requires:  openshift-origin-broker-util
 Requires:  openshift-origin-broker
-Requires:  openshift-enterprise-version >= %version
+Requires:  openshift-enterprise-release >= %version
 
 %description broker
 
@@ -141,7 +141,7 @@ Summary:   Upgrade capabilities for OpenShift Enterprise node hosts
 Group:     Network/Daemons
 Requires:  openshift-origin-node-util
 Requires:  rubygem-openshift-origin-node
-Requires:  openshift-enterprise-version >= %version
+Requires:  openshift-enterprise-release >= %version
 %description node
 
 This contains mechanisms for upgrading an OpenShift Enterprise node host.

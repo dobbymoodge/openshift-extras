@@ -58,7 +58,7 @@ module OSEUpgrader
     end
 
     def implemented_steps
-      %w[ release ]
+      %w[ begin ]
     end
 
     def steps_complete?
@@ -133,7 +133,7 @@ module OSEUpgrader
       return 0
     end
 
-    def run_upgrade_step_release(state)
+    def run_upgrade_step_begin(state)
       num = state['number']
       verbose "Starting upgrade number #{num} to version #{VERSION_MAP[num]}."
       @upgrade_state['status'] = 'STARTED'
