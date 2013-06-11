@@ -32,7 +32,7 @@ module OSEUpgrader
     def self.upgrade_target; "host"; end
     def upgrade_target; self.class.upgrade_target; end
 
-    def initial_state
+    def initial_state(upgrade_number = nil)
       { }
     end
 
@@ -72,7 +72,7 @@ module OSEUpgrader
       return step # nil means "nothing left to do here"
     end
 
-    def is_complete?
+    def steps_complete?
       get_next_step.nil?
     end
 
@@ -204,11 +204,12 @@ module OSEUpgrader
   end
 
   class Logger
+    LOG_FILE = ENV['OPENSHIFT_UPGRADE_LOG'] || '/var/log/openshift/upgrade.log'
     def self.file=(file)
       @file = file
     end
     def self.file
-      @file ||= ENV['OPENSHIFT_UPGRADE_LOG'] || '/var/log/openshift/upgrade.log'
+      @file ||= LOG_FILE
     end
     def self.log(msg)
       # not very efficient to open the file every time, but this is not

@@ -1,4 +1,8 @@
 Name:      openshift-enterprise-upgrade
+# The number of the upgrade that is *performed* by moving to this version,
+# starting with 1 for 1.1 => 1.2
+# Set this to one lower for the pre-upgrade package
+%global upgrade_number 1
 
 # items that will likely be shared between RPMs
 Version:   1.2
@@ -99,11 +103,17 @@ This package contains mechanisms for upgrading an OpenShift Enterprise installat
 #############################
 %post -n openshift-enterprise-version
 
+# If the version file doesn't exist, this is a new installation, so create it.
+# Otherwise, leave as-is for the upgrade to handle.
 vfile=/etc/openshift-enterprise-version
 if [ ! -f $vfile ]; then
   # create the initial version file
   echo "OpenShift Enterprise %version" > $vfile
   chmod 644 $vfile
+fi
+# same for the upgrade state file.
+if [ ! -f %etc_upgrade/state.yaml ]; then
+  ose-upgrade --complete %upgrade_number >& /dev/null
 fi
 
 ############################# broker ###############################

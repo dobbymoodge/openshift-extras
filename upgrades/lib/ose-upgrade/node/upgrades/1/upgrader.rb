@@ -5,7 +5,7 @@ module OSEUpgrader
     class Number1 < Node
 
       def implemented_steps
-        %w[ pre rpms conf start_node ]
+        %w[ outage rpms conf start_node ]
       end
 
       def run_upgrade_step_pre(state)

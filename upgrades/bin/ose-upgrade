@@ -23,7 +23,6 @@
 #
 require 'optparse'
 options = {
-  :number => 1,
   :wait => 2,
   :verbose => true,
 }
@@ -43,7 +42,7 @@ optparse = OptionParser.new do |opts|
   opts.on('-s','--skip', 'Mark step complete rather than run it') { |o| options[:skip] = o }
   opts.on('-q','--quiet', 'Only display warnings and failures') { |o| options[:verbose] = false }
   opts.on('-d','--debug', 'Enable extra debugging output') { |o| options[:verbose] = options[:debug] = true }
-  opts.on('-n','--number INTEGER', 'Upgrade number to perform') { |number| options[:number] = number.to_i }
+  opts.on('--complete INTEGER', 'Mark upgrade number as complete') { |number| options[:complete] = number.to_i }
   opts.on('-h','--help', 'Print usage') { puts opts; exit 0 }
 end
 
