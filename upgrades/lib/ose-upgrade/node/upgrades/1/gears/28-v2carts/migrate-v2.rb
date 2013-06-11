@@ -122,8 +122,12 @@ module OpenShiftMigration
           return "Skipping V1 -> V2 migration because gear appears to already be V2\n", 0
         end
 
-        #TODO: keep this from failing when quotas aren't enabled
-        #filesystem, quota, quota_soft, quota_hard, inodes, inodes_soft, inodes_hard = OpenShift::Node.get_quota(uuid)
+        begin #keep this from failing when quotas aren't enabled
+          filesystem, quota, quota_soft, quota_hard, inodes, inodes_soft, inodes_hard = OpenShift::Node.get_quota(uuid)
+        rescue
+          # do nothing; quota just won't be defined
+        end
+
         begin
           progress.log 'Beginning V1 -> V2 migration'
 
@@ -134,8 +138,10 @@ module OpenShiftMigration
           end
 
           inspect_gear_state(progress, params[:uuid], params[:gear_home])
-          #progress.log "Beginning quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
-          #OpenShift::Node.set_quota(uuid, quota_hard.to_i * 2, inodes_hard.to_i * 2)
+          if quota
+            progress.log "Beginning quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
+            OpenShift::Node.set_quota(uuid, quota_hard.to_i * 2, inodes_hard.to_i * 2)
+          end
           migrate_stop_lock(progress, params[:uuid], params[:gear_home])
           stop_gear(progress, params[:hostname], params[:uuid])
           migrate_pam_nproc_soft(progress, params[:uuid])
@@ -163,8 +169,10 @@ module OpenShiftMigration
           progress.log e.backtrace.join("\n")
           exitcode = 1
         ensure
-          #progress.log "Resetting quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
-          #OpenShift::Node.set_quota(uuid, quota_hard.to_i, inodes_hard.to_i)
+          if quota
+            progress.log "Resetting quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
+            OpenShift::Node.set_quota(uuid, quota_hard.to_i, inodes_hard.to_i)
+          end
         end
 
         [progress.report, exitcode]
