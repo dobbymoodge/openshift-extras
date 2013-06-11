@@ -1,8 +1,5 @@
 #!/bin/bash -x
 
-# assumptions: console is installed on the broker and desired to be running.
-# if not installed, that service simply fails
-
 # clear the cache which likely has root-owned things in it
 oo-admin-broker-cache --clear
 
@@ -10,7 +7,7 @@ oo-admin-broker-cache --clear
 chown -R apache:root /var/log/openshift/broker
 chown apache:root /var/log/mcollective-client.log
 
-for svc in openshift-broker openshift-console 
+for svc in openshift-broker
 do
 	service $svc start
 done
