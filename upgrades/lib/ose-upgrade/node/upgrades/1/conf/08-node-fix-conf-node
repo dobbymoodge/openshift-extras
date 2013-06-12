@@ -1,5 +1,8 @@
 #!/bin/bash -x
 
+conf=/etc/openshift/resource_limits.conf
+cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+sed -i '/max_gears/ d' $conf || exit 1
 
 conf=/etc/openshift/node.conf
 cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1

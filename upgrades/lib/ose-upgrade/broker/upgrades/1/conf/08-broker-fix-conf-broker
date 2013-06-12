@@ -2,6 +2,13 @@
 
 #assumption: running in production mode. users of development mode are on their own.
 #assumption: single broker. if multiple brokers, SESSION_SECRET must be reused!
+
+# fix re https://bugzilla.redhat.com/show_bug.cgi?id=973796
+conf=/var/www/openshift/broker/httpd/broker.conf
+cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+sed -i "/PassengerPreStart/ cPassengerPreStart http://127.0.0.1:8080/broker/rest/api.json" $conf
+
+# fix better-known broker.conf
 conf=/etc/openshift/broker.conf
 cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
 
@@ -69,6 +76,8 @@ MAINTENANCE_NOTIFICATION_FILE="/etc/openshift/outage_notification.txt"
 
 AUTH_SCOPE_TIMEOUTS="session=1.days|7.days, *=1.months|6.months"
 
+# Give users the ability to download a cartridge into their gears on creation and cartridge add
+DOWNLOAD_CARTRIDGES_ENABLED="true"
 
 EOF
 
