@@ -437,6 +437,12 @@ module OpenShiftMigration
         end
 
         if repo.exists? && progress.incomplete?("reconfigure_git_repo")
+          hooks_dir = File.join(repo.path, 'hooks')
+
+          if !File.exists?(hooks_dir)
+            FileUtils.mkpath(hooks_dir)
+          end
+
           repo.configure
           progress.mark_complete('reconfigure_git_repo')
         end
