@@ -62,7 +62,7 @@ module OpenShift
         cart_status = do_control('status', cartridge)
 
         cart_status_msg = "[OK]"
-        if cart_status !~ /running|enabled|Tail of JBoss/i
+        if cart_status !~ /running|enabled|Tail of JBoss|status output from the mock cartridge/i
           problem = true
           cart_status_msg = "[PROBLEM]"
         end
@@ -159,7 +159,10 @@ module OpenShiftMigration
           start_gear(progress, params[:hostname], params[:uuid])
 
           validate_gear(progress, params[:uuid], params[:gear_home])
-          cleanup(progress, params[:gear_home])
+
+          if progress.complete? 'validate_gear'
+            cleanup(progress, params[:gear_home])
+          end
 
         rescue OpenShift::Utils::ShellExecutionException => e
           progress.log %Q(#{e.message} stdout => \n #{e.stdout} stderr => \n #{e.stderr})
@@ -617,11 +620,9 @@ module OpenShiftMigration
       end
 
       def self.cleanup(progress, gear_home)
-        if progress.complete? 'validate_gear'
-          progress.log 'Cleaning up after migration'
-          FileUtils.rm_f(File.join(gear_home, 'app-root', 'runtime', PREMIGRATION_STATE))
-          progress.done
-        end
+        progress.log 'Cleaning up after migration'
+        FileUtils.rm_f(File.join(gear_home, 'app-root', 'runtime', PREMIGRATION_STATE))
+        progress.done
       end
 
       ## These will replace their un-versioned counterparts in version 2.0.29
@@ -649,16 +650,26 @@ module OpenShiftMigration
 
         begin
           progress.log "Beginning #{version} migration for #{uuid}"
-          inspect_gear_state(progress, uuid, gear_home)
 
+          inspect_gear_state(progress, uuid, gear_home)
           migrate_cartridges_v2v2(progress, gear_home, gear_env, uuid, hostname)
 
-          validate_gear(progress, uuid, gear_home)
-          cleanup(progress, gear_home)
+          if progress.has_instruction?('validate_gear')
+            validate_gear(progress, uuid, gear_home)
+
+            if progress.complete? 'validate_gear'
+              cleanup(progress, gear_home)
+            end
+          else
+            cleanup(progress, gear_home)
+          end
 
           total_time = (Time.now.to_f * 1000).to_i - start_time
           progress.log "***time_migrate_on_node_measured_from_node=#{total_time}***"
-        rescue => e
+        rescue OpenShift::Utils::ShellExecutionException => e
+          progress.log %Q(#{e.message} stdout => \n #{e.stdout} stderr => \n #{e.stderr})
+          exitcode = 1
+        rescue Exception => e
           progress.log "Caught an exception during internal migration steps: #{e.message}"
           progress.log e.backtrace.join("\n")
           exitcode = 1
@@ -706,28 +717,36 @@ module OpenShiftMigration
                 next
               end
 
-              if next_manifest.compatible_versions.include?(cartridge_version)
-                progress.log "Compatible migration of cartridge #{ident}"
-                compatible_migration(progress, cartridge_model, next_manifest, version, cartridge_path, user)
-              else
-                stop_gear(progress, hostname, uuid) unless restart_required
-                restart_required = true
+              if progress.incomplete? "#{name}_migrate"
+                progress.set_instruction('validate_gear')
 
-                progress.log "Incompatible migration of cartridge #{ident}"
-                incompatible_migration(progress, cartridge_model, next_manifest, version, cartridge_path, user)
+                if next_manifest.compatible_versions.include?(cartridge_version)
+                  progress.log "Compatible migration of cartridge #{ident}"
+                  compatible_migration(progress, cartridge_model, next_manifest, cartridge_path, user)
+                else
+                  stop_gear(progress, hostname, uuid) unless progress.has_instruction?('restart_gear')
+                  progress.set_instruction('restart_gear')
+
+                  progress.log "Incompatible migration of cartridge #{ident}"
+                  incompatible_migration(progress, cartridge_model, next_manifest, version, cartridge_path, user)
+                end
+
+                progress.mark_complete("#{name}_migrate")
               end
 
-              next_ident = OpenShift::Runtime::Manifest.build_ident(manifest.cartridge_vendor,
-                                                                    manifest.name,
-                                                                    manifest.version,
-                                                                    next_manifest.cartridge_version)
-              IO.write(ident_path, next_ident, 0, mode: 'w', perms: 0666)
-              progress.mark_complete("#{manifest.name}_update_ident")
+              if progress.incomplete? "#{name}_rebuild_ident"
+                next_ident = OpenShift::Runtime::Manifest.build_ident(manifest.cartridge_vendor,
+                                                                      manifest.name,
+                                                                      manifest.version,
+                                                                      next_manifest.cartridge_version)
+                IO.write(ident_path, next_ident, 0, mode: 'w', perms: 0666)
+                progress.mark_complete("#{name}_rebuild_ident")
+              end
             end
           end
         end
 
-        if restart_required
+        if progress.has_instruction?('restart_gear')
           restart_start_time = (Time.now.to_f * 1000).to_i
           start_gear(progress, hostname, uuid)
           restart_time = (Time.now.to_f * 1000).to_i - restart_start_time
@@ -736,12 +755,12 @@ module OpenShiftMigration
       end
 
       # Simple change that does not require the gear to be restarted
-      def self.compatible_migration(progress, cart_model, next_manifest, version, target, user)
+      def self.compatible_migration(progress, cart_model, next_manifest, target, user)
         OpenShift::CartridgeRepository.overlay_cartridge(next_manifest, target)
 
         # No ERB's are rendered for fast migrations
         FileUtils.rm_f cart_model.processed_templates(next_manifest)
-        progress.mark_complete("#{name}_remove_erb")
+        progress.mark_complete("#{next_manifest.name}_remove_erb")
 
         cart_model.unlock_gear(next_manifest) do |m|
           cart_model.secure_cartridge(next_manifest.short_name, user.uid, user.gid, target)
@@ -749,8 +768,12 @@ module OpenShiftMigration
       end
 
       def self.incompatible_migration(progress, cart_model, next_manifest, version, target, user)
+        FileUtils.rm_f cart_model.setup_rewritten(next_manifest)
+
         OpenShift::CartridgeRepository.overlay_cartridge(next_manifest, target)
         cart_model.secure_cartridge(next_manifest.short_name, user.uid, user.gid, target)
+
+        name = next_manifest.name
 
         cart_model.unlock_gear(next_manifest) do |m|
           if progress.incomplete? "#{name}_setup"
