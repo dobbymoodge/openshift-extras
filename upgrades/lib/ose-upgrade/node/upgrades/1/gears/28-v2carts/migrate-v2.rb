@@ -208,7 +208,12 @@ module OpenShiftMigration
 
         if progress.incomplete? 'inspect_gear_state'
           app_state = File.join(gear_home, 'app-root', 'runtime', '.state')
-          save_state = File.join(gear_home, 'app-root', 'runtime', PREMIGRATION_STATE)
+          runtime_dir = File.join(gear_home, 'app-root', 'runtime')
+          save_state = File.join(runtime_dir, PREMIGRATION_STATE)
+
+          if !File.exists?(runtime_dir)
+            FileUtils.mkpath(runtime_dir)
+          end
 
           if File.exists? app_state
             FileUtils.cp(app_state, save_state)
