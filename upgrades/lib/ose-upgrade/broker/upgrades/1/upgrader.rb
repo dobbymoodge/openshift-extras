@@ -52,8 +52,21 @@ module OSEUpgrader
       end
 
       def run_upgrade_step_data(state)
-        rc, o = run_scripts_in(__FILE__, 'data')
-        return rc
+        # this needs to run on only one broker
+        return claim_upgrade_step("data") do
+          rc, o = run_scripts_in(__FILE__, 'data')
+          rc
+        end
+      end
+
+      def run_upgrade_step_gears(state)
+        # this needs to run on only one broker
+        return claim_upgrade_step("gears") do
+          do_warn "This may take a while."
+          continue = state['steps']['broker']['gears']['previous_status'] == 'FAILED'
+          rc, o = run_script("#{File.dirname(__FILE__)}/gears/migrator --number=1 #{continue ? '--continue' : ''}")
+          rc
+        end
       end
 
       def run_upgrade_step_start_broker(state)
@@ -61,10 +74,25 @@ module OSEUpgrader
         return rc
       end
 
-      def run_upgrade_step_gears(state)
-        do_warn "This may take a while."
-        continue = state['steps']['broker']['gears']['previous_status'] == 'FAILED'
-        rc, o = run_script("#{File.dirname(__FILE__)}/gears/migrator --number=1 #{continue ? '--continue' : ''}")
+
+      # In a multi-broker situation, we need a semaphore for owning
+      # the steps that we want only one broker to handle.
+      # This depends on the codebase and might need to change per upgrade,
+      # which is why it's here and not in the superclass.
+      def claim_upgrade_step(step, &block)
+        # and because it requires the codebase, and ose-upgrade runs under native ruby,
+        # we have to shell out to scl-ized script to determine this
+        lock = "oseupgrade_1_#{step}"
+        rc, o = run_script("#{File.dirname(__FILE__)}/step_lock #{lock}")
+        return rc if rc != 0
+        if o.match(/SKIP/)
+          verbose "Another broker completed this step; skipping"
+          return 0
+        end
+        # ok - this broker will execute the step
+        rc = block.call
+        return rc if rc != 0
+        rc, o = run_script("#{File.dirname(__FILE__)}/step_lock #{lock} done")
         return rc
       end
 
