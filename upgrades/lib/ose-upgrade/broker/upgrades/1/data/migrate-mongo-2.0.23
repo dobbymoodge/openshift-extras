@@ -139,7 +139,11 @@ def create_domains(user, cloud_user_obj)
       ssk.content = ssh_key
       dm.system_ssh_keys << ssk
     end if user["system_ssh_keys"]
-    #dm.env_vars =
+    dm.env_vars = []
+    user["env_vars"].each do |key,value|
+      new_var = { "key" => key.dup, "value" => value.dup }
+      dm.env_vars << new_var
+    end if user["env_vars"].is_a?(Hash)
     dm.save!(validate: false)
   end
   dm
