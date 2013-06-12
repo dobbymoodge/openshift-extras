@@ -20,9 +20,13 @@ module OpenShiftMigration
       cart_dir = File.join(user.homedir, 'ruby')
       cart_env = File.join(cart_dir, 'env')
 
-      FileUtils.mkdir_p File.join(ruby_dir, 'template')
+      template_dir = File.join(ruby_dir, 'template')
 
-      Dir.chdir File.join(ruby_dir, 'template') do
+      FileUtils.rm_rf(template_dir) if Dir.exists?(template_dir)
+
+      FileUtils.mkdir_p template_dir
+
+      Dir.chdir template_dir do
       	FileUtils.cp_r File.join(ruby_dir, 'versions', RUBY_VERSION, 'template'), ruby_dir, :remove_destination => true
       end
 
