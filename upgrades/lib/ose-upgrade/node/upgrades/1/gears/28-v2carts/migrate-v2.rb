@@ -207,7 +207,15 @@ module OpenShiftMigration
           app_state = File.join(gear_home, 'app-root', 'runtime', '.state')
           save_state = File.join(gear_home, 'app-root', 'runtime', PREMIGRATION_STATE)
 
-          FileUtils.cp(app_state, save_state)
+          if File.exists? app_state
+            FileUtils.cp(app_state, save_state)
+          else
+            IO.write(save_state, 'stopped')
+            mcs_label = OpenShift::Utils::SELinux.get_mcs_label(uuid)
+            user = OpenShift::UnixUser.from_uuid(uuid)
+            PathUtils.oo_chown(user.uid, user.gid, save_state)
+            OpenShift::Utils::SELinux.set_mcs_label(mcs_label, save_state)
+          end
 
           premigration_state = OpenShift::Utils::MigrationApplicationState.new(uuid, PREMIGRATION_STATE)
           progress.log "Pre-migration state: #{premigration_state.value}"
