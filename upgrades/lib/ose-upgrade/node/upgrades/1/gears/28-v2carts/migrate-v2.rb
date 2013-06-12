@@ -30,6 +30,7 @@ require 'openshift-origin-node/utils/sdk'
 require 'openshift-origin-node/utils/cgroups'
 require 'openshift-origin-node/utils/application_state'
 require 'openshift-origin-node/utils/environ'
+require 'openshift-origin-node/utils/selinux'
 require 'openshift-origin-common'
 require 'net/http'
 require 'uri'
@@ -130,6 +131,8 @@ module OpenShiftMigration
 
         begin
           progress.log 'Beginning V1 -> V2 migration'
+
+          progress.init_store
 
           if detect_malformed_gear(progress, gear_home)
             progress.log 'Deleting migration metadata because this gear appears not to have any cartridges'
