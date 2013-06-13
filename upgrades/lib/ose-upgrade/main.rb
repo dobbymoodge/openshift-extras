@@ -30,8 +30,8 @@ module OSEUpgrader
     require 'yaml'
     require 'pp'
 
-    def initialize(options = nil)
-      @params = options || @params || {
+    def initialize(params = nil)
+      @params = params || @params || {
         :wait => 2.0,
         :verbose => false,
         :command => 'status',
@@ -63,6 +63,10 @@ module OSEUpgrader
 
     def steps_complete?
       super && @upgrader.steps_complete?
+    end
+
+    def set_params(args)
+      @params.merge! args
     end
 
   ######## EXECUTION #############

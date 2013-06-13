@@ -48,7 +48,6 @@ end
 
 begin
   optparse.parse!
-  options[:command] = ARGV.shift || 'status'
 rescue OptionParser::InvalidArgument => e
   puts "\n ##### #{e.message} #####"
   puts optparse.to_s
@@ -62,5 +61,10 @@ end
 #
 require 'ose-upgrade/main'
 o = OSEUpgrader::Main.new(options)
-exitcode = o.run_upgrade
-exit exitcode
+ARGV.unshift 'status' if ARGV.size == 0
+while command = ARGV.shift
+  o.set_params(:command => command)
+  exitcode = o.run_upgrade
+  exit exitcode if exitcode != 0
+end
+exit 0
