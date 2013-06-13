@@ -276,7 +276,8 @@ def create_group_instances(new_app, old_app)
         gear_id = Moped::BSON::ObjectId.new
       end
       gear = Gear.new(custom_id: gear_id, group_instance: new_gi, host_singletons: singleton, app_dns: app_dns,
-                      uuid: old_gear['uuid'], uid: old_gear['uid'], server_identity: old_gear['server_identity'])
+                      uuid: old_gear['uuid'], uid: old_gear['uid'], server_identity: old_gear['server_identity'],
+                      name: old_gear['name'])
       new_gi.gears.push(gear)
     }
     # finally fix the component instances of the new app to adopt the new group instance and its gears
