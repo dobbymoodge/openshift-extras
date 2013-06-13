@@ -87,10 +87,10 @@ Dir.foreach($HTTPD_DIR) do |ent|
   end
 end
 
-puts
-puts "------ FAILED TO MIGRATE ------- "
-$fail_list.each do |e|
-  puts e
+if nfailed > 0
+  puts
+  puts "------ FAILED TO MIGRATE ------- "
+  $fail_list.each { |e| puts e }
 end
 
 puts
