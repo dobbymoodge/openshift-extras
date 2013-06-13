@@ -53,47 +53,7 @@ def migrate_apps
   puts "Mongo migrated #{total} apps"
 end
 
-def migrate_users
-  $coll = $db.collection('cloud_users')
-  query = {"plan_id" => "silver"}
-  selection = {:fields => ["login",
-                         "capabilities",
-                         "_id"], :timeout => false}
-
-  total = 0
-  $coll.find(query, selection) do |cursor| 
-    cursor.each do |user|
-      if user["capabilities"]["private_ssl_certificates"].nil? or user["capabilities"]["private_ssl_certificates"] == false
-        user["capabilities"]["private_ssl_certificates"] = true
-        print "."
-        print "Migrating user #{user['login']}/#{user['_id']}.. " if $verbose
-        $coll.update({ "_id" => user["_id"] }, { "$set" => { "capabilities" => user["capabilities"] } } )
-        total += 1
-        print "done" if $verbose
-      end
-    end
-  end
-  puts
-  puts "Mongo migrated #{total} users"
-end
-
-def migrate_plans
-  users = $db.collection('cloud_users')
-  options = {
-    "freeshift" => "free",
-    "megashift" => "silver",
-  }
-  options.each_pair do |from, to|
-    total = 0
-    print "Migrating user plan_id #{from} => #{to}.. "
-    users.update({:plan_id => from}, {'$set' => {:plan_id => to}}, :multi => true)
-    puts " migrated"
-  end
-end
-
 puts "Starting migration"
 mongo_connect
 migrate_apps
-migrate_plans
-migrate_users
 puts "Done!"
