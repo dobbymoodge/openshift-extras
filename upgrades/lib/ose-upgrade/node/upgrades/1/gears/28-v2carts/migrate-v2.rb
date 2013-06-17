@@ -444,9 +444,18 @@ module OpenShiftMigration
         repo = OpenShift::ApplicationRepository.new(user)
 
         v1_scaled_bare_repo = File.join(user.homedir, "git", "#{user.uuid}.git")
+        short_v1_scaled_bare_repo = File.join(user.homedir, "git", "#{user.uuid[0..9]}.git")
+        old_repo = nil
+
         if Dir.exists?(v1_scaled_bare_repo)
-          progress.log "Migrating V1 scaled bare repo from #{v1_scaled_bare_repo} to #{repo.path}"
-          FileUtils.mv v1_scaled_bare_repo, repo.path, :force => true
+          old_repo = v1_scaled_bare_repo
+        elsif Dir.exists?(short_v1_scaled_bare_repo)
+          old_repo = short_v1_scaled_bare_repo
+        end
+
+        if old_repo
+          progress.log "Migrating V1 scaled bare repo from #{old_repo} to #{repo.path}"
+          FileUtils.mv old_repo, repo.path, :force => true
         end
 
         if repo.exists? && progress.incomplete?("reconfigure_git_repo")
