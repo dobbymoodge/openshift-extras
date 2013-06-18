@@ -1,15 +1,14 @@
 #!/bin/bash -x
-### TODO ###
-### determine what the channels will be ###
 
-# assumption: yum-plugin-priorities is either in our channel or in RHEL
+# assumption: yum-plugin-priorities is distributed in our channel.
+# we actually want this to break if channels are set up wrong.
 
 yum install -y yum-plugin-priorities || exit 1
 
 # set priorities on existing yum repos
 
-     for channel in rhel-x86_64-server-6-osop-1-rhc rhel-x86_64-server-6-osop-1-infrastructure \
-		    rhel-x86_64-server-6-osop-1-node rhel-x86_64-server-6-osop-1-jbosseap
+     for channel in rhel-x86_64-server-6-osop-1.2-rhc rhel-x86_64-server-6-osop-1.2-infrastructure \
+		    rhel-x86_64-server-6-osop-1.2-node rhel-x86_64-server-6-osop-1.2-jbosseap
      do
        yum-config-manager --setopt=${channel}.priority=1 ${channel} --save || exit 1
 	# note: channel need not exist
@@ -20,7 +19,7 @@ yum install -y yum-plugin-priorities || exit 1
        # disable tomcat6 coming from rhel6; it masks lower-priority jbossews
        yum-config-manager --setopt=$channel.exclude='tomcat6*' $channel --save || exit 1
      done
-     for channel in jbappplatform-6-x86_64-server-6-rpm jb-ews-1-x86_64-server-6-rpm
+     for channel in jbappplatform-6-x86_64-server-6-rpm jb-ews-2-x86_64-server-6-rpm
      do
        yum-config-manager --setopt=${channel}.priority=3 ${channel} --save || exit 1
        # keep http-related items from coming from here

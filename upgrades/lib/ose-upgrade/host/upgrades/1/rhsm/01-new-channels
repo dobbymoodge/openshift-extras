@@ -1,24 +1,41 @@
 #!/bin/bash -x
 
-# TODO: figure out how to update RHN classic channels
-exit 0
+tmpfile=/tmp/repolist-$$-`date +%N`
+yum repolist > $tmpfile 2> /dev/null
 
-for i in rhel-server-ose-{infrastructure,node,jbosseap,rhc}-6-rpms
-do
-  if #channel already subscribed
-  then
+declare -a added_repos
+
+for channel in infra node jbosseap rhc; do
+  if grep -q rhel-server-ose-${channel}-6-rpms $tmpfile; then
     # all channels need to move to version 2
-    new_channel=${i/1/2}
-    # subscribe to new_channel
+    yum-config-manager --disable rhel-server-ose-${channel}-6-rpms
+    yum-config-manager --enable rhel-server-ose-1.2-${channel}-6-rpms
+    added_repos+=("rhel-server-ose-1.2-${channel}-6-rpms")
   fi
 done
 
-if # jboss ews 1 repo subscribed
-then
-    # for v2 we need to point to the jboss ews 2 repo
-    new_channel=${i/jbews\/1/jbews\/2}
+if grep -q jb-ews-1-for-rhel-6-server-rpms $tmpfile; then
+    # make sure we point to the jboss ews 2 repo
+    yum-config-manager --disable jb-ews-1-for-rhel-6-server-rpms
+    yum-config-manager --enable jb-ews-2-for-rhel-6-server-rpms
+    added_repos+=("jb-ews-2-for-rhel-6-server-rpms")
 fi
 
 yum clean all
+yum repolist > $tmpfile 2> /dev/null
+
+for repo in "${added_repos[@]}"; do
+  if ! grep -q $repo $tmpfile; then
+    failure="$repo $failure"
+  fi
+done
+
+rm -f $tmpfile
+
+if [ -n "$failure" ] ; then
+  echo "ERROR - Could not enable the following repositories:"
+  echo "$failure"
+  exit 1
+fi
 
 exit 0

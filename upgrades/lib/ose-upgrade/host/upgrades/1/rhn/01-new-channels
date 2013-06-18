@@ -1,22 +1,36 @@
-#!/bin/bash -x
+#!/bin/bash
 
-# TODO: figure out how to update RHN classic channels
-exit 0
+# update RHN classic channels
+if [ X$RHN_USER == X -o X$RHN_PASS == X ]
+then
+  echo '$RHN_USER and $RHN_PASS must be defined'
+  exit 1
+fi
 
-for i in rhel-x86_64-server-6-osop-1-{infrastructure,node,jboss,rhc}
+for i in infrastructure node jbosseap rhc
 do
-  if #channel already subscribed
+  old_channel=rhel-x86_64-server-6-osop-1-$i
+  new_channel=rhel-x86_64-server-6-osop-1.2-$i
+  if (rhn-channel --list | grep -q $old_channel)
   then
-    # all channels need to move to version 2
-    new_channel=${i/1/2}
-    # subscribe to new_channel
+    echo "Unsubscribing $old_channel and subscribing $new_channel."
+    echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
+    rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS
+    echo "rhn-channel --add --channel $new_channel"' --user $RHN_USER --password $RHN_PASS'
+    rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS
   fi
 done
 
-if # jboss ews 1 repo subscribed
+# for v2 we need to point to the jboss ews 2 repo not 1
+old_channel=jb-ews-1-for-rhel-6-server-rpms
+new_channel=jb-ews-2-for-rhel-6-server-rpms
+if (rhn-channel --list | grep -q $old_channel)
 then
-    # for v2 we need to point to the jboss ews 2 repo
-    new_channel=${i/jbews\/1/jbews\/2}
+  echo "Unsubscribing $old_channel and subscribing $new_channel."
+  echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
+  rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS
+  echo "rhn-channel --add --channel $new_channel"' --user $RHN_USER --password $RHN_PASS'
+  rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS
 fi
 
 yum clean all

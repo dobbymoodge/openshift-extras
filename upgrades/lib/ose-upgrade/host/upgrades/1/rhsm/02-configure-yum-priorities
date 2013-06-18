@@ -1,15 +1,14 @@
 #!/bin/bash -x
-### TODO ###
-### determine what the channels will be ###
 
-# assumption: yum-plugin-priorities is either in our channel or in RHEL
+# assumption: yum-plugin-priorities is distributed in our new channel.
+# we actually want this to break if channels are set up wrong.
 
 yum install -y yum-plugin-priorities || exit 1
 
 # set priorities on existing yum repos
 
-     for channel in rhel-server-ose-infra-6-rpms rhel-server-ose-rhc-6-rpms \
-		    rhel-server-ose-node-6-rpms rhel-server-ose-jbosseap-6-rpms
+     for channel in rhel-server-ose-1.2-infra-6-rpms rhel-server-ose-1.2-rhc-6-rpms \
+		    rhel-server-ose-1.2-node-6-rpms rhel-server-ose-1.2-jbosseap-6-rpms
      do
        yum-config-manager --setopt=${channel}.priority=1 ${channel} --save || exit 1
 	# note: channel need not exist

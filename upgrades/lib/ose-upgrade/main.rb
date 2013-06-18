@@ -16,6 +16,7 @@
 #++
 
 require 'ose-upgrade'
+require 'rubygems'
 
 module OSEUpgrader
   class Main < Abstract
@@ -142,6 +143,16 @@ module OSEUpgrader
       verbose "Starting upgrade number #{num} to version #{VERSION_MAP[num]}."
       @upgrade_state['status'] = 'STARTED'
       source = self.detect_package_source
+      if source == :rhn
+        puts "In order to reconfigure your RHN channels, we will need credentials."
+        STDOUT.write "What is your RHN username? "
+        ENV['RHN_USER'] = STDIN.gets
+        STDOUT.write "What is your RHN password (will not show)? "
+        system "stty -echo"
+        ENV['RHN_PASS'] = STDIN.gets
+        system "stty echo"
+        puts
+      end
       rc, o = run_scripts_in(__FILE__, "host", "upgrades", num, source)
       File.open(RELEASE_FILE, 'w') do |file|
         file.write "OpenShift Enterprise #{VERSION_MAP[num]}\n"
@@ -273,7 +284,7 @@ HOST
       if File.exists? '/etc/sysconfig/rhn/systemid'
         @package_source = :rhn
         verbose "RHN subscription detected."
-      elsif @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null') == 0
+      elsif @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null')
         @package_source = :rhsm
         verbose "Subscription-manager subscription detected."
       else
