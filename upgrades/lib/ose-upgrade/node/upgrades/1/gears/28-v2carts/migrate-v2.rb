@@ -153,6 +153,7 @@ module OpenShiftMigration
           migrate_typeless_translated_vars(progress, params[:uuid], params[:gear_home])
           relocate_uservars(progress, params[:gear_home])
           migrate_git_repo(progress, params[:uuid])
+          create_unixuser_envvars(progress, params[:uuid])
 
           OpenShift::Utils::Sdk.mark_new_sdk_app(params[:gear_home])
           cartridge_migrators = load_cartridge_migrators
@@ -467,6 +468,18 @@ module OpenShiftMigration
 
           repo.configure
           progress.mark_complete('reconfigure_git_repo')
+        end
+      end
+
+      def self.create_unixuser_envvars(progress, uuid)
+        if progress.incomplete? 'create_unixuser_envvars'
+          user = OpenShift::UnixUser.from_uuid(uuid)
+          user.add_env_var("HOME", user.homedir, false)
+          user.add_env_var("TMP", "/tmp/" , false)
+          user.add_env_var("TMPDIR", "/tmp/" , false)
+          user.add_env_var("TMP_DIR", "/tmp/" , false)
+
+          progress.mark_complete('create_unixuser_envvars')
         end
       end
 
