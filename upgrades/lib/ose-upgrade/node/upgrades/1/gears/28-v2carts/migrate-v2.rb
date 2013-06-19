@@ -735,70 +735,84 @@ module OpenShiftMigration
         cartridge_model      = OpenShift::V2MigrationCartridgeModel.new(config, user, state)
         cartridge_repository = OpenShift::CartridgeRepository.instance
         restart_required     = false
+        filesystem, quota, quota_soft, quota_hard, inodes, inodes_soft, inodes_hard = nil, nil, nil, nil, nil, nil, nil
+        begin
+          OpenShift::Utils::Cgroups.with_no_cpu_limits(uuid) do
+            Dir.chdir(user.homedir) do
+              cartridge_model.each_cartridge do |manifest|
+                cartridge_path                           = File.join(gear_home, manifest.directory)
+                ident_path                               = Dir.glob(File.join(cartridge_path, 'env', 'OPENSHIFT_*_IDENT')).first
+                ident                                    = IO.read(ident_path)
+                vendor, name, version, cartridge_version = OpenShift::Runtime::Manifest.parse_ident(ident)
 
-        OpenShift::Utils::Cgroups.with_no_cpu_limits(uuid) do
-          Dir.chdir(user.homedir) do
-            cartridge_model.each_cartridge do |manifest|
-              cartridge_path                           = File.join(gear_home, manifest.directory)
-              ident_path                               = Dir.glob(File.join(cartridge_path, 'env', 'OPENSHIFT_*_IDENT')).first
-              ident                                    = IO.read(ident_path)
-              vendor, name, version, cartridge_version = OpenShift::Runtime::Manifest.parse_ident(ident)
-
-              unless vendor == 'redhat'
-                progress.log "No migration available for cartridge #{ident}, #{vendor} not supported."
-                next
-              end
-
-              next_manifest = cartridge_repository.select(name, version)
-              unless next_manifest
-                progress.log "No migration available for cartridge #{ident}, found in repository."
-                next
-              end
-
-              unless next_manifest.versions.include?(version)
-                progress.log "No migration available for cartridge #{ident}, version #{version} not in #{next_manifest.versions}"
-                next
-              end
-
-              if next_manifest.cartridge_version == cartridge_version
-                progress.log "No migration required for cartridge #{ident}, already at latest version #{cartridge_version}."
-                next
-              end
-
-              if progress.incomplete? "#{name}_migrate"
-                progress.set_instruction('validate_gear')
-
-                if next_manifest.compatible_versions.include?(cartridge_version)
-                  progress.log "Compatible migration of cartridge #{ident}"
-                  compatible_migration(progress, cartridge_model, next_manifest, cartridge_path, user)
-                else
-                  stop_gear(progress, hostname, uuid) unless progress.has_instruction?('restart_gear')
-                  progress.set_instruction('restart_gear')
-
-                  progress.log "Incompatible migration of cartridge #{ident}"
-                  incompatible_migration(progress, cartridge_model, next_manifest, version, cartridge_path, user)
+                unless vendor == 'redhat'
+                  progress.log "No migration available for cartridge #{ident}, #{vendor} not supported."
+                  next
                 end
 
-                progress.mark_complete("#{name}_migrate")
-              end
+                next_manifest = cartridge_repository.select(name, version)
+                unless next_manifest
+                  progress.log "No migration available for cartridge #{ident}, found in repository."
+                  next
+                end
 
-              if progress.incomplete? "#{name}_rebuild_ident"
-                next_ident = OpenShift::Runtime::Manifest.build_ident(manifest.cartridge_vendor,
-                                                                      manifest.name,
-                                                                      manifest.version,
-                                                                      next_manifest.cartridge_version)
-                IO.write(ident_path, next_ident, 0, mode: 'w', perms: 0666)
-                progress.mark_complete("#{name}_rebuild_ident")
+                unless next_manifest.versions.include?(version)
+                  progress.log "No migration available for cartridge #{ident}, version #{version} not in #{next_manifest.versions}"
+                  next
+                end
+
+                if next_manifest.cartridge_version == cartridge_version
+                  progress.log "No migration required for cartridge #{ident}, already at latest version #{cartridge_version}."
+                  next
+                end
+
+                begin #keep this from failing when quotas aren't enabled
+                  filesystem, quota, quota_soft, quota_hard, inodes, inodes_soft, inodes_hard = OpenShift::Node.get_quota(uuid)
+                  OpenShift::Node.set_quota(uuid, quota_hard.to_i * 2, inodes_hard.to_i * 2)
+                rescue
+                  # do nothing; quota just won't be defined
+                end
+
+                if progress.incomplete? "#{name}_migrate"
+                  progress.set_instruction('validate_gear')
+
+                  if next_manifest.compatible_versions.include?(cartridge_version)
+                    progress.log "Compatible migration of cartridge #{ident}"
+                    compatible_migration(progress, cartridge_model, next_manifest, cartridge_path, user)
+                  else
+                    stop_gear(progress, hostname, uuid) unless progress.has_instruction?('restart_gear')
+                    progress.set_instruction('restart_gear')
+
+                    progress.log "Incompatible migration of cartridge #{ident}"
+                    incompatible_migration(progress, cartridge_model, next_manifest, version, cartridge_path, user)
+                  end
+
+                  progress.mark_complete("#{name}_migrate")
+                end
+
+                if progress.incomplete? "#{name}_rebuild_ident"
+                  next_ident = OpenShift::Runtime::Manifest.build_ident(manifest.cartridge_vendor,
+                                                                        manifest.name,
+                                                                        manifest.version,
+                                                                        next_manifest.cartridge_version)
+                  IO.write(ident_path, next_ident, 0, mode: 'w', perms: 0666)
+                  progress.mark_complete("#{name}_rebuild_ident")
+                end
               end
             end
           end
-        end
 
-        if progress.has_instruction?('restart_gear')
-          restart_start_time = (Time.now.to_f * 1000).to_i
-          start_gear(progress, hostname, uuid)
-          restart_time = (Time.now.to_f * 1000).to_i - restart_start_time
-          progress.log "***time_restart=#{restart_time}***"
+          if progress.has_instruction?('restart_gear')
+            restart_start_time = (Time.now.to_f * 1000).to_i
+            start_gear(progress, hostname, uuid)
+            restart_time = (Time.now.to_f * 1000).to_i - restart_start_time
+            progress.log "***time_restart=#{restart_time}***"
+          end
+        ensure
+          if quota_hard && inodes_hard
+            progress.log "Resetting quota blocks: #{quota_hard}  inodes: #{inodes_hard}"
+            OpenShift::Node.set_quota(uuid, quota_hard.to_i, inodes_hard.to_i)
+          end
         end
       end
 
