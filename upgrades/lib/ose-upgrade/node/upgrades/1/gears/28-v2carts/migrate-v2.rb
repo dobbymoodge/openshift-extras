@@ -741,6 +741,12 @@ module OpenShiftMigration
             Dir.chdir(user.homedir) do
               cartridge_model.each_cartridge do |manifest|
                 cartridge_path                           = File.join(gear_home, manifest.directory)
+
+                if !File.directory?(cartridge_path)
+                  progress.log "Skipping migration for #{manifest.name}: cartridge manifest does not match gear layout: #{cartridge_path} is not a directory"
+                  next
+                end
+
                 ident_path                               = Dir.glob(File.join(cartridge_path, 'env', 'OPENSHIFT_*_IDENT')).first
                 ident                                    = IO.read(ident_path)
                 vendor, name, version, cartridge_version = OpenShift::Runtime::Manifest.parse_ident(ident)
