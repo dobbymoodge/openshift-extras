@@ -1,0 +1,20 @@
+#!/bin/bash -x
+
+# Polyinstantiation config was configured in pam_openshift for 1.1
+# but no longer ships the default configs, so we need to add the 
+# default polyinstantiation config here
+
+user_list="root,adm,apache"
+
+# work around polyinstantiation complications for all-in-one hosts
+for user in gdm activemq mongodb; do
+  id -u "$user" >/dev/null 2>&1
+  if [ X"$?" == X"0" ]; then
+    user_list="${user_list},${user}"
+  fi
+done
+
+echo "/tmp        \$HOME/.tmp/      user:iscript=/usr/sbin/oo-namespace-init ${user_list}" > /etc/security/namespace.d/tmp.conf
+echo "/dev/shm  tmpfs  tmpfs:mntopts=size=5M:iscript=/usr/sbin/oo-namespace-init ${user_list}" > /etc/security/namespace.d/shm.conf
+
+exit 0
