@@ -1,0 +1,10 @@
+#!/bin/bash -x
+
+# There is a known issue with abrt-addon-python causing 
+# python virtualenvs to be broken
+# https://bugzilla.redhat.com/show_bug.cgi?id=907449
+if grep 'Enterprise Linux Server release 6.4' /etc/redhat-release && rpm -q abrt-addon-python && rpm -q openshift-origin-cartridge-python; then
+	yum remove -y abrt-addon-python || exit 1
+fi
+
+exit 0
