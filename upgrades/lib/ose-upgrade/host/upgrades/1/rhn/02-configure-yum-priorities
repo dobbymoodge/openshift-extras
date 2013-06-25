@@ -7,8 +7,8 @@ yum install -y yum-plugin-priorities || exit 1
 
 # set priorities on existing yum repos
 
-     for channel in rhel-x86_64-server-6-osop-1.2-rhc rhel-x86_64-server-6-osop-1.2-infrastructure \
-		    rhel-x86_64-server-6-osop-1.2-node rhel-x86_64-server-6-osop-1.2-jbosseap
+     for channel in rhel-x86_64-server-6-ose-1.2-rhc rhel-x86_64-server-6-ose-1.2-infrastructure \
+		    rhel-x86_64-server-6-ose-1.2-node rhel-x86_64-server-6-ose-1.2-jbosseap
      do
        yum-config-manager --setopt=${channel}.priority=1 ${channel} --save || exit 1
 	# note: channel need not exist

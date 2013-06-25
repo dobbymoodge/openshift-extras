@@ -10,14 +10,14 @@ fi
 for i in infrastructure node jbosseap rhc
 do
   old_channel=rhel-x86_64-server-6-osop-1-$i
-  new_channel=rhel-x86_64-server-6-osop-1.2-$i
+  new_channel=rhel-x86_64-server-6-ose-1.2-$i
   if (rhn-channel --list | grep -q $old_channel)
   then
     echo "Unsubscribing $old_channel and subscribing $new_channel."
-    echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
-    rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS
     echo "rhn-channel --add --channel $new_channel"' --user $RHN_USER --password $RHN_PASS'
-    rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS
+    rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS || exit 1
+    echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
+    rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS || exit 1
   fi
 done
 
@@ -27,10 +27,10 @@ new_channel=jb-ews-2-for-rhel-6-server-rpms
 if (rhn-channel --list | grep -q $old_channel)
 then
   echo "Unsubscribing $old_channel and subscribing $new_channel."
-  echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
-  rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS
   echo "rhn-channel --add --channel $new_channel"' --user $RHN_USER --password $RHN_PASS'
-  rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS
+  rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS || exit 1
+  echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
+  rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS || exit 1
 fi
 
 yum clean all
