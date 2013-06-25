@@ -158,6 +158,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Tue Jun 25 2013 Luke Meyer <lmeyer@redhat.com> 1.2-1
+- Official release for 1.2
+
 * Tue May 28 2013 Luke Meyer <lmeyer@redhat.com> 1.0.0-1
 - new package built with tito
 
