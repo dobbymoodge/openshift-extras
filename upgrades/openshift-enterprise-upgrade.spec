@@ -5,7 +5,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2
+Version:   1.3
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -158,6 +158,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Wed Jun 26 2013 Jason DeTiberus <jdetiber@redhat.com> 1.3-1
+- <migration.rb> Fix malformed error message in self.migrate
+  (jolamb@redhat.com)
+
 * Tue Jun 25 2013 Luke Meyer <lmeyer@redhat.com> 1.2-1
 - Official release for 1.2
 
