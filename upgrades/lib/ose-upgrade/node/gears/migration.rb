@@ -32,13 +32,14 @@ module OpenShiftMigration
     if OpenShiftMigration.const_defined? migrator
       migrator = OpenShiftMigration.const_get migrator
     else
+      migrator_source = "ose-upgrade/node/upgrades/#{params[:number]}/gears/migrator"
       begin
-        require "ose-upgrade/node/upgrades/#{params[:number]}/gears/migrator"
+        require "#{migrator_source}"
         migrator = OpenShiftMigration.const_get migrator
       rescue LoadError => e
         return "Invalid migration number: #{params[:number]}\n#{e.inspect}", 255
       rescue NameError => e
-        return "File #{m} did not define class OpenShiftMigration::#{migrator}", 255
+        return "File #{migrator_source} did not define class OpenShiftMigration::#{migrator}", 255
       end
     end
 
