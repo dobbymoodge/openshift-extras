@@ -5,8 +5,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.3
-Release:   1%{?dist}
+Version:   1.2
+Release:   2%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -158,6 +158,11 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Mon Jul 08 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2-2
+- <1.2 Upgrade> - Fixups for awk-fu (jdetiber@redhat.com)
+- <1.2 Upgrade> Fix for setting priorities/excludes on RHN channels
+  (jdetiber@redhat.com)
+
 * Wed Jun 26 2013 Jason DeTiberus <jdetiber@redhat.com> 1.3-1
 - <migration.rb> Fix malformed error message in self.migrate
   (jolamb@redhat.com)
