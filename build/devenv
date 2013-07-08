@@ -689,16 +689,6 @@ EOF
               out = ssh(hostname, "sudo -s rpm -qa | grep openshift", 60, false, 1, ssh_user)
               print_highlighted_output("Installed Origin Packages", out)
             
-              puts "Running broker setup..."
-              ssh(hostname, 'sudo -s rm -rf /var/named/Kexample.com*', 60 * 20, true, 1, ssh_user)
-              out, ret = ssh(hostname, 'sudo -s yum install -y bind', 60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'sudo -s /usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com', 60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'TSIG_KEY=`sudo -s cat /var/named/Kexample.com.*.key | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              
-              post_launch_setup(hostname)
             end
           end
           puts "Done"          
@@ -716,6 +706,15 @@ EOF
 
           # Register broker dns and restart the network
           unless options.install_required_packages?  
+            puts "Running broker setup..."
+            ssh(hostname, 'sudo -s rm -rf /var/named/Kexample.com*', 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, 'sudo -s yum install -y bind', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'sudo -s /usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'TSIG_KEY=`sudo -s cat /var/named/Kexample.com.*.key | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+              
             post_launch_setup(hostname)
           end
 
