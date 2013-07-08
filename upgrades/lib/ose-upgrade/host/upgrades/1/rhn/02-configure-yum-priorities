@@ -6,25 +6,104 @@
 yum install -y yum-plugin-priorities || exit 1
 
 # set priorities on existing yum repos
+RHNPLUGINCONF="/etc/yum/pluginconf.d/rhnplugin.conf"
+AWKSCRIPTFILE="/tmp/awkscript"
+
+awkscript='
+# Clear the flags and set the channel pattern
+BEGIN {
+    inchannel = 0;
+    channelfound = 0;
+    priorityfound = 0;
+    excludefound = 0;
+    channelpattern = "^\\["channel
+}
+
+# Entering the channel section, set the flags
+$0 ~ channelpattern {
+    inchannel = 1;
+    channelfound = 1;
+    priorityfound = 0;
+    excludefound = 0;
+}
+
+# Modify the priority for the channel if found
+/^priority/ {
+    if (inchannel) {
+        print "priority="priority;
+        skip = 1;
+        priorityfound = 1;
+    }
+}
+
+# Modify the excludes for the channel if found
+/^exclude/ {
+    if (inchannel && excludes != "") {
+        if ($0 !~ excludes){
+            print $0","excludes;
+            skip = 1;
+        }
+        excludefound = 1;
+    }
+}
+
+# New section found, set the priority and excludes if the
+# previous section matched the channel pattern and they 
+# were not present.  Also, clear the flags.
+/^\[/ {
+    if ($0 !~ channelpattern) {
+        if (inchannel && !priorityfound) {
+            print "priority="priority"\n\n"$0;
+            skip = 1;
+        }
+        if (inchannel && !excludefound && excludes != "") {
+            print "exclude="excludes"\n\n"$0;
+            skip = 1;
+        }
+        inchannel = 0;
+        priorityfound = 0;
+    }
+}
+
+# Output a line if not marked to skip above.
+/.*/ {
+    if (skip)
+        skip = 0;
+    else
+        print $0;
+}
+
+# If the channel section was not found, add it
+END {
+    if (!channelfound) {
+        print "\n["channel"]\npriority="priority;
+        if (excludes != "") {
+            print "exclude="excludes
+        }
+    }
+}'
+
+echo "$awkscript" > $AWKSCRIPTFILE
+cp $RHNPLUGINCONF ${RHNPLUGINCONF}.bak
 
      for channel in rhel-x86_64-server-6-ose-1.2-rhc rhel-x86_64-server-6-ose-1.2-infrastructure \
 		    rhel-x86_64-server-6-ose-1.2-node rhel-x86_64-server-6-ose-1.2-jbosseap
      do
-       yum-config-manager --setopt=${channel}.priority=1 ${channel} --save || exit 1
+       awk -f $AWKSCRIPTFILE -v channel=${channel} -v priority=1 $RHNPLUGINCONF > ${RHNPLUGINCONF}.tmp
+       mv ${RHNPLUGINCONF}.tmp $RHNPLUGINCONF
 	# note: channel need not exist
      done
      for channel in rhel-x86_64-server-6
      do
-       yum-config-manager --setopt=${channel}.priority=2 ${channel} --save || exit 1
-       # disable tomcat6 coming from rhel6; it masks lower-priority jbossews
-       yum-config-manager --setopt=$channel.exclude='tomcat6*' $channel --save || exit 1
+       awk -f $AWKSCRIPTFILE -v channel=${channel} -v priority=2 -v excludes='tomcat6*' $RHNPLUGINCONF > ${RHNPLUGINCONF}.tmp
+       mv ${RHNPLUGINCONF}.tmp $RHNPLUGINCONF
      done
      for channel in jbappplatform-6-x86_64-server-6-rpm jb-ews-2-x86_64-server-6-rpm
      do
-       yum-config-manager --setopt=${channel}.priority=3 ${channel} --save || exit 1
-       # keep http-related items from coming from here
-       yum-config-manager --setopt=$channel.exclude='httpd httpd-tools mod_ssl' $channel --save || exit 1
+       awk -f $AWKSCRIPTFILE -v channel=${channel} -v priority=3 $RHNPLUGINCONF > ${RHNPLUGINCONF}.tmp
+       mv ${RHNPLUGINCONF}.tmp $RHNPLUGINCONF
      done
 
+rm $AWKSCRIPTFILE
 yum clean all
 exit 0
