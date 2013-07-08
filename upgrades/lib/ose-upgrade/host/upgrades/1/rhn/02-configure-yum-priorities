@@ -7,7 +7,7 @@ yum install -y yum-plugin-priorities || exit 1
 
 # set priorities on existing yum repos
 RHNPLUGINCONF="/etc/yum/pluginconf.d/rhnplugin.conf"
-AWKSCRIPTFILE="/tmp/awkscript"
+AWKSCRIPTFILE=`mktemp`
 
 awkscript='
 # Clear the flags and set the channel pattern
@@ -16,7 +16,7 @@ BEGIN {
     channelfound = 0;
     priorityfound = 0;
     excludefound = 0;
-    channelpattern = "^\\["channel
+    channelpattern = "^\\["channel"\\]"
 }
 
 # Entering the channel section, set the flags
@@ -39,8 +39,8 @@ $0 ~ channelpattern {
 # Modify the excludes for the channel if found
 /^exclude/ {
     if (inchannel && excludes != "") {
-        if ($0 !~ excludes){
-            print $0","excludes;
+        if (index($0,excludes) == 0){
+            print $0" "excludes;
             skip = 1;
         }
         excludefound = 1;
@@ -53,12 +53,10 @@ $0 ~ channelpattern {
 /^\[/ {
     if ($0 !~ channelpattern) {
         if (inchannel && !priorityfound) {
-            print "priority="priority"\n\n"$0;
-            skip = 1;
+            print "priority="priority;
         }
         if (inchannel && !excludefound && excludes != "") {
-            print "exclude="excludes"\n\n"$0;
-            skip = 1;
+            print "exclude="excludes;
         }
         inchannel = 0;
         priorityfound = 0;
@@ -84,7 +82,7 @@ END {
 }'
 
 echo "$awkscript" > $AWKSCRIPTFILE
-cp $RHNPLUGINCONF ${RHNPLUGINCONF}.bak
+cp $RHNPLUGINCONF{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
 
      for channel in rhel-x86_64-server-6-ose-1.2-rhc rhel-x86_64-server-6-ose-1.2-infrastructure \
 		    rhel-x86_64-server-6-ose-1.2-node rhel-x86_64-server-6-ose-1.2-jbosseap
