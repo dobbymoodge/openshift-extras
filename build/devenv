@@ -449,7 +449,9 @@ priority= 1
         $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
 
         if options.install_required_packages?
-          $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:root,ec2-user \!requiretty >> /etc/sudoers"
+          $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:root,ec2-user \!requiretty >> /etc/sudoers\nsed -i '/cat <<EOL/,$d' /etc/rc.local\nsed -i 's/PermitRootLogin without-passwordUseDNS no/PermitRootLogin without-password\nUseDNS no/g' /etc/ssh/sshd_config"
+        else
+          $amz_options[:user_data] = "#!/bin/bash\nset -x\nsed -i '/cat <<EOL/,$d' /etc/rc.local\nsed -i 's/PermitRootLogin without-passwordUseDNS no/PermitRootLogin without-password\nUseDNS no/g' /etc/ssh/sshd_config"
         end
         puts "Launching AMI: #{image.id} - #{image.name}"
         instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
