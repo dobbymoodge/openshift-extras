@@ -77,6 +77,8 @@ rm -rf $RPM_BUILD_ROOT
 Summary:   Version and upgrade capabilities for OpenShift Enterprise installations
 Group:     Network/Daemons
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+Requires:  ruby
+Requires:  rubygems
 
 %description -n openshift-enterprise-release
 This package contains mechanisms for upgrading an OpenShift Enterprise installation.
