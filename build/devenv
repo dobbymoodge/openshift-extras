@@ -695,6 +695,10 @@ EOF
           end
           puts "Done"          
 
+          # Cleanup any lines that break sshd_config (cloud-init RHEL 6.4 bug)
+          puts "Cleaning up broken sshd_config (RHEL 6.4 cloud-init bug)"
+          ssh(hostname, 'sudo -s sed -i "s/PermitRootLogin without-passwordUseDNS no//g" /etc/ssh/sshd_config', 60, true, 1, ssh_user)
+
           image_id = nil
           if options[:register]
             # reset the eth0 network config to remove the HWADDR
