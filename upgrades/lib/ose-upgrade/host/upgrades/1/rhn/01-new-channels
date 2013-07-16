@@ -22,8 +22,8 @@ do
 done
 
 # for v2 we need to point to the jboss ews 2 repo not 1
-old_channel=jb-ews-1-for-rhel-6-server-rpms
-new_channel=jb-ews-2-for-rhel-6-server-rpms
+old_channel=jb-ews-1-x86_64-server-6-rpm
+new_channel=jb-ews-2-x86_64-server-6-rpm
 if (rhn-channel --list | grep -q $old_channel)
 then
   echo "Unsubscribing $old_channel and subscribing $new_channel."
