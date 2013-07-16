@@ -56,7 +56,7 @@ OPTIONS = {
       'openshift-origin-cartridge-mongodb-2.2',
       'openshift-origin-cartridge-mysql-5.1',
       'openshift-origin-cartridge-nodejs',
-      'openshift-origin-cartridge-nodejs-6.0',
+      'openshift-origin-cartridge-nodejs-0.6',
       'openshift-origin-cartridge-perl-5.16',
       'openshift-origin-cartridge-perl-5.10',
       'openshift-origin-cartridge-php-5.3',
