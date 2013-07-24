@@ -8,15 +8,8 @@ require 'config/environment'
 $config = Rails.application.config.datastore
 
 def mongo_connect
-  if $config[:replica_set]
-    con = Mongo::ReplSetConnection.new(*$config[:host_port] \
-                                       << {:read => :secondary})
-  else
-    con = Mongo::Connection.new(*$config[:host_port].split(":"))
-  end
-  db = con.db($config[:db])
-  db.authenticate($config[:user], $config[:password])
-  $coll = con.db($config[:db]).collection('user')
+  db = OpenShift::DataStore.db
+  $coll = db.collection('user')
 end
 
 def mongo_migrate
