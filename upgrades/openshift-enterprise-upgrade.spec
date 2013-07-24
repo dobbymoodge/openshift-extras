@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 
 # items that will likely be shared between RPMs
 Version:   1.2.1
-Release:   1%{?dist}
+Release:   2%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -160,6 +160,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Wed Jul 24 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.1-2
+- Bug 988069 - 1.2 upgrade fails when using mongo replica set
+  (bleanhar@redhat.com)
+
 * Tue Jul 16 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.1-1
 - Merge remote-tracking branch 'origin/enterprise-1.2' into enterprise-1.2.z
   (bleanhar@redhat.com)
