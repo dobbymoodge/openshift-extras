@@ -791,6 +791,12 @@ EOF
         print_highlighted_output( "Service Restart", out)
         restart_services_remote(hostname)
 
+        # TODO: find out why the %post section of the cartridge rpms is failing without showing up in output
+        out, ret = ssh(hostname, "sudo -s oo-admin-cartridge -a install -R -s /usr/libexec/openshift/cartridges/v2/", 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
+        print_highlighted_output( "Verify all cartridges installed into cartridge repository", out)
+       
+
         # Run oo-diagnostics on the host
         out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
         print_highlighted_output( "oo-diagnostics", out)
