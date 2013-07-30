@@ -221,6 +221,23 @@ priority= 1
           validate_instance(hostname, 4)
           mcollective_logs(hostname) if options.mcollective_logs?
           reset_test_dir(hostname, false, SSH_USER)
+
+          # Verify we have the mocha gem from openshift-origin-deps
+          ssh(hostname, "sudo -s yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 20, true, 1, ssh_user)
+         
+          # Verify we have a version of scl-utils that isn't subject to the 
+          # container in container bug: https://bugzilla.redhat.com/show_bug.cgi?id=955669
+          out, ret = ssh(hostname, "rpm -q scl-utils | cut -d '.' -f 1 | cut -d '-' -f 3,4", 60 * 1, true, 1, ssh_user)
+          if out.match /^20120927-[0-6]$/
+            ssh(hostname, "sudo -s yum install -y --disableplugin=priorities scl-utils-20120927-7.el6.x86_64 scl-utils-build-20120927-7.el6.x86_64",
+                60 * 20, true, 1, ssh_user)
+          end
+
+          # Run oo-diagnostics on the host 
+          # TODO filter out failures we don't care about and fail on others
+          out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
+          print_highlighted_output( "oo-diagnostics", out)
+
           test_queues = [[], [], [], []]
 
           ssh(hostname, wrap_test_command("echo 'export REGISTER_USER=1' > /etc/profile.d/testenv.sh") , 60, false, 2, SSH_USER)
@@ -301,6 +318,10 @@ priority= 1
           else
             unless options.exclude_broker?
               #test_queues[1] << ["OpenShift Broker Units", "cd /data/openshift-test/broker;" + wrap_test_command("rake test:units")]
+              
+              # Remove sub_user_test from broker integration tests, only works with mongo plugin
+              ssh(hostname, "rm /data/openshift-test/broker/test/integration/sub_user_test.rb", 60, false, 2, SSH_USER)
+
               test_queues[0] << ["OpenShift Broker Integration", "cd /data/openshift-test/broker; sudo -s cp /var/www/openshift/broker/Gemfile.lock . ;" + wrap_test_command("bundle install --local") + ";" + wrap_test_command("bundle exec rake test:integration")]
               # TODO: BROKEN
               #test_queues[2] << ["OpenShift Broker Functional", "cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock ." + wrap_test_command("bundle install --local") + ";" + wrap_test_command("bundle exec rake test:functionals")]
@@ -797,9 +818,6 @@ EOF
         print_highlighted_output( "Verify all cartridges installed into cartridge repository", out)
        
 
-        # Run oo-diagnostics on the host
-        out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
-        print_highlighted_output( "oo-diagnostics", out)
       end
 
       def restart_services
