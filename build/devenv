@@ -237,6 +237,12 @@ priority= 1
           # TODO filter out failures we don't care about and fail on others
           out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
           print_highlighted_output( "oo-diagnostics", out)
+          oofails = out.scan(/FAIL: /).size
+          if ret != 0 and oofails > 0
+            unless oofails == 1 and out.match(/FAIL: test_enterprise_rpms/)
+              print_and_exit(ret, "oo-diagnostics failed for more than test_enterprise_rpms")
+            end
+          end
 
           test_queues = [[], [], [], []]
 
