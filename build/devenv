@@ -669,7 +669,7 @@ EOF
               sudo -s mkdir -p /etc/puppet/modules &&
               sudo -s puppet module install puppetlabs/stdlib &&
               sudo -s puppet module install puppetlabs/ntp &&
-              sudo -s ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin
+              sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
               }, 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
           else
