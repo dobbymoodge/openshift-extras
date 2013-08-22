@@ -69,7 +69,7 @@ module Origin
                  https://mirror.openshift.com/pub/origin-server/fedora-17/x86_64/mcollective-client-2.2.0-2.fc17.noarch.rpm;
               }
         elsif(base_os == "rhel" or base_os == "centos")
-          run "yum install -y https://mirror.openshift.com/pub/origin-server/rhel-6/x86_64/activemq-5.6.0-1.el6_3.x86_64.rpm"
+          run "yum install -y activemq"
         end
       end
       
@@ -113,7 +113,7 @@ module Origin
         
         if options.update_packages?
           puts "Updating all packages on the system..."
-          run("yum update -y --exclude activemq", options)
+          run("yum update -y", options)
           puts "Done"
         end
 
