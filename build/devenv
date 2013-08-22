@@ -2,10 +2,10 @@
 
 $: << File.expand_path(File.dirname(__FILE__))
 require 'origin_constants'
-unless ENV['SKIP_SETUP']
-  require 'lib/openshift/setup_helper'
-  SetupHelper::ensure_build_requirements
-end
+#unless ENV['SKIP_SETUP']
+#  require 'lib/openshift/setup_helper'
+#  SetupHelper::ensure_build_requirements
+#end
 require File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}", 'build', 'lib', 'openshift')
 require File.join('lib', '..', '..', '..', "#{DEV_TOOLS_REPO}", 'build', 'builder')
 require 'rubygems'
@@ -569,7 +569,7 @@ priority= 1
               print_highlighted_output("Update Output", out)
             end
             
-            out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor rubygem-cucumber", 60 * 10, true, 1, ssh_user)
+            out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor", 60 * 10, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Install Output", out)
           end
@@ -619,8 +619,10 @@ priority= 1
           # TODO: this doesn't need to run for install_from_source
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
-            out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s scl enable ruby193 'build/devenv' 2>&1 ", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "sudo yum install -y ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
+            out, ret = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
+            print_highlighted_output("Build script dependencies - Puppet, Tito", out)
           end
         
           puts "Installing pre-requisite packages"

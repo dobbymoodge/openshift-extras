@@ -11,6 +11,16 @@ enabled=1
 gpgcheck=0
 EOF
 
+# TODO: We have to get puppet from the PuppetLabs repo at the risk of pulling in packages that can taint the build
+cat > /etc/yum.repos.d/puppetlabs-products.repo <<EOF
+[puppetlabs-products]
+name=Puppet Labs Products - \$basearch
+baseurl=http://yum.puppetlabs.com/el/6/products/\$basearch
+gpgkey=http://yum.puppetlabs.com/RPM-GPG-KEY-puppetlabs
+enabled=0
+gpgcheck=1
+EOF
+
 # TODO EPEL ships a broken rubygem-aws-sdk that requires a newer version of rubygem-httparty than exists in EPEL
 cat > /etc/yum.repos.d/misc.repo <<EOF
 [misc]
