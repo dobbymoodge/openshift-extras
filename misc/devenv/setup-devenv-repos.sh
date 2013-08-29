@@ -25,9 +25,10 @@ EOF
 cat > /etc/yum.repos.d/misc.repo <<EOF
 [misc]
 name=misc
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/misc/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/misc/
 failovermethod=priority
 enabled=1
+priority=4
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
@@ -38,27 +39,27 @@ EOF
 
 cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release RHEL content
-#[devenv]
-#name=Devenv repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-#failovermethod=priority
-#enabled=1
-#gpgcheck=0
-#gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
-#ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-#sslverify=0
-#priority=2
-#exclude=tomcat6*
-#sslclientcert=/var/lib/yum/client-cert.pem
-#sslclientkey=/var/lib/yum/client-key.pem
+[devenv]
+name=Devenv repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/rhel
+        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/rhel
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+priority=2
+exclude=tomcat6*
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
 # We have to be careful that this only shadows the rhui RHEL when we actually need it
 
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-eap]
-#name=Devenv EAP repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-eap-6-for-rhel-6-server-rpms
-#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-eap-6-for-rhel-6-server-rpms
+#name=Devenv EAP repo for Enterprise Linux 6 - \$basearch
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/jb-eap-6-for-rhel-6-server-rpms
+#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/jb-eap-6-for-rhel-6-server-rpms
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
@@ -71,9 +72,9 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
-#name=Devenv EWS repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-2-for-rhel-6-server-rpms
-#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/jb-ews-2-for-rhel-6-server-rpms
+#name=Devenv EWS repo for Enterprise Linux 6 - \$basearch
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/jb-ews-2-for-rhel-6-server-rpms
+#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-2.0}/jb-ews-2-for-rhel-6-server-rpms
 #failovermethod=priority
 #enabled=1
 #gpgcheck=0
@@ -85,10 +86,11 @@ cat > /etc/yum.repos.d/devenv.repo <<EOF
 #priority=3
 
 [Test_Dependencies]
-name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories_devenv/Test_Dependencies/\$basearch/os/
+name=Client repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Test_Dependencies/\$basearch/os/
 failovermethod=priority
 enabled=1
+priority=4
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
@@ -97,8 +99,8 @@ sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
 
 [Client-ruby193]
-name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories_devenv/Client-ruby193/\$basearch/os/
+name=Client repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Client-ruby193/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -109,8 +111,8 @@ sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
 
 [Client]
-name=Client repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/Client/\$basearch/os/
+name=Client repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Client/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -122,8 +124,8 @@ sslclientkey=/var/lib/yum/client-key.pem
 priority=1
 
 [Infrastructure]
-name=Infrastructure repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/Infrastructure/\$basearch/os/
+name=Infrastructure repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Infrastructure/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -135,8 +137,8 @@ sslclientkey=/var/lib/yum/client-key.pem
 priority=1
 
 [JBoss_EAP6_Cartridge]
-name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/JBoss_EAP6_Cartridge/\$basearch/os/
+name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/JBoss_EAP6_Cartridge/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -148,8 +150,34 @@ sslclientkey=/var/lib/yum/client-key.pem
 priority=1
 
 [Node]
-name=Node repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-1.2}/openshift_repositories/Node/\$basearch/os/
+name=Node repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Node/\$basearch/os/
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=1
+
+[libra]
+name=libra repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror1.ops.rhcloud.com/libra/libra-rhel-6-candidate/\$basearch/
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=5
+
+[rhscl]
+name=rhscl repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror1.ops.rhcloud.com/libra/rhscl-1.0-rhel-6/x86_64
 failovermethod=priority
 enabled=1
 gpgcheck=0
