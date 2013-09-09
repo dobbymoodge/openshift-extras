@@ -1,6 +1,8 @@
 #!/bin/bash -x
 
-cp /etc/mcollective/client.cfg{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
+MCO_CFG='/etc/mcollective/client.cfg'
+
+cp ${MCO_CFG}{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
 
 # use the ruby193 SCL-ized mcollective directory
 # use direct addressing
@@ -14,9 +16,30 @@ logfile = /var/log/openshift/broker/mcollective-client.log
 /^loglevel/ c\
 loglevel = warn
 /^collectives/ a\
-direct_addressing = 1' /etc/mcollective/client.cfg || exit 1
+direct_addressing = 1' ${MCO_CFG} || exit 1
 
 touch /var/log/openshift/broker/mcollective-client.log
 chown apache:root /var/log/openshift/broker/mcollective-client.log
+
+# BZ 988478: Convert stomp middleware plugin settings to activemq
+sed -i -e "s/^connector\s*=\s*stomp\s*$/connector = activemq/" ${MCO_CFG} || exit 1
+
+if grep -q '^plugin\.stomp\.pool\.size' ${MCO_CFG}
+then
+    # Handle multiple server config (stomp >= 1.1.6)
+    sed -i \
+        -e "/^plugin\.stomp\.pool\.size\s*=/ c\
+plugin.activemq.pool.size = ${POOL_SIZE}" \
+        -e "s/plugin\.stomp\.pool\.\([^[:digit:]]\+\)\([[:digit:]]\+\)\s*\=\s*\(.\+\)$/plugin.activemq.pool.\2.\1 = \3/g" \
+        ${MCO_CFG} || exit 1
+else
+    # Handle single-server config
+    sed -i \
+        -e "0,/^plugin\.stomp.\+$/{/^plugin\.stomp.\+$/i\
+plugin.activemq.pool.size = 1
+}" \
+        -e "s/plugin\.stomp\.\([^[:space:]=]\+\)\s*\=\s*\(.\+\)$/plugin.activemq.pool.1.\1 = \2/g" \
+        ${MCO_CFG} || exit 1
+fi
 
 exit 0
