@@ -1,14 +1,29 @@
 #!/bin/bash -x
 
-conf=/var/www/openshift/broker/httpd/conf.d/openshift-origin-auth-remote-user.conf
+# Add passthrough line for file passed in first param
+update_conf() {
+    conf=$1
+    if [ -n "${conf}" -a -f "${conf}" ]; then
+        cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
 
-if [ -f $conf ]; then
-  cp $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`} || exit 1
-
-  # add a passthrough line for auth tokens
-  sed -i '/^\s*BrowserMatchNoCase/ i\
+        # add a passthrough line for auth tokens
+        sed -i '/^\s*browsermatchnocase\s\+\^openshift\s\+passthrough/I i\
     SetEnvIfNoCase Authorization Bearer passthrough' $conf || exit 1
 
-fi
+    fi
+}
+
+CONFDIR=/var/www/openshift/broker/httpd/conf.d/
+
+# Find and modify broker .conf files that may need passthrough line inserted
+for ii in ${CONFDIR}/*.conf
+do
+    # Is the < 1.2 config there but not the >= 1.2 additions?
+    if grep -q -i "^\s*browsermatchnocase\s\+\^openshift\s\+passthrough" $ii && \
+        ! grep -q -i "^\s*SetEnvIfNoCase\s\+Authorization\s\+Bearer\s\+passthrough" $ii
+    then
+        update_conf "${ii}"
+    fi
+done
 
 exit 0
