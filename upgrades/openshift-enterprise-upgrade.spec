@@ -5,8 +5,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2.1
-Release:   2%{?dist}
+Version:   1.2.2
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -160,6 +160,14 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Tue Sep 10 2013 Jason DeTiberus <jdetiber@redhat.com> 1.2.2-1
+- <upgrade> Bug 999182, Update auth passthrough config for files which seem to
+  need it (jolamb@redhat.com)
+- fix missing POOL_SIZE variable, escape dollar signs for safety
+  (jolamb@redhat.com)
+- <upgrade> Bug 988478, fix up mcollective conf to use activemq after upgrade
+  (jolamb@redhat.com)
+
 * Wed Jul 24 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.1-2
 - Bug 988069 - 1.2 upgrade fails when using mongo replica set
   (bleanhar@redhat.com)
