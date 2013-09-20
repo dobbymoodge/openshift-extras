@@ -44,12 +44,12 @@ SLEEP_AFTER_LAUNCH=30
 SIBLING_REPOS = {'enterprise-server' => ['../enterprise-server'],
                  'enterprise-rhc' => ['../enterprise-rhc'],
                  'enterprise' => ["../#{File.basename(FileUtils.pwd)}"],
-                 'enterprise-dev-tools' => ['../enterprise-dev-tools'],
+                 'enterprise-dev-tools' => ['../enterprise-dev-tools']}
 OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
 SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterprise-server.git',
                         'enterprise-rhc' => 'git@github.com:openshift/enterprise-rhc.git',
                         'enterprise' => 'git@github.com:openshift/enterprise.git',
-                        'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git',
+                        'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'
 DEV_TOOLS_EXT_REPO = 'enterprise'
