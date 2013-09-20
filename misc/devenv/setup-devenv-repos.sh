@@ -112,7 +112,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 
 [Client]
 name=Client repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Client/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/RHOSE-CLIENT-2.0/\$basearch/os
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -125,7 +125,7 @@ priority=1
 
 [Infrastructure]
 name=Infrastructure repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Infrastructure/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/RHOSE-INFRA-2.0/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -138,7 +138,7 @@ priority=1
 
 [JBoss_EAP6_Cartridge]
 name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/JBoss_EAP6_Cartridge/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/RHOSE-JBOSSEAP-2.0/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
@@ -151,7 +151,7 @@ priority=1
 
 [Node]
 name=Node repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/Node/\$basearch/os/
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories/RHOSE-NODE-2.0/\$basearch/os/
 failovermethod=priority
 enabled=1
 gpgcheck=0
