@@ -32,7 +32,7 @@ OPTIONS = {
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
   },
   "rhel"   => {
-    "amis"            => {"us-east-1" =>"ami-7b0c6312"},
+    "amis"            => {"us-east-1" =>"ami-a05415c9"},
     "devenv_name"     => "enterprise",
     "ssh_user"        => "ec2-user",
     "ignore_packages" => [
