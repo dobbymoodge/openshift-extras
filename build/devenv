@@ -490,9 +490,9 @@ priority= 1
               print_highlighted_output("Update Output", out)
             end
             
-            out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor rubygem-cucumber rubygem-rspec rubygem-webmock", 60 * 10, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Install Output", out)
+            #out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor rubygem-cucumber rubygem-rspec rubygem-webmock", 60 * 10, true, 1, ssh_user)
+            #print_and_exit(ret, out) if ret != 0
+            #print_highlighted_output("Install Output", out)
           end
 
           puts "Creating mount..."
