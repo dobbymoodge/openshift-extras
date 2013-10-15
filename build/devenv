@@ -252,23 +252,23 @@ priority= 1
             extended_tests.each do |extended_test|
               case extended_test
               when 'broker'
-                test_queues[0] << build_cucumber_command("REST API Group 1", ['@broker_api1'],nil,nil, '/data/openshift-test/tests')
-                test_queues[1] << build_cucumber_command("REST API Group 2", ['@broker_api2'],nil,nil, '/data/openshift-test/tests')
-                test_queues[2] << build_cucumber_command("REST API Group 3", ['@broker_api3'],nil,nil, '/data/openshift-test/tests')
-                test_queues[3] << build_cucumber_command("REST API Group 4", ['@broker_api4'],nil,nil, '/data/openshift-test/tests')
-                test_queues[0] << build_rake_command("Broker Domain System", "cd /data/openshift-test/broker; rake test:domain_system_test", {}, true)
-                test_queues[2] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext", {}, true)
+                (1..4).each do |i|
+                  test_queues[i-1] << build_cucumber_command("REST API Group #{i}", ["@broker_api#{i}"])
+                end
+                test_queues[0] << build_rake_command("OpenShift Broker Application System", "cd openshift-test/broker; rake test:application_system_test", {}, true)
+                test_queues[2] << build_rake_command("OpenShift Broker Cartridge System", "cd openshift-test/broker; rake test:cartridge_system_test", {}, true)
+                test_queues[0] << build_rake_command("OpenShift Broker Domain System", "cd openshift-test/broker; rake test:domain_system_test", {}, true)
+                test_queues[2] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext")
                 test_queues[3] << build_rake_command("OpenShift Broker Integration Ext", "cd /data/openshift-test/broker; rake test:integration_ext", {}, true)
-                test_queues[0] << build_rake_command("Broker Application System", "cd /data/openshift-test/broker; rake test:application_system_test", {}, true)
-                test_queues[2] << build_rake_command("Broker Cartridge System", "cd /data/openshift-test/broker; rake test:cartridge_system_test", {}, true)
               when 'runtime'
-                test_queues[0] << build_cucumber_command("Extended Runtime Group 1", ['@runtime_extended1'], nil, nil, '/data/openshift-test/tests')
-                test_queues[1] << build_cucumber_command("Extended Runtime Group 2", ['@runtime_extended2'], nil, nil, '/data/openshift-test/tests')
-                test_queues[2] << build_cucumber_command("Extended Runtime Group 3", ['@runtime_extended3'], nil, nil, '/data/openshift-test/tests')
-              when 'site'
-                test_queues[0] << build_rake_command("Site Extended", "cd /data/openshift-test/site; rake test:extended", {}, true)
+                (1..3).each do |i|
+                  test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}"])
+                end
               when 'rhc'
-                test_queues[0] << build_cucumber_command("RHC Integration", [], {'RHC_SERVER'=>'localhost', 'QUIET'=>'1'},nil, 'cucumber', '*.feature', '/data/openshift-test/rhc', nil, '/tmp/rhc_bundle')
+                test_queues[0] << build_cucumber_command("RHC Extended", ["@rhc_extended"])
+                test_queues[1] << build_cucumber_command("RHC Integration",[],
+                                                         {"RHC_SERVER" => "localhost", "QUIET" => "1"},
+                                                         nil,"/data/openshift-test/rhc/features")
               else
                 puts "Not supported for extended: #{extended_test}"
                 exit 1
