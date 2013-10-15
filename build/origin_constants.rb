@@ -22,6 +22,7 @@ OPTIONS = {
       'rubygem-openshift-origin-auth-kerberos',
       'rubygem-openshift-origin-auth-mongo',
       'rubygem-openshift-origin-dns-avahi',
+      'rubygem-openshift-origin-dns-route53',
       'rubygem-openshift-origin-frontend-apache-vhost',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@not-enterprise',
