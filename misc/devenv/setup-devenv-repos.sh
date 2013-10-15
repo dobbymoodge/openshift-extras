@@ -98,6 +98,19 @@ sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
 
+[Test_Dependencies_Libra]
+name=Client repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Test_Dependencies_Libra/\$basearch/os/
+failovermethod=priority
+enabled=1
+priority=4
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+
 [Client-ruby193]
 name=Client repo for Enterprise Linux 6 - \$basearch
 baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Client-ruby193/\$basearch/os/
