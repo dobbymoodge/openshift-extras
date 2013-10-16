@@ -700,6 +700,7 @@ EOF
         sudo -s service named restart; sudo -s service network restart
         sudo -s service ruby193-mcollective restart; sudo -s service oddjobd restart
         sudo -s service openshift-node-web-proxy start;
+        sudo -s service openshift-iptables-port-proxy restart; sudo -s service openshift-tc restart
         }
         run(cmd)
       end
@@ -716,6 +717,7 @@ sudo -s service named restart; sudo -s service network restart
 sudo -s service cgconfig restart; sudo -s service cgred restart ; sudo -s service openshift-cgroups restart
 sudo -s service ruby193-mcollective restart; sudo -s service oddjobd restart
 sudo -s service openshift-node-web-proxy start;
+sudo -s service openshift-iptables-port-proxy restart; sudo -s service openshift-tc restart
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
