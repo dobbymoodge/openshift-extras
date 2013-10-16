@@ -21,6 +21,7 @@ OPTIONS = {
       'openshift-origin-util',
       'rubygem-openshift-origin-auth-kerberos',
       'rubygem-openshift-origin-auth-mongo',
+      'rubygem-openshift-origin-container-libvirt',
       'rubygem-openshift-origin-dns-avahi',
       'rubygem-openshift-origin-dns-route53',
       'rubygem-openshift-origin-frontend-apache-vhost',
