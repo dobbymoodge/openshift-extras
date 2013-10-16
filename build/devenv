@@ -515,7 +515,11 @@ popd > /dev/null
             cmd += %{ pushd /data
 #{clone_commands} 
 popd
-
+}
+            SIBLING_REPOS.each_key do |repo_name|
+              cmd += "pushd /data/#{repo_name}; git checkout #{options.branch}; popd;"
+            end
+            cmd += %{
 pushd /data/#{DEV_TOOLS_EXT_REPO}
   sudo -s scl enable ruby193 "build/devenv install_required_packages" 2>&1
 popd
