@@ -250,6 +250,23 @@ priority= 1
 
           if options.include_extended
             extended_tests.each do |extended_test|
+              # Some of the extended tests expect quickstarts.json to be non-empty
+              ssh(hostname, %{ sudo bash -c cat<<EOF > /etc/openshift/quickstarts.json
+[
+  {"quickstart": {
+    "id": "1",
+    "name":"CakePHP",
+    "website":"http://cakephp.org/",
+    "initial_git_url":"git://github.com/openshift/cakephp-example.git",
+    "cartridges":["php-5","mysql-5.1"],
+    "summary":"CakePHP",
+    "tags":["php","cakephp","framework"],
+    "admin_tags":[]
+  }}
+]
+EOF
+              }, 60 * 2, true, 1, options.ssh_user)
+
               case extended_test
               when 'broker'
                 (1..4).each do |i|
@@ -350,7 +367,9 @@ priority= 1
         ensure
           # add frontend config for any gears that may be left over from testing
           ssh(hostname, "sudo bash -c \"/usr/bin/oo-frontend-plugin-modify --rebuild --confirm\"", 120, false, 1, options.ssh_user)
-          
+
+          # reset quickstarts.json back to an empty list
+          ssh(hostname, 'sudo bash -c echo "[]" > /etc/openshift/quickstarts.json', 60 * 2, true, 1, options.ssh_user) 
           download_artifacts(hostname) if options.terminate?
           if options.terminate?
             terminate_instance(instance)
