@@ -20,3 +20,4 @@
 ./plugins/frontend/nodejs-websocket
 ./plugins/msg-broker/mcollective/
 ./plugins/msg-node/mcollective/
+./plugins/routing/activemq
