@@ -395,8 +395,6 @@ priority= 1
       end
   
       def build_impl(name, build_num, image, conn, options)
-        $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
-
         if options.install_required_packages?
           $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:root,ec2-user \!requiretty >> /etc/sudoers\nsed -i '/cat <<EOL/,$d' /etc/rc.local\nsed -i 's/PermitRootLogin without-passwordUseDNS no/PermitRootLogin without-password\nUseDNS no/g' /etc/ssh/sshd_config\n"
         else
@@ -406,26 +404,9 @@ priority= 1
         instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
 
         hostname = instance.dns_name
-        puts "Done"
-        puts "Hostname: #{hostname}"
 
-=begin
-        if(BASE_OS == "rhel" or BASE_OS == "centos")
-          puts "TODO: remove this stuff..."
-          out, ret = ssh(hostname, "sudo -s yum clean all; yum install -y ruby193-rubygem-aws-sdk", 60 * 20, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
+        puts "Building on: #{hostname}"
 
-          puts "Done"
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
-        end
-=end
-
-=begin
-=end
-
-        ret, out = 0, nil
         begin
           if options.install_required_packages?
             puts "Uploading yum client certificates..."
@@ -469,152 +450,93 @@ priority= 1
               print_highlighted_output("Update Output", out)
             end
 
-            puts "Starting yum update..."
-            out, ret = ssh(hostname, "sudo -s yum -y update", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "sudo -s yum install -y ruby193-ruby ruby193-rubygem-thor ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock ruby193-rubygem-net-ssh-multi ruby193-rubygem-net-ssh-gateway", 60 * 20, true, 1, ssh_user)
-            
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "sudo -s yum erase -y epel-release", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
-            if(BASE_OS == "rhel" or BASE_OS == "centos")
-              # TODO: we shouldn't use EPEL
-              out, ret = ssh(hostname, "sudo -s yum -y install http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm", 60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              print_highlighted_output("Update Output", out)
-              out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=epel.enabled=0 --save epel", 60 * 10, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              print_highlighted_output("Update Output", out)
-            end
-            
             #out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor rubygem-cucumber rubygem-rspec rubygem-webmock", 60 * 10, true, 1, ssh_user)
             #print_and_exit(ret, out) if ret != 0
             #print_highlighted_output("Install Output", out)
           end
+
+          puts "Updating all packages on the system..."
+          out, ret = ssh(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Update Output", out)
 
           puts "Creating mount..."
           if options.install_from_source? || options.install_from_local_source?
             out, ret = ssh(hostname, "sudo -s rm -rf /data", 60 * 10, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
           end
-          #out, ret = ssh(hostname, "sudo -s umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R #{SSH_USER}:#{SSH_USER} /data/", 60 * 10, true, 1, ssh_user)
           out, ret = ssh(hostname, "sudo -s mkdir -p /data && sudo -s chown -R #{SSH_USER}:#{SSH_USER} /data/", 60 * 10, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
 
-          init_repos(hostname, true, nil, "/data", ssh_user)
-          clone_commands, working_dirs = '', ''
-
-          if options.install_from_local_source?
-            puts "Performing clean install from local source..."
-            clone_commands, working_dirs = sync_available_sibling_repos(hostname, options.branch, "/data", ssh_user)
-          else
-            SIBLING_REPOS.each do |repo_name, repo_dirs|
-              working_dirs += "#{repo_name} "
-              clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
-              clone_commands += "pushd #{repo_name}; git checkout #{options.branch}; popd; "
+          output = ''
+          clone_commands = repo_clone_commands(hostname)
+          cmd = "set -ex;"
+          if options.install_from_source? || options.install_from_local_source?
+            if options.install_from_source?
+              puts "Performing clean install from source..."
+            elsif options.install_from_local_source?
+              puts "Performing clean install from local source..."
             end
+            init_repos(hostname, true, nil, "/data", ssh_user)
+            sync_repos(hostname, "/data", ssh_user) if options.install_from_local_source?
+            cmd += %{ pushd /data 
+#{clone_commands}
+popd
+mkdir -p /tmp/tito
+}
+            SIBLING_REPOS.each_key do |repo_name|
+              cmd += "pushd /data/#{repo_name}; git checkout #{options.branch}; popd;"
+            end if options.install_from_source?
+            cmd += %{
+pushd /data/#{DEV_TOOLS_EXT_REPO} > /dev/null
+  echo "Building all packages on the server..."
+  sudo -s scl enable ruby193 "build/devenv local_build --clean-packages"
+popd > /dev/null
+
+}
+          elsif options.install_required_packages?
+            puts "Installing bootstrap packages..."
+            output, exit_code = ssh(hostname, "sudo -s yum install -y ruby193-ruby ruby193-rubygem-thor ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock ruby193-rubygem-net-ssh-multi ruby193-rubygem-net-ssh-gateway ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 20, true, 1, ssh_user)
+
+            #output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk ruby193-rubygem-thor ruby193-rubygem-parseconfig ruby193-rubygem-json ruby193-rubygem-aws-sdk scl-utils-build createrepo yum-priorities", 600, true)
+            print_highlighted_output('Install Bootstrap Packages Output', output)
+            exit 1 unless exit_code == 0
+            puts "Install more bootstrap packages..."
+            output, exit_code = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
+            print_highlighted_output('Install More Bootstrap Packages Output', output)
+            exit 1 unless exit_code == 0
+            puts "Done"
+
+            puts "Installing requires..."
+            init_repos(hostname, true, nil, "/data", ssh_user)
+            cmd += %{ pushd /data
+#{clone_commands} 
+popd
+
+pushd /data/#{DEV_TOOLS_EXT_REPO}
+  sudo -s scl enable ruby193 "build/devenv install_required_packages" 2>&1
+popd
+sudo -s rm -rf /etc/puppet/modules &&
+  sudo -s mkdir -p /etc/puppet/modules &&
+  sudo -s puppet module install puppetlabs/stdlib &&
+  sudo -s puppet module install puppetlabs/ntp &&
+  sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
+}
+          else
+            puts "Performing clean install with the last published rpms..."
           end
-          out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
-          print_and_exit(ret, out) if ret != 0
+
+          output, exit_code = ssh(hostname, cmd, 3600, true, 1, ssh_user)
+          print_highlighted_output('Install Output', output)
           puts "Done"
-
-          if options[:extra_rpm_dir]
-            if File.exist? options[:extra_rpm_dir]
-              out, ret = ssh(hostname, "mkdir -p /data/origin-server/build/extras", 60, true, 1, ssh_user)
-              files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
-              files.each do |file|
-                scp_to(hostname, file, "/data/origin-server/build/extras/", 60*10, 5, ssh_user)
-              end
-
-              out, ret = ssh(hostname, "sudo -s cd /data/origin-server/build/extras && sudo -s yum install -y *.rpm", 60 * 20, true, 1, ssh_user)
-            else
-              puts "!!!Warning!!!"
-              puts "Directory containing extra rpms not found. Skipping..."
-              puts "!!!Warning!!!"
-            end
-          end
-          
-          # TODO: this doesn't need to run for install_from_source
-          if(BASE_OS == "rhel" or BASE_OS == "centos")
-            puts "Install build script dependencies"
-            out, ret = ssh(hostname, "sudo yum install -y ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 15, true, 1, ssh_user) if ret == 0
-            print_highlighted_output("Build script dependencies", out)
-            out, ret = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
-            print_highlighted_output("Build script dependencies - Puppet, Tito", out)
-          end
-        
-          puts "Installing pre-requisite packages"
-          cmd = "build/devenv install_required_packages"
-          if(BASE_OS == "rhel" or BASE_OS == "centos")
-            cmd = "scl enable ruby193 \"#{cmd}\""
-          end
-          out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd} 2>&1 ", 60 * 30, true, 1, ssh_user) if ret == 0
-          print_and_exit(ret, out) if ret != 0
-          
-          print_highlighted_output("Install Output", out)
-
-          # Add the paths to the users .bashrc file
-          #out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
-          selinux_level="enforcing"
-          selinux_level="permissive" if options.disable_selinux?
-
-          out, ret = ssh(hostname, %{
-cat<<EOF > /tmp/selinux_config
-#This file controls the state of SELinux on the system.
-# SELINUX= can take one of these three values:
-# enforcing - SELinux security policy is enforced.
-# permissive - SELinux prints warnings instead of enforcing.
-# disabled - No SELinux policy is loaded.
-SELINUX=#{selinux_level}
-# SELINUXTYPE= can take one of these two values:
-# targeted - Only targeted network daemons are protected.
-# strict - Full SELinux protection.
-SELINUXTYPE=targeted
-EOF
-          }, 60 * 2, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          out, ret = ssh(hostname, "sudo -s cp /tmp/selinux_config /etc/selinux/config", 60 * 15, true, 1, ssh_user) if ret == 0
-          print_and_exit(ret, out) if ret != 0
-          if options.disable_selinux?
-            out, ret = ssh(hostname, "sudo -s /usr/sbin/setenforce 0", 60 * 15, true, 1, ssh_user) if ret == 0
-            print_and_exit(ret, out) if ret != 0
-          end
-
-          if options.install_required_packages?
-            puts "Setting up puppet modules..."
-            base_os = guess_os(options.base_os)
-
-            #puppet version 2.7
-            out, ret = ssh(hostname, %{sudo -s rm -rf /etc/puppet/modules &&
-              sudo -s mkdir -p /etc/puppet/modules &&
-              sudo -s puppet module install puppetlabs/stdlib &&
-              sudo -s puppet module install puppetlabs/ntp &&
-              sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
-              }, 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-          else
-            if options.install_from_source? || options.install_from_local_source?
-              puts "Installing Origin packages..."
-              cmd = "build/devenv local_build --clean-packages"
-              if(BASE_OS == "rhel" or BASE_OS == "centos")
-                cmd = "scl enable ruby193 \"#{cmd}\""
-              end
-              out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd}  2>&1 ", 60 * 30, true, 1, ssh_user) if ret == 0
-              print_and_exit(ret, out) if ret != 0
-            
-              out = ssh(hostname, "sudo -s rpm -qa | grep openshift", 60, false, 1, ssh_user)
-              print_highlighted_output("Installed Origin Packages", out)
-            
-            end
-          end
-          puts "Done"          
+          exit exit_code unless exit_code == 0
 
           # Cleanup any lines that break sshd_config (cloud-init RHEL 6.4 bug)
           puts "Cleaning up broken sshd_config (RHEL 6.4 cloud-init bug)"
           ssh(hostname, 'sudo -s sed -i "s/PermitRootLogin without-passwordUseDNS no//g" /etc/ssh/sshd_config', 60, true, 1, ssh_user)
+
+          output = ssh(hostname, "sudo yum list installed", 120, true, 1, ssh_user)
+          print_highlighted_output('Installed Packages', output)
 
           image_id = nil
           if options[:register]
@@ -633,10 +555,9 @@ EOF
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            update_remote_tests(hostname, options.branch, "/data", ssh_user)
+            scp_remote_tests(hostname, "/data", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
-          puts "Done."
         ensure
           begin
             terminate(name + '_' + build_num) if options.terminate?
