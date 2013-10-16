@@ -484,12 +484,10 @@ priority= 1
 popd
 mkdir -p /tmp/tito
 }
+            wantedbranch = options.install_from_source? ? options.branch : "master"
             SIBLING_REPOS.each_key do |repo_name|
-              cmd += "pushd /data/#{repo_name}; git checkout #{options.branch}; popd;"
-            end if options.install_from_source?
-            SIBLING_REPOS.each_key do |repo_name|
-              cmd += "pushd /data/#{repo_name}; git checkout master; popd;"
-            end if options.install_from_local_source?
+              cmd += "pushd /data/#{repo_name}; git checkout #{wantedbranch}; popd;"
+            end
             cmd += %{
 pushd /data/#{DEV_TOOLS_EXT_REPO} > /dev/null
   echo "Building all packages on the server..."
@@ -562,7 +560,7 @@ sudo -s rm -rf /etc/puppet/modules &&
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            scp_remote_tests(hostname, "/data", ssh_user)
+            update_remote_tests(hostname, options.branch, "/data", options.ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
         ensure
