@@ -234,18 +234,6 @@ priority= 1
             end
           end
  
-          # Run oo-diagnostics on the host 
-          # TODO filter out failures we don't care about and fail on others
-          out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
-          print_highlighted_output( "oo-diagnostics", out)
-          oofails = out.scan(/FAIL: /).size
-          if ret != 0 and oofails > 0
-            # oofails == 3, since the default password failure is actually listed as 2 (since it is run from oo-accept-broker)
-            unless oofails == 3 and out.match(/FAIL: test_enterprise_rpms/) and out.match(/FAIL: Datastore Password has been left configured as the default 'mooo'/)
-              print_and_exit(ret, "oo-diagnostics failed for more than test_enterprise_rpms and default mongo password")
-            end
-          end
-
           ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
 
           if options.include_extended
@@ -300,6 +288,18 @@ EOF
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
             test_queues[0] << build_cucumber_command(options.include_cucumber, ["@#{options.include_cucumber}"], nil, nil, "/data/openshift-test/tests")
           else
+            # Run oo-diagnostics on the host 
+            # TODO filter out failures we don't care about and fail on others
+            out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
+            print_highlighted_output( "oo-diagnostics", out)
+            oofails = out.scan(/FAIL: /).size
+            if ret != 0 and oofails > 0
+              # oofails == 3, since the default password failure is actually listed as 2 (since it is run from oo-accept-broker)
+              unless oofails == 3 and out.match(/FAIL: test_enterprise_rpms/) and out.match(/FAIL: Datastore Password has been left configured as the default 'mooo'/)
+                print_and_exit(ret, "oo-diagnostics failed for more than test_enterprise_rpms and default mongo password")
+              end
+            end
+
             unless options.exclude_broker?
               test_queues[3] << build_rake_command("OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units", {}, false)
               test_queues[0] << build_rake_command("OpenShift Broker Integration", "cd /data/openshift-test/broker; rake test:integration", {}, false)
