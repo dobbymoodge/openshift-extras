@@ -286,8 +286,7 @@ EOF
                   test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}", "~@not-enterprise"])
                 end
               when 'rhc'
-                test_queues[0] << build_cucumber_command("RHC Extended", ["@rhc_extended", "~@not-enterprise"])
-                test_queues[1] << build_cucumber_command("RHC Integration",["@enterprise-only", "~@not-enterprise"],
+                test_queues[1] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
                                                          nil,"/data/openshift-test/rhc/features")
               else
