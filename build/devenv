@@ -249,9 +249,8 @@ priority= 1
           ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
 
           if options.include_extended
-            extended_tests.each do |extended_test|
-              # Some of the extended tests expect quickstarts.json to be non-empty
-              ssh(hostname, %{ sudo bash -c cat<<EOF > /etc/openshift/quickstarts.json
+             # Some of the extended tests expect quickstarts.json to be non-empty
+            ssh(hostname, %{ sudo bash -c cat<<EOF > /etc/openshift/quickstarts.json
 [
   {"quickstart": {
     "id": "1",
@@ -265,12 +264,13 @@ priority= 1
   }}
 ]
 EOF
-              }, 60 * 2, true, 1, options.ssh_user)
+            }, 60 * 2, true, 1, options.ssh_user)
 
-              # Some of the extended tests require that DEFAULT_MAX_GEARS be set to 3
-              ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
-                  60 * 2, true, 1, options.ssh_user) 
+            # Some of the extended tests require that DEFAULT_MAX_GEARS be set to 3
+            ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
+                60 * 2, true, 1, options.ssh_user) 
 
+            extended_tests.each do |extended_test|
               case extended_test
               when 'broker'
                 (1..4).each do |i|
