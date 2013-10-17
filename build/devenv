@@ -267,6 +267,10 @@ priority= 1
 EOF
               }, 60 * 2, true, 1, options.ssh_user)
 
+              # Some of the extended tests require that DEFAULT_MAX_GEARS be set to 3
+              ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
+                  60 * 2, true, 1, options.ssh_user) 
+
               case extended_test
               when 'broker'
                 (1..4).each do |i|
@@ -370,6 +374,11 @@ EOF
 
           # reset quickstarts.json back to an empty list
           ssh(hostname, 'sudo bash -c echo "[]" > /etc/openshift/quickstarts.json', 60 * 2, true, 1, options.ssh_user) 
+
+          # reset DEFAULT_MAX_GEARS="100"
+          ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"100\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart', 
+              60 * 2, true, 1, options.ssh_user) 
+
           download_artifacts(hostname) if options.terminate?
           if options.terminate?
             terminate_instance(instance)
