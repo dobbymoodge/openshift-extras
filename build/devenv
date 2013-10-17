@@ -288,7 +288,8 @@ EOF
               when 'rhc'
                 test_queues[1] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
-                                                         nil,"/data/openshift-test/rhc/features")
+                                                         nil,"cucumber", '*.feature', '/data/openshift-test/rhc',
+                                                         nil, '/tmp/rhc_bundle')
               else
                 puts "Not supported for extended: #{extended_test}"
                 exit 1
