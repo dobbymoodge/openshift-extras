@@ -314,7 +314,7 @@ priority= 1
             end
           end
 
-          run_tests_with_retry(test_queues, hostname, options.ssh_user)
+          run_tests_with_retry(test_queues, hostname, options.ssh_user, ["~@not-enterprise"])
 
           #These are special tests that cannot be written to work concurrently
           singleton_queue = []
@@ -324,7 +324,7 @@ priority= 1
                 when 'broker'
                 when 'runtime'
                   idle_all_gears(hostname)
-                  singleton_queue << build_cucumber_command("Runtime singletons", ["@singleton"], nil, nil, '/data/openshift-test/tests')
+                  singleton_queue << build_cucumber_command("Runtime singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
                 when 'site'
                 when 'rhc'
                 else
@@ -332,7 +332,7 @@ priority= 1
                   exit 1
               end
             end
-            run_tests_with_retry([singleton_queue], hostname, options.ssh_user)
+            run_tests_with_retry([singleton_queue], hostname, options.ssh_user, ["~@not-enterprise"])
           end
           validate_instance(hostname, 4)
 
