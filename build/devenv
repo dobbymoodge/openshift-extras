@@ -158,23 +158,27 @@ priority= 1
         `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; mkdir -p origin-rpms; mkdir -p origin-srpms; pushd rhc/log > /dev/null; mkdir -p broker ruby193-mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
+        scp_from(hostname, "/var/log/openshift/node/*", "rhc/log/node", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/node-web-proxy/*", "rhc/log/node-web-proxy", 60, ssh_user)
         scp_from(hostname, "/var/log/ruby193-mcollective.*", "rhc/log/ruby193-mcollective", 60, ssh_user)
         scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
         scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, ssh_user)
         scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, ssh_user)
         scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/dmesg", "rhc/log/system/dmesg.log", 60, ssh_user)
         scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, ssh_user)
         scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
         scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
+        scp_from(hostname, "/tmp/rhc/screenshots/*", "rhc/log/screenshots", 60, ssh_user)
+        scp_from(hostname, "/tmp/rhc/benchmark.csv", "rhc/log", 60, ssh_user)
+        scp_from(hostname, "/tmp/broker-profiler/*", "rhc/log/broker-profiler", 60, ssh_user)
+        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
+        scp_from(hostname, "/data/openshift-test/broker/log/*", "rhc/log/origin-broker", 60, ssh_user)
+        scp_from(hostname, "/data/openshift-test/broker/test/coverage/*", "rhc/log/origin-broker/test/coverage", 60, ssh_user)
+        scp_from(hostname, "/data/openshift-test/node/test/coverage/*", "rhc/log/node/test/coverage", 60, ssh_user)
+        scp_from(hostname, "/tmp/rerun_*", "rhc/log/cucumber/rerun", 60, ssh_user)
 
-        ssh(hostname, "sudo -s
-          rm -rf /tmp/origin-rpms;
-          mkdir -p /tmp/origin-rpms;
-          cp -rf /data/origin-rpms/*.rpm /tmp/origin-rpms/;
-          chown #{SSH_USER}:#{SSH_USER} -R /tmp/origin-rpms", 60, false, 2, ssh_user)
-        scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, ssh_user)
-        scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, ssh_user)
         puts "Done"
       end
       
@@ -261,8 +265,9 @@ priority= 1
                 (1..3).each do |i|
                   test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}", "~@not-enterprise"])
                 end
+                test_queues[3] << build_rake_command("OpenShift Runtime Functionals Ext", "cd openshift-test/node; rake ext_func_test", {}, true)
               when 'rhc'
-                test_queues[1] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
+                test_queues[0] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
                                                          nil,"cucumber", '*.feature', '/data/openshift-test/rhc',
                                                          nil, '/tmp/rhc_bundle')
@@ -302,7 +307,7 @@ priority= 1
               test_queues[2] << build_rake_command("Runtime Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
               test_queues[3] << build_rake_command("Runtime Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
               test_queues[0] << build_rake_command("Runtime Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
-              test_queues[0] << build_rake_command("Runtime Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
+              test_queues[2] << build_rake_command("Runtime Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
               (1..4).each do |i|
                 test_queues[i-1] << build_cucumber_command("Runtime Group #{i.to_s}", ["@runtime#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
               end
