@@ -265,7 +265,7 @@ priority= 1
                 (1..3).each do |i|
                   test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}", "~@not-enterprise"])
                 end
-                test_queues[3] << build_rake_command("OpenShift Runtime Functionals Ext", "cd openshift-test/node; rake ext_func_test", {}, true)
+                test_queues[3] << build_rake_command("OpenShift Runtime Functionals Ext", "cd /data/openshift-test/node; rake ext_func_test", {}, true)
               when 'rhc'
                 test_queues[0] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
