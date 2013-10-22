@@ -122,6 +122,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
+priority=4
 
 [Client]
 name=Client repo for Enterprise Linux 6 - \$basearch
