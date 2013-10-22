@@ -228,6 +228,15 @@ priority= 1
 
           broker_profiler(hostname) if options.profile_broker?
 
+          # Some of the tests expect quickstarts.json to be non-empty
+          qs_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/quickstarts.json")
+          scp_to(hostname, qs_path, "~/", 60*10, 5, ssh_user)
+          ssh(hostname, "sudo mv ~/quickstarts.json /etc/openshift/", 60 * 2, true, 1, options.ssh_user)
+
+          # Some of the tests require that DEFAULT_MAX_GEARS be set to 3
+          ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
+              60 * 2, true, 1, options.ssh_user) 
+
           test_queues = [[], [], [], []]
 
           extended_tests = nil
@@ -241,15 +250,6 @@ priority= 1
           ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
 
           if options.include_extended
-             # Some of the extended tests expect quickstarts.json to be non-empty
-            qs_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/quickstarts.json")
-            scp_to(hostname, qs_path, "~/", 60*10, 5, ssh_user)
-            ssh(hostname, "sudo mv ~/quickstarts.json /etc/openshift/", 60 * 2, true, 1, options.ssh_user)
-
-            # Some of the extended tests require that DEFAULT_MAX_GEARS be set to 3
-            ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
-                60 * 2, true, 1, options.ssh_user) 
-
             extended_tests.each do |extended_test|
               case extended_test
               when 'broker'
