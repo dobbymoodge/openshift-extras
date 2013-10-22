@@ -155,7 +155,7 @@ priority= 1
 
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
-        `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; mkdir -p origin-rpms; mkdir -p origin-srpms; pushd rhc/log > /dev/null; mkdir -p broker ruby193-mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
+        `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker ruby193-mcollective system screenshots broker-profiler coverage cucumber; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/node/*", "rhc/log/node", 60, ssh_user)
@@ -177,7 +177,7 @@ priority= 1
         scp_from(hostname, "/data/openshift-test/broker/log/*", "rhc/log/origin-broker", 60, ssh_user)
         scp_from(hostname, "/data/openshift-test/broker/test/coverage/*", "rhc/log/origin-broker/test/coverage", 60, ssh_user)
         scp_from(hostname, "/data/openshift-test/node/test/coverage/*", "rhc/log/node/test/coverage", 60, ssh_user)
-        scp_from(hostname, "/tmp/rerun_*", "rhc/log/cucumber/rerun", 60, ssh_user)
+        scp_from(hostname, "/tmp/rerun_*", "rhc/log/cucumber", 60, ssh_user)
 
         puts "Done"
       end
