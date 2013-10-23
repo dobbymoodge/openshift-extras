@@ -686,9 +686,9 @@ EOF
         print_and_exit(ret, out) if ret != 0
 
         out, ret = ssh(hostname, 'sudo -s rm -f /etc/openshift/.mongo-setup-complete', 60 * 20, true, 1, ssh_user)
-        out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 20, true, 1, ssh_user)
-        print_and_exit(ret,out) if ret != 0
+        out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 30, true, 1, ssh_user)
         print_highlighted_output( "Puppet", out )
+        print_and_exit(ret,out) if ret != 0
 
         # Overwrite iptables rules after puppet run
         iptables_path = File.expand_path(File.dirname(__FILE__) + "/../misc/iptables")
