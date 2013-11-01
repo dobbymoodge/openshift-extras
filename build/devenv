@@ -386,29 +386,33 @@ priority= 1
         clone_commands, working_dirs = sync_available_sibling_repos(hostname, options.branch, "/data", ssh_user)
         update_remote_tests(hostname, options.branch, "/data", ssh_user)
         
-        ret = 0
         if !options.skip_build?
           puts "Performing remote install..."
+          last_line = ssh_pty(hostname, %{
+# Start shell code
 
-          out, ret = ssh(hostname, "cd /data/ ; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
+set -e
+#{options.clean_metadata? ? 'yum clean metadata' : ''}
+cd /data/
+rm -rf #{working_dirs}
+#{clone_commands}
 
-          out, ret = ssh(hostname, "sudo -s yum clean metadata", 60 * 2, true, 2, ssh_user) if options.clean_metadata?
-          print_and_exit(ret, out) if ret != 0
+pushd #{DEV_TOOLS_EXT_REPO} > /dev/null
+  echo build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} | scl enable ruby193 - 2>&1
+popd > /dev/null
 
-          cmd = "build/devenv update"
-          cmd += " --verbose" if options.verbose
-          cmd += " --include_stale" if options.clean_metadata
+rm -rf #{working_dirs}
+#{options.clean_metadata? ? "yum update -y rhc *openshift* 2>&1;" : ''}
 
-          if(BASE_OS == "rhel" or BASE_OS == "centos")
-            cmd = "scl enable ruby193 \"#{cmd}\""
+# End shell code
+echo SUCCESS
+}, 900, ssh_user)
+
+          unless last_line =~ /SUCCESS/
+            puts "Build failed!  Exiting."
+            exit 1
           end
-          out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd}  2>&1 ", 60 * 15, true, 1, ssh_user) if ret == 0
-          print_and_exit(ret, out) if ret != 0
 
-          out, ret = ssh(hostname, "sudo -s #{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
-          print_and_exit(ret, out) if ret != 0
-          
           post_launch_setup(hostname, options)
         end
 
@@ -450,36 +454,19 @@ priority= 1
             puts "Done"
 
             puts "Setting up yum priorities..."
-            out, ret = ssh(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
+            ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, true, 1, ssh_user)
             repo = 'rhui-us-east-1-rhel-server-releases'
-            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, 
-                           true, 1, ssh_user)
-            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, 
-                           true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews2", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
+            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, ssh_user)
+            ssh_pty(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, ssh_user)
+            ssh_pty(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews2", 60 * 20, ssh_user)
             repos = ['rhui-us-east-1-jbeap-6-rhui-rhel-6-rpms', 'rhui-us-east-1-rhel-server-6-jbews2'] 
             repos.each do |repo|
-              out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 
-                             60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-              print_highlighted_output("Update Output", out)
+              ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 60 * 20, ssh_user)
             end
-
-            #out, ret = ssh(hostname, "sudo -s yum install -y git rubygem-thor rubygem-cucumber rubygem-rspec rubygem-webmock", 60 * 10, true, 1, ssh_user)
-            #print_and_exit(ret, out) if ret != 0
-            #print_highlighted_output("Install Output", out)
           end
 
           puts "Updating all packages on the system..."
-          out, ret = ssh(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Update Output", out)
+          ssh_pty(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, ssh_user)
 
           puts "Creating mount..."
           if options.install_from_source? || options.install_from_local_source?
@@ -514,7 +501,6 @@ pushd /data/#{DEV_TOOLS_EXT_REPO} > /dev/null
   echo "Building all packages on the server..."
   sudo -s scl enable ruby193 "build/devenv local_build --clean-packages"
 popd > /dev/null
-
 }
           elsif options.install_required_packages?
             puts "Installing bootstrap packages..."
@@ -543,19 +529,20 @@ pushd /data/#{DEV_TOOLS_EXT_REPO}
   sudo -s scl enable ruby193 "build/devenv install_required_packages" 2>&1
 popd
 sudo -s rm -rf /etc/puppet/modules &&
-  sudo -s mkdir -p /etc/puppet/modules &&
-  sudo -s puppet module install puppetlabs/stdlib &&
-  sudo -s puppet module install puppetlabs/ntp &&
-  sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
+sudo -s mkdir -p /etc/puppet/modules &&
+sudo -s puppet module install puppetlabs/stdlib &&
+sudo -s puppet module install puppetlabs/ntp &&
+sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
 }
           else
             puts "Performing clean install with the last published rpms..."
           end
+          cmd += "echo SUCCESS"
 
-          output, exit_code = ssh(hostname, cmd, 3600, true, 1, ssh_user)
-          print_highlighted_output('Install Output', output)
+          puts 'Install Output'
+          last_line = ssh_pty(hostname, cmd, 3600, ssh_user)
           puts "Done"
-          exit exit_code unless exit_code == 0
+          exit 1 unless last_line =~ /SUCCESS/
 
           # Cleanup any lines that break sshd_config (cloud-init RHEL 6.4 bug)
           puts "Cleaning up broken sshd_config (RHEL 6.4 cloud-init bug)"
@@ -674,8 +661,8 @@ EOF
         update_puppet_manifests(hostname, options, "basic-auth")
  
         # reset the eth0 network config to add the dns entries
-        out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp", 60 * 20, true, 1, ssh_user)
-        print_and_exit(ret, out) if ret != 0
+        puts "Running puppet - configure_hostname.pp"
+        ssh_pty(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp", 60 * 20, ssh_user)
         
         ssh(hostname, 'sudo -s rm -rf /var/named/Kdev.rhcloud.com*', 60 * 20, true, 1, ssh_user)
         out, ret = ssh(hostname, 'sudo -s yum install -y bind', 60 * 20, true, 1, ssh_user)
@@ -686,9 +673,8 @@ EOF
         print_and_exit(ret, out) if ret != 0
 
         out, ret = ssh(hostname, 'sudo -s rm -f /etc/openshift/.mongo-setup-complete', 60 * 20, true, 1, ssh_user)
-        out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 30, true, 1, ssh_user)
-        print_highlighted_output( "Puppet", out )
-        print_and_exit(ret,out) if ret != 0
+        puts "Running puppet - configure_origin.pp"
+        ssh_pty(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 30, ssh_user)
 
         # Overwrite iptables rules after puppet run
         iptables_path = File.expand_path(File.dirname(__FILE__) + "/../misc/iptables")
