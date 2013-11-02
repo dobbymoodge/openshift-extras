@@ -398,10 +398,9 @@ rm -rf #{working_dirs}
 #{clone_commands}
 
 pushd #{DEV_TOOLS_EXT_REPO} > /dev/null
-  echo build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} | scl enable ruby193 - 2>&1
+  echo build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} | sudo scl enable ruby193 - 2>&1
 popd > /dev/null
 
-rm -rf #{working_dirs}
 #{options.clean_metadata? ? "yum update -y rhc *openshift* 2>&1;" : ''}
 
 # End shell code
@@ -647,9 +646,9 @@ class { "openshift_origin" :
   configure_cgroups      => true,
   broker_auth_plugin     => "#{authtype}",
   configure_ntp          => false,
-  broker_auth_salt       => 'ClWqe5zKtEW4CJEMyjzQ2',
-  broker_session_secret  => 'devenv_secret',
-  console_session_secret => 'devenv_secret',
+  broker_auth_salt       => "ClWqe5zKtEW4CJEMyjzQ2",
+  broker_session_secret  => "devenv_secret",
+  console_session_secret => "devenv_secret",
 }
 EOF
         }, 60 * 2, true, 1, options.ssh_user)
