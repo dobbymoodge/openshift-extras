@@ -453,7 +453,7 @@ echo SUCCESS
             puts "Done"
 
             puts "Setting up yum priorities..."
-            ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, true, 1, ssh_user)
+            ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, ssh_user)
             repo = 'rhui-us-east-1-rhel-server-releases'
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, ssh_user)
