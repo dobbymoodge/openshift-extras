@@ -17,6 +17,7 @@
 ./plugins/frontend/apachedb
 ./plugins/frontend/apache-mod-rewrite
 ./plugins/frontend/apache-vhost
+./plugins/frontend/haproxy-sni-proxy
 ./plugins/frontend/nodejs-websocket
 ./plugins/msg-broker/mcollective/
 ./plugins/msg-node/mcollective/
