@@ -505,6 +505,11 @@ priority= 1
 
         ret, out = 0, nil
         begin
+          puts "Starting yum update..."
+          out, ret = ssh(hostname, "sudo -s yum -y update", 60 * 20, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Update Output", out)
+
           if options.install_required_packages?
             puts "Uploading yum client certificates..."
             pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
@@ -550,10 +555,6 @@ priority= 1
               print_highlighted_output("Update Output", out)
             end
 
-            puts "Starting yum update..."
-            out, ret = ssh(hostname, "sudo -s yum -y update", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Update Output", out)
             out, ret = ssh(hostname, "sudo -s yum install -y ruby193-ruby ruby193-rubygem-thor ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock", 60 * 20, true, 1, ssh_user)
 
             print_and_exit(ret, out) if ret != 0
