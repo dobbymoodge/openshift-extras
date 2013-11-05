@@ -529,18 +529,20 @@ priority= 1
             out, ret = ssh(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            repo = 'rhui-us-east-1-rhel-server-releases'
+            repo = 'rhui-REGION-rhel-server-rhscl'
+            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=1 #{repo} --save", 60 * 20, 
+                           true, 1, ssh_user)
+            repo = 'rhui-REGION-rhel-server-releases'
             out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, 
                            true, 1, ssh_user)
             out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, 
                            true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews1 rh-amazon-rhui-client-jbews2", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews2", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            repos = ['rhui-us-east-1-jbeap-6-rhui-rhel-6-rpms', 'rhui-us-east-1-rhel-server-6-jbews1', 
-                     'rhui-us-east-1-rhel-server-6-jbews2']
+            repos = ['rhui-REGION-jbeap-6-rhui-rhel-6-rpms', 'rhui-REGION-rhel-server-6-jbews2']
             repos.each do |repo|
               out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 
                              60 * 20, true, 1, ssh_user)
