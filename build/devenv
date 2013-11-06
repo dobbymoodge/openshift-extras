@@ -318,10 +318,10 @@ priority= 1
               end
             end
 
-            unless options.exclude_node?
+            unless options.exclude_cartridge?
               #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/node; rake cart_essentials_test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"], nil, nil, 'openshift-test/tests')
+                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
               end
             end
 
