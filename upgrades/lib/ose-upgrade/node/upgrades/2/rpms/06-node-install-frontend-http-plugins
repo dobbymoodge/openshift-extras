@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -xe
+
+yum install -y rubygem-openshift-origin-frontend-apache-mod-rewrite rubygem-openshift-origin-frontend-nodejs-websocket

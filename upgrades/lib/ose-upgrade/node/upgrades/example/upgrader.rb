@@ -5,10 +5,10 @@ module OSEUpgrader
     class NumberX < Node
 
       def implemented_steps
-        %w[ pre rpms conf start_node ]
+        %w[ outage rpms conf start_node ]
       end
 
-      def run_upgrade_step_pre(state)
+      def run_upgrade_step_outage(state)
         rc, o = run_scripts_in(__FILE__, 'pre')
         return rc
       end

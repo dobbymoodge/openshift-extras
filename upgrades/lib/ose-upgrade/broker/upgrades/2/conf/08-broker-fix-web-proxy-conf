@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -xe
+
+conf=/etc/openshift/web-proxy-config.json
+[[ -e "$conf" ]] || exit 0
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# If there isn't already a "ca" setting in the web-proxy configuration,
+# add it with the value of the "certificate" setting.  See commit
+# 32c8fec2259c27660dcb731c9a5c5baa30b81f45.
+#
+# Note: Unfortunately, this code does not preserve whitespace.
+oo-ruby -r json -e '
+  conf = JSON.parse(IO.read("/etc/openshift/web-proxy-config.json"))
+  conf["servers"]["secure_http_proxy"]["ssl"]["ca"] ||= conf["servers"]["secure_http_proxy"]["ssl"]["certificate"]
+  IO.write("/etc/openshift/web-proxy-config.json", JSON.pretty_unparse(conf))
+'

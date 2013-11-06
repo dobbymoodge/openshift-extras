@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -xe
+
+# Assumptions: Console is installed on the broker.
+
+# Restart the broker and console with maintenance mode turned off.
+for svc in openshift-broker openshift-console
+do
+	service "$svc" restart
+done

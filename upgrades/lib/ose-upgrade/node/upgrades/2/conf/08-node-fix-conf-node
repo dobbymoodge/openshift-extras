@@ -1,0 +1,76 @@
+#!/bin/bash
+
+set -xe
+
+conf=/etc/openshift/resource_limits.conf
+command cp -f $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# Delete settings from resource_limits.conf that have been removed
+# in RHOSE 2.0.  See commit 39f207580300bf5f1e3c23469c702f5559b96cdc.
+sed -i $conf \
+  -e '/^\s*apache_bandwidth\s*=/ d' \
+  -e '/^\s*apache_maxconnection\s*=/ d' \
+  -e '/^\s*apache_bandwidtherror\s*=/ d' \
+  -e '/^\s*rotatelogs_interval\s*=/ d' \
+  -e '/^\s*rotatelogs_format\s*=/ d'
+
+conf=/etc/openshift/node.conf
+command cp -f $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# Apply the following changes from RHOSE 1.2 to RHOSE 2.0:
+#
+#  * Rename GEAR_SUPL_GRPS to GEAR_SUPPLEMENTARY_GROUPS (see commit
+#    1ec40bb1b43755de590a78506d28e9a7540f29b6).
+#
+#  * Disable the unix_user_observer node plug-in, which is superseded by
+#    the containerization plug-in (see below and commit
+#    cb1bd9d7ea5f1f7f65d43422d0118728c6fd660a).
+#
+#  * Delete the INSTANCE_ID setting (see commit
+#    fd7296d32c9f273a52352c972bd34a8e7e3a4770).
+#
+#  * Change the value of GEAR_MIN_UID to 1000, and change the value of
+#    GEAR_MAX_UID to 6999 (see commit
+#    2003bc01f12cccd54b9e61390e8ea3931f889a2c).
+sed -i $conf \
+  -e '/^\s*#\?\s*\?INSTANCE_ID\s*=/ d' \
+  -e 's/GEAR_SUPL_GRPS/GEAR_SUPPLEMENTARY_GROUPS/g' \
+  -e '/^\s*#\?\s*\?OPENSHIFT_NODE_PLUGINS\s*=/ { s|openshift-origin-node/plugins/unix_user_observer||g; s|,,|,|g; }' \
+  -e '/^\s*GEAR_MIN_UID=/ s/500/1000/' \
+  -e '/^\s*GEAR_MAX_UID=/ s/6500/6999/'
+
+# Add the following settings that are new in RHOSE 2.0:
+#
+#  * Add the LIBVIRT_PRIVATE_IP_RANGE, LIBVIRT_PRIVATE_IP_ROUTE, and
+#    LIBVIRT_PRIVATE_IP_GW settings (see commit
+#    03466a101cbaf91ddd9e258c1204c012f9a5619a).
+#
+#  * Add the CONTAINERIZATION_PLUGIN setting (which supersedes the
+#    unix_user_observer plug-in; see above and commit
+#    6eb0338103ea68d62c2a1796be8de9c3816a01db).
+#
+#  * Add the QUOTA_WARNING_PERCENT setting (see commit
+#    6862ee24b099244e820c076b779b15a4b38c4b46).
+#
+#  * Add the MOTD_FILE setting (see commit
+#    3976aab0642909ff4fe16cd3ef82fc87f9cd6763).
+#
+#  * Add the OPENSHIFT_FRONTEND_HTTP_PLUGINS setting (see commits
+#    ac95820e77f5b6d27acd474a9a08f742849e51de and
+#    8ab901e7dba8c50157bbfd59a2dd55b51d17a57a).
+cat <<EOF >> $conf
+
+LIBVIRT_PRIVATE_IP_RANGE=172.16.0.0/12
+LIBVIRT_PRIVATE_IP_ROUTE=172.16.0.0/12
+LIBVIRT_PRIVATE_IP_GW=172.16.0.1
+
+CONTAINERIZATION_PLUGIN=openshift-origin-container-selinux
+QUOTA_WARNING_PERCENT=90.0
+
+# MOTD_FILE=" /etc/openshift/welcome.rhcsh"                   # Change the default rhcs welcome message
+
+# Gems for managing the frontend http server
+# NOTE: Steps must be taken both before and after these values are changed.
+#       Run "oo-frontend-plugin-modify  --help" for more information.
+OPENSHIFT_FRONTEND_HTTP_PLUGINS=openshift-origin-frontend-apache-mod-rewrite,openshift-origin-frontend-nodejs-websocket
+EOF

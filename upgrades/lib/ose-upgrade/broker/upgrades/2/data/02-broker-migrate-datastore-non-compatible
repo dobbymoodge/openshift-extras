@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -xe
+
+# Perform non-compatible upgrades.
+/usr/libexec/openshift/ose-upgrade-migrate-datastore --non-compatible

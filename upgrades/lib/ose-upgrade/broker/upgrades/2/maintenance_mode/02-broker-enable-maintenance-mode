@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -xe
+
+# Configure the broker to disable the API and return an outage
+# notification to all requests.
+sed -i /etc/openshift/broker.conf \
+  -e '/ENABLE_MAINTENANCE_MODE/ s/false/true/'

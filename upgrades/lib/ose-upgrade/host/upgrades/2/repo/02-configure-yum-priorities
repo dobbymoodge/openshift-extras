@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -xe
+
+beta='--repo-config /usr/libexec/openshift/check-sources/beta2.ini'
+#beta=
+
+# It's OK for oo-admin-check-sources.py to return a bunch of errors; it
+# does that even if it fixes things.
+/usr/libexec/openshift/check-sources/oo-admin-check-sources.py --oo-version 2.0 ${beta} --fix-all || :
+
+# Now we run oo-admin-check-sources.py again though to make sure that
+# there are no errors remaining, and this time we heed the exit code.
+/usr/libexec/openshift/check-sources/oo-admin-check-sources.py --oo-version 2.0 ${beta} --report-all

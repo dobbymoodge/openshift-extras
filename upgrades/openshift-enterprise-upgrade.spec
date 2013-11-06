@@ -1,12 +1,13 @@
 Name:      openshift-enterprise-upgrade
-# The number of the upgrade that is *performed* by moving to this version,
-# starting with 1 for 1.1 => 1.2
+# The number of the upgrade that is *performed* by moving to this version.
+# See VERSION_MAP in lib/ose-upgrade/main.rb for the mapping of upgrade
+# numbers to OpenShift Enterprise releases.
 # Set this to one lower for the pre-upgrade package
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
 Version:   2.0.0
-Release:   1%{?dist}
+Release:   2%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -16,12 +17,10 @@ Source0:   %{name}-%{version}.tar.gz
 %global brokerdir %{_var}/www/openshift/broker
 %global etc_upgrade /etc/openshift/upgrade
 
-# native ruby for ose-upgrade core
-%global upgrade_path /usr/lib/ruby/site_ruby/1.8
-
-# scl ruby for broker/node-specific upgrades
+# OpenShift Enterprise uses the ruby193 software collection since
+# the 1.2 release, so we will only use Ruby packages in that collection.
 %global mco_root /opt/rh/ruby193/root/usr/libexec/mcollective/mcollective
-%global upgrade_path_19 /opt/rh/ruby193/root/usr/local/share/ruby/site_ruby
+%global upgrade_path /opt/rh/ruby193/root/usr/local/share/ruby/site_ruby
 
 # yum-validator locations
 %global yumv_lib /usr/lib64/python2.6/site-packages/yumvalidator
@@ -49,22 +48,30 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}%{mco_root}/agent/
 cp mcollective/agent/oseupgrade.* %{buildroot}%{mco_root}/agent/
 
-# ruby libs and bin
-mkdir -p %{buildroot}%upgrade_path
-cp -r lib/* %{buildroot}%upgrade_path
-mkdir -p %{buildroot}%_bindir
-cp bin/ose-upgrade %{buildroot}%_bindir
+mkdir -p %{buildroot}%{_libexecdir}/openshift
+cp mcollective/gear_upgrade_extension.rb %{buildroot}%{_libexecdir}/openshift/
+cp bin/ose-upgrade-migrate-datastore %{buildroot}%{_libexecdir}/openshift/
+cp bin/ose-upgrade-gears %{buildroot}%{_libexecdir}/openshift/
 
-# once we are doing gear migrations we are in ruby193 land
-mkdir -p %buildroot%upgrade_path_19/ose-upgrade
-cp -r %buildroot%upgrade_path/ose-upgrade/node %buildroot%upgrade_path_19/ose-upgrade/
+mkdir -p %{buildroot}%{_libexecdir}/openshift/check-sources
+cp libexec/check-sources/oo-admin-check-sources.py %{buildroot}%{_libexecdir}/openshift/check-sources/
+cp libexec/check-sources/check_sources.py %{buildroot}%{_libexecdir}/openshift/check-sources/
+cp libexec/check-sources/repo_db.py %{buildroot}%{_libexecdir}/openshift/check-sources/
+cp libexec/check-sources/beta2.ini %{buildroot}%{_libexecdir}/openshift/check-sources/
+
+# Ruby libs and bin
+mkdir -p %{buildroot}%{upgrade_path}
+cp -r lib/* %{buildroot}%{upgrade_path}
+rm %{buildroot}%{upgrade_path}/ose-upgrade/README.md
+mkdir -p %{buildroot}%{_bindir}
+cp bin/ose-upgrade %{buildroot}%{_bindir}
 
 # create upgrade state file with this version
-mkdir -p %{buildroot}%etc_upgrade
-touch %buildroot%etc_upgrade/state.yaml
+mkdir -p %{buildroot}%{etc_upgrade}
+touch %{buildroot}%{etc_upgrade}/state.yaml
 # and log file
-mkdir -p %buildroot/var/log/openshift/upgrade.log
-touch %buildroot/var/log/openshift/upgrade.log
+mkdir -p %{buildroot}/var/log/openshift/upgrade.log
+touch %{buildroot}/var/log/openshift/upgrade.log
 
 # create yum-validator locations
 cp yum-validator/oo-admin-yum-validator %{buildroot}%_bindir
@@ -74,8 +81,8 @@ mkdir -p %{buildroot}%yumv_etc
 cp -r yum-validator/etc/* %{buildroot}%yumv_etc
 
 # create the version file
-mkdir -p %buildroot%etc
-touch %buildroot%etc/openshift-enterprise-release
+mkdir -p %{buildroot}%{etc}
+touch %{buildroot}%{etc}/openshift-enterprise-release
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -97,21 +104,21 @@ This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
 #############################
 %files -n openshift-enterprise-release
 %defattr(644,root,root,700)
-%dir %etc_upgrade
-%ghost %etc_upgrade/state.yaml
+%dir %{etc_upgrade}
+%ghost %{etc_upgrade}/state.yaml
 %ghost /var/log/openshift/upgrade.log
 # for some reason the build requires the explicit %attr below
 %attr(644,-,-) %ghost /etc/openshift-enterprise-release
 
 # mcollective ddl file is required for both client and agent
-%mco_root/agent/oseupgrade.ddl
-%upgrade_path/ose-upgrade.rb
-%upgrade_path/ose-upgrade/finder.rb
-%upgrade_path/ose-upgrade/main.rb
+%{mco_root}/agent/oseupgrade.ddl
+%{upgrade_path}/ose-upgrade.rb
+%{upgrade_path}/ose-upgrade/finder.rb
+%{upgrade_path}/ose-upgrade/main.rb
 
 %defattr(0500,root,root,700)
-%_bindir/ose-upgrade
-%upgrade_path/ose-upgrade/host/
+%{_bindir}/ose-upgrade
+%{upgrade_path}/ose-upgrade/host/
 
 
 #############################
@@ -122,12 +129,12 @@ This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
 vfile=/etc/openshift-enterprise-release
 if [ ! -f $vfile ]; then
   # create the initial version file
-  echo "OpenShift Enterprise %version" > $vfile
+  echo "OpenShift Enterprise %{version}" > $vfile
   chmod 644 $vfile
 fi
 # same for the upgrade state file.
-if [ ! -f %etc_upgrade/state.yaml ]; then
-  ose-upgrade --complete %upgrade_number >& /dev/null
+if [ ! -f %{etc_upgrade}/state.yaml ]; then
+  ose-upgrade --complete %{upgrade_number} >& /dev/null
 fi
 
 ############################# yum-validator ###############################
@@ -159,6 +166,7 @@ Group:     Network/Daemons
 Requires:  openshift-origin-broker-util
 Requires:  openshift-origin-broker
 Requires:  openshift-enterprise-release >= %version
+Requires:  openshift-enterprise-check-sources
 
 %description broker
 
@@ -168,8 +176,10 @@ and through it, an entire installation.
 #############################
 %files broker
 %defattr(0500,root,root,700)
-%upgrade_path/ose-upgrade/broker
-%upgrade_path/ose-upgrade/broker.rb
+%{upgrade_path}/ose-upgrade/broker
+%{upgrade_path}/ose-upgrade/broker.rb
+%{_libexecdir}/openshift/ose-upgrade-gears
+%{_libexecdir}/openshift/ose-upgrade-migrate-datastore
 
 ############################## node ################################
 %package node
@@ -177,19 +187,47 @@ Summary:   Upgrade capabilities for OpenShift Enterprise node hosts
 Group:     Network/Daemons
 Requires:  openshift-origin-node-util
 Requires:  rubygem-openshift-origin-node
-Requires:  openshift-enterprise-release >= %version
+Requires:  openshift-enterprise-release >= %{version}
+Requires:  openshift-enterprise-check-sources
 %description node
 
 This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 #############################
 %files node
-%attr(644,root,root) %mco_root/agent/oseupgrade.rb
+%attr(644,root,root) %{mco_root}/agent/oseupgrade.rb
+%attr(644,root,root) %{_libexecdir}/openshift/gear_upgrade_extension.rb
 %defattr(700,root,root,700)
-%upgrade_path/ose-upgrade/node
-%upgrade_path/ose-upgrade/node.rb
-# once we are doing gear migrations we are in ruby193 land
-%upgrade_path_19/ose-upgrade/node
+%{upgrade_path}/ose-upgrade/node
+%{upgrade_path}/ose-upgrade/node.rb
+
+########################### check-sources ###########################
+%package -n openshift-enterprise-check-sources
+Summary:   Tool to check and fix Yum repos or RHN/RHSM channels for OpenShift Enterprise
+Group:     Network/Daemons
+Requires:  python
+%description -n openshift-enterprise-check-sources
+This package contains the oo-admin-check-sources.py tool for checking
+what Yum repos or RHN/RHSM channels are available and enabled and
+setting appropriate priorities to assure that Yum will get packages from
+the appropriate sources based on the host's role (broker or node host)
+and version of OpenShift Enterprise.
+
+#############################
+%files -n openshift-enterprise-check-sources
+%defattr(644,root,root,700)
+%{_libexecdir}/openshift/check-sources/beta2.ini
+%attr(755,root,root) %{_libexecdir}/openshift/check-sources/oo-admin-check-sources.py
+# The rpm-build's brp-python-bytecompile script automatically generates
+# these bytecode files:
+%{_libexecdir}/openshift/check-sources/oo-admin-check-sources.pyc
+%{_libexecdir}/openshift/check-sources/oo-admin-check-sources.pyo
+%{_libexecdir}/openshift/check-sources/check_sources.py
+%{_libexecdir}/openshift/check-sources/check_sources.pyc
+%{_libexecdir}/openshift/check-sources/check_sources.pyo
+%{_libexecdir}/openshift/check-sources/repo_db.py
+%{_libexecdir}/openshift/check-sources/repo_db.pyc
+%{_libexecdir}/openshift/check-sources/repo_db.pyo
 
 
 
