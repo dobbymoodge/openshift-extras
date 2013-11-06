@@ -261,11 +261,16 @@ priority= 1
                 test_queues[0] << build_rake_command("OpenShift Broker Domain System", "cd /data/openshift-test/broker; rake test:domain_system_test", {}, true)
                 test_queues[2] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext")
                 test_queues[3] << build_rake_command("OpenShift Broker Integration Ext", "cd /data/openshift-test/broker; rake test:integration_ext", {}, true)
-              when 'runtime'
+              when 'node'
                 (1..3).each do |i|
-                  test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}", "~@not-enterprise"])
+                  test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}"])
                 end
-                test_queues[3] << build_rake_command("OpenShift Runtime Functionals Ext", "cd /data/openshift-test/node; rake ext_func_test", {}, true)
+                test_queues[3] << build_rake_command("OpenShift Node Functionals Ext", "cd /data/openshift-test/node; rake ext_func_test", {}, true)
+              when 'cartridge'
+                (1..3).each do |i|
+                  test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}"])
+                end
+                #test_queues[3] << build_rake_command("OpenShift Cartridge Functionals Ext", "cd /data/openshift-test/node; rake ext_cart_func_test", {}, true)
               when 'rhc'
                 test_queues[0] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
@@ -301,15 +306,22 @@ priority= 1
               test_queues[3] << build_cucumber_command("Broker Cucumber", ["@broker"], nil, nil, '/data/openshift-test/tests')
             end
 
-            unless options.exclude_runtime?
-              test_queues[0] << build_rake_command("Runtime Functional", "cd /data/openshift-test/node; rake essentials_test", {}, false)
-              test_queues[1] << build_rake_command("Runtime Frontend Plugin ApacheDB", "cd /data/openshift-test/plugins/frontend/apachedb; rake test", {}, false)
-              test_queues[2] << build_rake_command("Runtime Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
-              test_queues[3] << build_rake_command("Runtime Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
-              test_queues[0] << build_rake_command("Runtime Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
-              test_queues[2] << build_rake_command("Runtime Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
+            unless options.exclude_node?
+              test_queues[0] << build_rake_command("Node Functional", "cd /data/openshift-test/node; rake essentials_test", {}, false)
+              test_queues[1] << build_rake_command("Node Frontend Plugin ApacheDB", "cd /data/openshift-test/plugins/frontend/apachedb; rake test", {}, false)
+              test_queues[2] << build_rake_command("Node Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
+              test_queues[3] << build_rake_command("Node Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
+              test_queues[0] << build_rake_command("Node Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
+              test_queues[2] << build_rake_command("Node Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Runtime Group #{i.to_s}", ["@runtime#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+              end
+            end
+
+            unless options.exclude_node?
+              #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/node; rake cart_essentials_test", {}, false)
+              (1..4).each do |i|
+                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"], nil, nil, 'openshift-test/tests')
               end
             end
 
