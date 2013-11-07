@@ -447,7 +447,7 @@ priority= 1
         if !options.skip_build?
           puts "Performing remote install..."
 
-          out, ret = ssh(hostname, "cd /data/ ; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/ ; sudo rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
 
           out, ret = ssh(hostname, "sudo -s yum clean metadata", 60 * 2, true, 2, ssh_user) if options.clean_metadata?
