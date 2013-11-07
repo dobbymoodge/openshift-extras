@@ -38,20 +38,20 @@ EOF
 
 cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release RHEL content
-#[devenv]
-#name=Devenv repo for Enterprise Linux 6 - $basearch
-#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-#failovermethod=priority
-#enabled=1
-#gpgcheck=0
-#gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
-#ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-#sslverify=0
-#priority=2
-#exclude=tomcat6*
-#sslclientcert=/var/lib/yum/client-cert.pem
-#sslclientkey=/var/lib/yum/client-key.pem
+[devenv]
+name=Devenv repo for Enterprise Linux 6 - $basearch
+baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
+        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+priority=2
+exclude=tomcat6*
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
 # We have to be careful that this only shadows the rhui RHEL when we actually need it
 
 # This repo is only needed when testing pre-release JBoss content
