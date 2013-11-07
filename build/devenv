@@ -339,9 +339,10 @@ priority= 1
             extended_tests.each do |extended_test|
               case extended_test
                 when 'broker'
-                when 'runtime'
+                when 'cartridge'
+                when 'node'
                   idle_all_gears(hostname)
-                  singleton_queue << build_cucumber_command("Runtime singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
+                  singleton_queue << build_cucumber_command("Node singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
                 when 'site'
                 when 'rhc'
                 else
