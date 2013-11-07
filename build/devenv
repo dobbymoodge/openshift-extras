@@ -261,11 +261,16 @@ priority= 1
                 test_queues[0] << build_rake_command("OpenShift Broker Domain System", "cd /data/openshift-test/broker; rake test:domain_system_test", {}, true)
                 test_queues[2] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext")
                 test_queues[3] << build_rake_command("OpenShift Broker Integration Ext", "cd /data/openshift-test/broker; rake test:integration_ext", {}, true)
-              when 'runtime'
+              when 'node'
                 (1..3).each do |i|
-                  test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}", "~@not-enterprise"])
+                  test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}"])
                 end
-                test_queues[3] << build_rake_command("OpenShift Runtime Functionals Ext", "cd /data/openshift-test/node; rake ext_func_test", {}, true)
+                test_queues[3] << build_rake_command("OpenShift Node Functionals Ext", "cd /data/openshift-test/node; rake ext_func_test", {}, true)
+              when 'cartridge'
+                (1..3).each do |i|
+                  test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}"])
+                end
+                #test_queues[3] << build_rake_command("OpenShift Cartridge Functionals Ext", "cd /data/openshift-test/node; rake ext_cart_func_test", {}, true)
               when 'rhc'
                 test_queues[0] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
@@ -285,13 +290,13 @@ priority= 1
             # TODO filter out failures we don't care about and fail on others
             out, ret = ssh(hostname, "sudo -s oo-diagnostics", 60 * 20, true, 1, ssh_user)
             print_highlighted_output( "oo-diagnostics", out)
-            oofails = out.scan(/FAIL: /).size
-            if ret != 0 and oofails > 0
+            #oofails = out.scan(/FAIL: /).size
+            #if ret != 0 and oofails > 0
               # oofails == 3, since the default password failure is actually listed as 2 (since it is run from oo-accept-broker)
-              unless oofails == 3 and out.match(/FAIL: test_enterprise_rpms/) and out.match(/FAIL: Datastore Password has been left configured as the default 'mooo'/)
-                print_and_exit(ret, "oo-diagnostics failed for more than test_enterprise_rpms and default mongo password")
-              end
-            end
+            #  unless oofails == 3 and out.match(/FAIL: test_enterprise_rpms/) and out.match(/FAIL: Datastore Password has been left configured as the default 'mooo'/)
+            #    print_and_exit(ret, "oo-diagnostics failed for more than test_enterprise_rpms and default mongo password")
+            #  end
+            #end
 
             unless options.exclude_broker?
               test_queues[3] << build_rake_command("OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units", {}, false)
@@ -301,15 +306,22 @@ priority= 1
               test_queues[3] << build_cucumber_command("Broker Cucumber", ["@broker"], nil, nil, '/data/openshift-test/tests')
             end
 
-            unless options.exclude_runtime?
-              test_queues[0] << build_rake_command("Runtime Functional", "cd /data/openshift-test/node; rake essentials_test", {}, false)
-              test_queues[1] << build_rake_command("Runtime Frontend Plugin ApacheDB", "cd /data/openshift-test/plugins/frontend/apachedb; rake test", {}, false)
-              test_queues[2] << build_rake_command("Runtime Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
-              test_queues[3] << build_rake_command("Runtime Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
-              test_queues[0] << build_rake_command("Runtime Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
-              test_queues[2] << build_rake_command("Runtime Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
+            unless options.exclude_node?
+              test_queues[0] << build_rake_command("Node Functional", "cd /data/openshift-test/node; rake essentials_test", {}, false)
+              test_queues[1] << build_rake_command("Node Frontend Plugin ApacheDB", "cd /data/openshift-test/plugins/frontend/apachedb; rake test", {}, false)
+              test_queues[2] << build_rake_command("Node Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
+              test_queues[3] << build_rake_command("Node Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
+              test_queues[0] << build_rake_command("Node Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
+              test_queues[2] << build_rake_command("Node Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Runtime Group #{i.to_s}", ["@runtime#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+              end
+            end
+
+            unless options.exclude_cartridge?
+              #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/node; rake cart_essentials_test", {}, false)
+              (1..4).each do |i|
+                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
               end
             end
 
@@ -327,9 +339,10 @@ priority= 1
             extended_tests.each do |extended_test|
               case extended_test
                 when 'broker'
-                when 'runtime'
+                when 'cartridge'
+                when 'node'
                   idle_all_gears(hostname)
-                  singleton_queue << build_cucumber_command("Runtime singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
+                  singleton_queue << build_cucumber_command("Node singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
                 when 'site'
                 when 'rhc'
                 else
@@ -432,6 +445,9 @@ echo SUCCESS
         puts "Building on: #{hostname}"
 
         begin
+          puts "Updating all packages on the system..."
+          ssh_pty(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, ssh_user)
+
           if options.install_required_packages?
             puts "Uploading yum client certificates..."
             pem_path = File.expand_path(File.dirname(__FILE__) + "/../misc/client-cert.pem")
@@ -454,18 +470,17 @@ echo SUCCESS
 
             puts "Setting up yum priorities..."
             ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, ssh_user)
-            repo = 'rhui-us-east-1-rhel-server-releases'
+            repo = 'rhui-REGION-rhel-server-rhscl'
+            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=1 #{repo} --save", 60 * 20, ssh_user)
+            repo = 'rhui-REGION-rhel-server-releases'
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews2", 60 * 20, ssh_user)
-            repos = ['rhui-us-east-1-jbeap-6-rhui-rhel-6-rpms', 'rhui-us-east-1-rhel-server-6-jbews2'] 
+            repos = ['rhui-REGION-jbeap-6-rhui-rhel-6-rpms', 'rhui-REGION-rhel-server-6-jbews2'] 
             repos.each do |repo|
               ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 60 * 20, ssh_user)
             end
           end
-
-          puts "Updating all packages on the system..."
-          ssh_pty(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, ssh_user)
 
           puts "Creating mount..."
           if options.install_from_source? || options.install_from_local_source?

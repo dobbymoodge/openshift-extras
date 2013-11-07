@@ -176,30 +176,30 @@ sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
 priority=1
 
-[libra]
-name=libra repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror1.ops.rhcloud.com/libra/libra-rhel-6-candidate/\$basearch/
-failovermethod=priority
-enabled=1
-gpgcheck=0
-gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
-ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-sslverify=0
-sslclientcert=/var/lib/yum/client-cert.pem
-sslclientkey=/var/lib/yum/client-key.pem
-priority=5
+#[libra]
+#name=libra repo for Enterprise Linux 6 - \$basearch
+#baseurl=https://mirror1.ops.rhcloud.com/libra/libra-rhel-6-candidate/\$basearch/
+#failovermethod=priority
+#enabled=1
+#gpgcheck=0
+#gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+#ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+#sslverify=0
+#sslclientcert=/var/lib/yum/client-cert.pem
+#sslclientkey=/var/lib/yum/client-key.pem
+#priority=5
 
-[rhscl]
-name=rhscl repo for Enterprise Linux 6 - \$basearch
-baseurl=https://mirror1.ops.rhcloud.com/libra/rhscl-1.0-rhel-6/x86_64
-failovermethod=priority
-enabled=1
-gpgcheck=0
-gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
-ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-sslverify=0
-sslclientcert=/var/lib/yum/client-cert.pem
-sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+#[rhscl]
+#name=rhscl repo for Enterprise Linux 6 - \$basearch
+#baseurl=https://mirror1.ops.rhcloud.com/libra/rhscl-1.0-rhel-6/x86_64
+#failovermethod=priority
+#enabled=1
+#gpgcheck=0
+#gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+#ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+#sslverify=0
+#sslclientcert=/var/lib/yum/client-cert.pem
+#sslclientkey=/var/lib/yum/client-key.pem
+#priority=1
 
 EOF
