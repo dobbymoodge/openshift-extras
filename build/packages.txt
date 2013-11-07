@@ -10,7 +10,6 @@
 ./cartridges/openshift-origin-cartridge-perl/
 ./cartridges/openshift-origin-cartridge-php/
 ./cartridges/openshift-origin-cartridge-python/
-./node-proxy/
 ./node-util/
 ./pam_openshift/
 ./port-proxy/
