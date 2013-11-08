@@ -23,6 +23,10 @@ Source0:   %{name}-%{version}.tar.gz
 %global mco_root /opt/rh/ruby193/root/usr/libexec/mcollective/mcollective
 %global upgrade_path_19 /opt/rh/ruby193/root/usr/local/share/ruby/site_ruby
 
+# ose-repos (check-sources) locations
+%global yumv_lib /usr/lib64/python2.6/site-packages/yumvalidator
+%global yumv_etc /etc/yum-validator
+
 
 # items that have to be specified for each RPM
 Summary:   Version and upgrade capabilities for OpenShift Enterprise installations
@@ -30,7 +34,7 @@ Group:     Network/Daemons
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %description
-This package contains mechanisms for upgrading an OpenShift Enterprise installation.
+This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
 This RPM need not be built, however.
 
 #############################
@@ -62,6 +66,13 @@ touch %buildroot%etc_upgrade/state.yaml
 mkdir -p %buildroot/var/log/openshift/upgrade.log
 touch %buildroot/var/log/openshift/upgrade.log
 
+# create yum-validator locations
+cp yum-validator/oo-admin-yum-validator %{buildroot}%_bindir
+mkdir -p %{buildroot}%yumv_lib
+cp -r yum-validator/yumvalidator/* %{buildroot}%yumv_lib
+mkdir -p %{buildroot}%yumv_etc
+cp -r yum-validator/etc/* %{buildroot}%yumv_etc
+
 # create the version file
 mkdir -p %buildroot%etc
 touch %buildroot%etc/openshift-enterprise-release
@@ -76,12 +87,13 @@ rm -rf $RPM_BUILD_ROOT
 # items that have to be specified for each RPM
 Summary:   Version and upgrade capabilities for OpenShift Enterprise installations
 Group:     Network/Daemons
+Requires:  openshift-enterprise-yum-validator >= %version
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires:  ruby
 Requires:  rubygems
 
 %description -n openshift-enterprise-release
-This package contains mechanisms for upgrading an OpenShift Enterprise installation.
+This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
 
 #############################
 %files -n openshift-enterprise-release
@@ -102,6 +114,7 @@ This package contains mechanisms for upgrading an OpenShift Enterprise installat
 %_bindir/ose-upgrade
 %upgrade_path/ose-upgrade/host/
 
+
 #############################
 %post -n openshift-enterprise-release
 
@@ -117,6 +130,25 @@ fi
 if [ ! -f %etc_upgrade/state.yaml ]; then
   ose-upgrade --complete %upgrade_number >& /dev/null
 fi
+
+############################# yum-validator ###############################
+%package -n openshift-enterprise-yum-validator
+Summary:   Validates and configures yum for OpenShift Enterprise installations and updates
+Group:     Network/Daemons
+Requires:  yum-utils
+
+%description -n openshift-enterprise-yum-validator
+This RPM supplies the yum-validator for validating and configuring the yum repositories
+that OpenShift Enterprise uses for installation and updates. It supports either
+subscription-manager or RHN classic as the RPM delivery mechanism.
+
+#############################
+%files -n openshift-enterprise-yum-validator
+%defattr(644,root,root,700)
+%yumv_lib
+%yumv_etc
+%defattr(0500,root,root,700)
+%_bindir/oo-admin-yum-validator
 
 ############################# broker ###############################
 %package broker
