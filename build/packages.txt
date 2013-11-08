@@ -21,7 +21,6 @@
 ./console/
 ./controller/
 ./msg-common/
-./node-proxy/
 ./node/
 ./node-util/
 ./openshift-console/
