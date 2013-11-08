@@ -818,7 +818,7 @@ class { "openshift_origin" :
 EOF
         }, 60 * 2, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
- 
+
         # reset the eth0 network config to add the dns entries
         out, ret = ssh(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
@@ -853,6 +853,8 @@ EOF
 
       def restart_services
         cmd = %{
+        # Cleanup any lines that break sshd_config (cloud-init RHEL 6.4 bug)
+        sudo -s sed -i "s/PermitRootLogin without-passwordUseDNS no//g" /etc/ssh/sshd_config
         sudo -s service activemq restart; sudo -s service mongod restart
         sudo -s service cgconfig restart; sudo -s service cgred restart ; sudo -s service openshift-cgroups restart
         sudo -s service httpd restart; sudo -s service openshift-broker restart
@@ -861,6 +863,7 @@ EOF
         sudo -s service named restart; sudo -s service network restart
         sudo -s service mcollective restart; sudo -s service oddjobd restart
         sudo -s service openshift-node-web-proxy start; sudo -s service openshift-port-proxy start
+        sudo -s service sshd restart
         }
         run(cmd)
       end
@@ -869,6 +872,8 @@ EOF
         puts "Restarting services..."
 
         cmd = %{
+# Cleanup any lines that break sshd_config (cloud-init RHEL 6.4 bug)
+sudo -s sed -i "s/PermitRootLogin without-passwordUseDNS no//g" /etc/ssh/sshd_config
 sudo -s service activemq restart; sudo -s service mongod restart
 sudo -s service httpd restart; sudo -s service openshift-broker restart
 sudo -s service openshift-console restart; 
@@ -877,6 +882,7 @@ sudo -s service named restart; sudo -s service network restart
 sudo -s service cgconfig restart; sudo -s service cgred restart ; sudo -s service openshift-cgroups restart
 sudo -s service mcollective restart; sudo -s service oddjobd restart
 sudo -s service openshift-node-web-proxy start; sudo -s service openshift-port-proxy start
+sudo -s service sshd restart
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
