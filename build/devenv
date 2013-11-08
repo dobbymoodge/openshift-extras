@@ -230,8 +230,11 @@ priority= 1
           # 20120927-8 exhibits the same behavior, due to the X_SCLS environment variable 
           # not being unset by oo-su
           out, ret = ssh(hostname, "rpm -q scl-utils | cut -d '.' -f 1 | cut -d '-' -f 3,4", 60 * 1, true, 1, ssh_user)
-          if out.match /^20120927-[0-68]$/
+          if out.match /^20120927-[0-6]$/
             ssh(hostname, "sudo -s yum install -y --disableplugin=priorities scl-utils-20120927-7.el6.x86_64 scl-utils-build-20120927-7.el6.x86_64",
+                60 * 20, true, 1, ssh_user)
+          elsif out.match /^20120927-8$/
+            ssh(hostname, "sudo -s yum downgrade -y --disableplugin=priorities scl-utils-20120927-7.el6.x86_64 scl-utils-build-20120927-7.el6.x86_64",
                 60 * 20, true, 1, ssh_user)
           end
 
