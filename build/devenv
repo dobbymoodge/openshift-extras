@@ -215,6 +215,14 @@ priority= 1
         end
       end
 
+      def idle_all_gears(hostname)
+        puts "Idling all gears on remote instance: #{hostname}"
+        ssh(hostname, "sudo bash -c /sbin/service mcollective stop; /sbin/service mcollective start;", 240, false, 1, options.ssh_user)
+        ssh(hostname, 'for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then sudo bash -c "oo-idler -n -u `basename $dir`"; fi; done;', 240, false, 1, options.ssh_user)
+        ssh(hostname, 'sudo bash -c "/sbin/service httpd graceful"', 240, false, 1, options.ssh_user)
+        puts "Done"
+      end
+
       def test_impl(tag, hostname, instance, conn, options, image_id=nil)
         begin
           
@@ -304,7 +312,7 @@ priority= 1
                     60, false, 2, SSH_USER)
                 ssh(hostname, "sudo -s /usr/sbin/oo-admin-broker-cache -c --console", 60, false, 2, SSH_USER)
                 test_queues[0] << ["Extended Runtime Other Group 1", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other1 /data/openshift-test/tests")]
-                test_queues[1] << ["Extended Runtime Other Group 2", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 /data/openshift-test/tests")]
+                #test_queues[1] << ["Extended Runtime Other Group 2", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other2 /data/openshift-test/tests")]
                 test_queues[2] << ["Extended Runtime Other Group 3", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended_other3 /data/openshift-test/tests")]
                 test_queues[0] << ["Runtime Unit", "cd /data/openshift-test/node;" + wrap_test_command("rake test")]
                 (1..4).each do |i|
@@ -386,7 +394,7 @@ priority= 1
   
           begin
             if failures.length > 0 && failures.length <= retry_threshold 
-              #idle_all_gears(hostname)
+              idle_all_gears(hostname)
               retry_test_failures(hostname, failures, 2, timeout=@@SSH_TIMEOUT, ssh_user)
             elsif failures.length > retry_threshold
               exit 1
