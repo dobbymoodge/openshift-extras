@@ -263,12 +263,12 @@ priority= 1
                 test_queues[3] << build_rake_command("OpenShift Broker Integration Ext", "cd /data/openshift-test/broker; rake test:integration_ext", {}, true)
               when 'node'
                 (1..3).each do |i|
-                  test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}"])
+                  test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}", "~@not-enterprise"])
                 end
                 test_queues[3] << build_rake_command("OpenShift Node Functionals Ext", "cd /data/openshift-test/node; rake ext_node_func_test", {}, true)
               when 'cartridge'
                 (1..3).each do |i|
-                  test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}"])
+                  test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}", "~@not-enterprise"])
                 end
                 test_queues[3] << build_rake_command("OpenShift Cartridge Functionals Ext", "cd /data/openshift-test/node; rake ext_cart_func_test", {}, true)
               when 'rhc'
@@ -284,7 +284,7 @@ priority= 1
           elsif options.include_cucumber
             timeout = @@SSH_TIMEOUT
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
-            test_queues[0] << build_cucumber_command(options.include_cucumber, ["@#{options.include_cucumber}"], nil, nil, "/data/openshift-test/tests")
+            test_queues[0] << build_cucumber_command(options.include_cucumber, ["@#{options.include_cucumber}", "~@not-enterprise"], nil, nil, "/data/openshift-test/tests")
           else
             # Run oo-diagnostics on the host 
             # TODO filter out failures we don't care about and fail on others
@@ -303,7 +303,7 @@ priority= 1
               test_queues[0] << build_rake_command("OpenShift Broker Integration", "cd /data/openshift-test/broker; rake test:integration", {}, false)
               test_queues[2] << build_rake_command("OpenShift Broker Functional", "cd /data/openshift-test/broker; rake test:functionals", {}, false)
               test_queues[1] << build_rake_command("OpenShift Admin Console Functional", "cd /data/openshift-test/broker; rake test:admin_console_functionals", {}, false)
-              test_queues[3] << build_cucumber_command("Broker Cucumber", ["@broker"], nil, nil, '/data/openshift-test/tests')
+              test_queues[3] << build_cucumber_command("Broker Cucumber", ["@broker", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
             end
 
             unless options.exclude_node?
@@ -314,14 +314,14 @@ priority= 1
               test_queues[0] << build_rake_command("Node Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
               test_queues[2] << build_rake_command("Node Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
               end
             end
 
             unless options.exclude_cartridge?
               #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/node; rake cart_essentials_test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"], nil, nil, '/data/openshift-test/tests')
+                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
               end
             end
 
