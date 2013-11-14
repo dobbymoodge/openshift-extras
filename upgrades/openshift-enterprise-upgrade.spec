@@ -2,11 +2,11 @@ Name:      openshift-enterprise-upgrade
 # The number of the upgrade that is *performed* by moving to this version,
 # starting with 1 for 1.1 => 1.2
 # Set this to one lower for the pre-upgrade package
-%global upgrade_number 1
+%global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   1.2.1
-Release:   2%{?dist}
+Version:   2.0
+Release:   0.beta.2%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -192,6 +192,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Thu Nov 14 2013 Luke Meyer <lmeyer@redhat.com> 2.0-0.beta.2
+- <o-e-upgrade> add yum-validator subpackage (lmeyer@redhat.com)
+
 * Wed Jul 24 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.1-2
 - Bug 988069 - 1.2 upgrade fails when using mongo replica set
   (bleanhar@redhat.com)
