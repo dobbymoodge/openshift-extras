@@ -5,7 +5,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2.2
+Version:   1.2.5
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -192,6 +192,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Thu Nov 14 2013 Luke Meyer <lmeyer@redhat.com> 1.2.5-1
+- <o-e-upgrade> add yum-validator subpackage (lmeyer@redhat.com)
+
 * Tue Sep 10 2013 Jason DeTiberus <jdetiber@redhat.com> 1.2.2-1
 - <upgrade> Bug 999182, Update auth passthrough config for files which seem to
   need it (jolamb@redhat.com)
