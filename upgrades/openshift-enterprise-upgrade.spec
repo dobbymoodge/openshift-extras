@@ -90,7 +90,6 @@ Group:     Network/Daemons
 Requires:  openshift-enterprise-yum-validator >= %version
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires:  ruby
-Requires:  rubygems
 
 %description -n openshift-enterprise-release
 This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.

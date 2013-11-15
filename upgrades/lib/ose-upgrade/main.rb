@@ -16,7 +16,6 @@
 #++
 
 require 'ose-upgrade'
-require 'rubygems'
 
 module OSEUpgrader
   class Main < Abstract
@@ -28,7 +27,6 @@ module OSEUpgrader
         1  => "1.2",
         2  => "2.0",
     }
-    require 'rubygems'
     require 'yaml'
     require 'pp'
 
