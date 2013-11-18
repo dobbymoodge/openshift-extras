@@ -5,8 +5,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0
-Release:   0.beta.2%{?dist}
+Version:   2.0.0
+Release:   0%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -16,14 +16,14 @@ Source0:   %{name}-%{version}.tar.gz
 %global brokerdir %{_var}/www/openshift/broker
 %global etc_upgrade /etc/openshift/upgrade
 
-# native ruby for 1.1
+# native ruby for ose-upgrade core
 %global upgrade_path /usr/lib/ruby/site_ruby/1.8
 
-# scl ruby for 1.2
+# scl ruby for broker/node-specific upgrades
 %global mco_root /opt/rh/ruby193/root/usr/libexec/mcollective/mcollective
 %global upgrade_path_19 /opt/rh/ruby193/root/usr/local/share/ruby/site_ruby
 
-# ose-repos (check-sources) locations
+# yum-validator locations
 %global yumv_lib /usr/lib64/python2.6/site-packages/yumvalidator
 %global yumv_etc /etc/yum-validator
 
@@ -90,7 +90,6 @@ Group:     Network/Daemons
 Requires:  openshift-enterprise-yum-validator >= %version
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires:  ruby
-Requires:  rubygems
 
 %description -n openshift-enterprise-release
 This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
@@ -136,6 +135,7 @@ fi
 Summary:   Validates and configures yum for OpenShift Enterprise installations and updates
 Group:     Network/Daemons
 Requires:  yum-utils
+Requires:  yum-plugin-priorities
 
 %description -n openshift-enterprise-yum-validator
 This RPM supplies the yum-validator for validating and configuring the yum repositories
@@ -147,6 +147,8 @@ subscription-manager or RHN classic as the RPM delivery mechanism.
 %defattr(644,root,root,700)
 %yumv_lib
 %yumv_etc
+%config(noreplace) %yumv_etc/repos.ini
+%config(noreplace) %yumv_etc/beta2.ini
 %defattr(0500,root,root,700)
 %_bindir/oo-admin-yum-validator
 

@@ -368,14 +368,22 @@ class OpenShiftYumValidator(object):
                                       'update '
                                       '/etc/yum/pluginconf.d/rhnplugin.conf '
                                       'with the following changes:')
+                elif self.oscs.repo_is_rhsm(repoid):
+                    self.logger.error('To resolve conflicting repositories, '
+                                      'update /etc/yum.repos.d/redhat.repo '
+                                      'with the following changes:')
                 else:
                     self.logger.error('To resolve conflicting repositories, '
                                       'update repo priority by running:')
-            # TODO: in the next version this should read
-            #'# subscription-manager override --repo=%s --add=priority:%d'
             if self.oscs.repo_is_rhn(repoid):
                 self.logger.error('    Set priority=%d in the [%s] section' %
                                   (priority, repoid))
+            elif self.oscs.repo_is_rhsm(repoid):
+                # TODO: when the next version of sub-man is released
+                # this should read
+                # '# subscription-manager override --repo=%s --add=priority:%d'
+                self.logger.error('    Set priority=%d in the [%s] section' %
+                                  (priority, repoid))                
             else:
                 self.logger.error('# yum-config-manager '
                                   '--setopt=%s.priority=%d %s --save' %
@@ -730,6 +738,12 @@ class OpenShiftYumValidator(object):
                 self.logger.warning('If this system will be providing the '
                                     'JBossEAP cartridge, re-run this '
                                     'command with the --role=node-eap argument')
+            if 'broker' in self.opts.role and not 'client' in self.opts.role:
+                self.opts.role.append('client')
+                self.logger.info('Please note: --role=broker implicitly '
+                                 'enables --role=client to ensure /usr/bin/rhc '
+                                 'is available for testing and '
+                                 'troubleshooting.')
 
     def run_checks(self):
         if not self.validate_roles():
@@ -757,10 +771,19 @@ class OpenShiftYumValidator(object):
         if not (self.check_missing_repos() or self.opts.report_all):
             return False
         if self.opts.role:
-            if not (self.verify_yum_plugin_priorities() or
-                    self.opts.report_all):
-                self.logger.warning('Skipping yum priorities verification')
-                return False
+            if not self.verify_yum_plugin_priorities():
+                if not self.opts.report_all:
+                    self.logger.warning('Skipping yum priorities verification')
+                    return False
+                else:
+                    print ""
+                    self.logger.warning('PLEASE NOTE: '
+                                        'The yum-plugin-priorities package is '
+                                        'not installed, so any information '
+                                        'reported by this tool regarding '
+                                        'repository priorities may not be '
+                                        'accurate.')
+                    print ""
             if not (self.verify_priorities() or self.opts.report_all):
                 return False
             if not (self.find_package_conflicts() or self.opts.report_all):

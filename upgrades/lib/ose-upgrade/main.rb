@@ -16,7 +16,6 @@
 #++
 
 require 'ose-upgrade'
-require 'rubygems'
 
 module OSEUpgrader
   class Main < Abstract
@@ -26,8 +25,8 @@ module OSEUpgrader
     VERSION_MAP = {
         0  => "1.1",
         1  => "1.2",
+        2  => "2.0",
     }
-    require 'rubygems'
     require 'yaml'
     require 'pp'
 
