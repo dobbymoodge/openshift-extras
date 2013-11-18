@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 
 # items that will likely be shared between RPMs
 Version:   2.0.0
-Release:   0%{?dist}
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -194,6 +194,13 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Mon Nov 18 2013 Luke Meyer <lmeyer@redhat.com> 2.0.0-1
+- <o-e-upgrade> update version/release (lmeyer@redhat.com)
+- <o-e-upgrade> spec file adjustments (lmeyer@redhat.com)
+- <ose-upgrade> does not require rubygems (lmeyer@redhat.com)
+- <ose-upgrade> give version number for upgrade 2 (lmeyer@redhat.com)
+- <yum-validator> sync to ed3e5605 from openshift-extras (lmeyer@redhat.com)
+
 * Thu Nov 14 2013 Luke Meyer <lmeyer@redhat.com> 2.0-0.beta.2
 - <o-e-upgrade> add yum-validator subpackage (lmeyer@redhat.com)
 
