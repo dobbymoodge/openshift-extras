@@ -678,6 +678,7 @@ EOF
  
         # Configure httpd virtual host for binary artifacts
         # Needed for binary deployment tests
+        ssh(hostname, "sudo -s mkdir -p /var/www/html/binaryartifacts; sudo chmod 775 /var/www/html/binaryartifacts", 60 * 10, true, 1, ssh_user)
         binartifacts_path = File.expand_path(File.dirname(__FILE__) + "/../misc/binaryartifacts.conf")
         scp_to(hostname, binartifacts_path, "~/", 60*10, 5, ssh_user)
         ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
