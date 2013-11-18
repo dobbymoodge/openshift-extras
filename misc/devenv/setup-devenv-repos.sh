@@ -28,7 +28,7 @@ name=misc
 baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/misc/
 failovermethod=priority
 enabled=1
-priority=4
+priority=5
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
@@ -49,7 +49,7 @@ gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
-priority=2
+priority=3
 exclude=tomcat6*
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
@@ -68,7 +68,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=3
+#priority=4
 
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
@@ -83,14 +83,14 @@ sslclientkey=/var/lib/yum/client-key.pem
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=3
+#priority=4
 
 [Test_Dependencies]
 name=Client repo for Enterprise Linux 6 - \$basearch
 baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Test_Dependencies/\$basearch/os/
 failovermethod=priority
 enabled=1
-priority=4
+priority=5
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
@@ -103,7 +103,7 @@ name=Client repo for Enterprise Linux 6 - \$basearch
 baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.0}/openshift_repositories_devenv/Test_Dependencies_Libra/\$basearch/os/
 failovermethod=priority
 enabled=1
-priority=4
+priority=5
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
@@ -122,7 +122,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=4
+priority=5
 
 [Client]
 name=Client repo for Enterprise Linux 6 - \$basearch
@@ -135,7 +135,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [Infrastructure]
 name=Infrastructure repo for Enterprise Linux 6 - \$basearch
@@ -148,7 +148,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [JBoss_EAP6_Cartridge]
 name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - \$basearch
@@ -161,7 +161,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [Node]
 name=Node repo for Enterprise Linux 6 - \$basearch
@@ -174,7 +174,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 #[libra]
 #name=libra repo for Enterprise Linux 6 - \$basearch
@@ -187,7 +187,7 @@ priority=1
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=5
+#priority=6
 
 #[rhscl]
 #name=rhscl repo for Enterprise Linux 6 - \$basearch
@@ -200,6 +200,6 @@ priority=1
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=1
+#priority=2
 
 EOF
