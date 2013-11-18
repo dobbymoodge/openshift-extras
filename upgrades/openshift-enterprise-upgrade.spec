@@ -5,8 +5,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0
-Release:   0.beta.2%{?dist}
+Version:   2.0.0
+Release:   0%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
