@@ -579,12 +579,6 @@ sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_o
           end
 
           unless options.install_required_packages?
-            # Configure httpd virtual host for binary artifacts
-            # Needed for binary deployment tests
-            binartifacts_path = File.expand_path(File.dirname(__FILE__) + "/../misc/binaryartifacts.conf")
-            scp_to(hostname, binartifacts_path, "~/", 60*10, 5, ssh_user)
-            ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
-
             puts "Running post_launch_setup..."
             post_launch_setup(hostname, options)
           end
@@ -682,6 +676,12 @@ EOF
         puts "Setting machine hostname"
         update_puppet_manifests(hostname, options, "basic-auth")
  
+        # Configure httpd virtual host for binary artifacts
+        # Needed for binary deployment tests
+        binartifacts_path = File.expand_path(File.dirname(__FILE__) + "/../misc/binaryartifacts.conf")
+        scp_to(hostname, binartifacts_path, "~/", 60*10, 5, ssh_user)
+        ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
+
         # reset the eth0 network config to add the dns entries
         puts "Running puppet - configure_hostname.pp"
         ssh_pty(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp", 60 * 20, ssh_user)
