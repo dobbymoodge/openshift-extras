@@ -13,7 +13,7 @@ module OSEUpgrader
         # Broker and node upgrade steps are run in lockstep; the former
         # must be a superset of the latter.
         @params[:node_upgrader] ?
-          %w[ pre outage rpms conf maintenance_mode             confirm_nodes data gears end_maintenance_mode      ] :
+          %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
           %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
       end
 
