@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -xe
+
+# Clear the broker's and console's caches prior to performing migrations etc.
+oo-admin-broker-cache --clear --console

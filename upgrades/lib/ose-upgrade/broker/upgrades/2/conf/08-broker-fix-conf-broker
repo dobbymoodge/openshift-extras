@@ -1,0 +1,86 @@
+#!/bin/bash
+
+set -xe
+
+# Assumption: The broker is running in production mode. Users of
+# development mode are on their own.
+
+# Backup broker.conf.
+conf='/etc/openshift/broker.conf'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# The AUTH_PRIVKEYFILE, AUTH_PRIVKEYPASS, and AUTH_PUBKEYFILE options were
+# renamed from RHOSE 1.2 (commits 28465f877079c4c95829ae8fcf271e516f553218 and
+# d581d65888db65412a08621273f753f68deca55c).
+sed -i "$conf" \
+ -e 's/AUTH_PRIVKEYFILE/AUTH_PRIV_KEY_FILE/' \
+ -e 's/AUTH_PRIVKEYPASS/AUTH_PRIV_KEY_PASS/' \
+ -e 's/AUTH_PUBKEYFILE/AUTH_PUB_KEY_FILE/'
+
+# The MAX_DOWNLOADED_CARTS_PER_APP, MAX_DOWNLOAD_REDIRECTS, MAX_DOWNLOAD_TIME,
+# and MAX_CART_SIZE options did not exist in RHOSE 1.2; they were added in
+# RHOSE 2.0 (commit a41cebb9d004276deb3d8852d2eec2374f597241).
+#
+# The SSL_ENDPOINT option did not exist in RHOSE 1.2; it is new in RHOSE 2.0
+# (commit 4a1af2e7f0b8cf6dd38dcaf93db78939cdf06b19).
+#
+# The ALLOW_HA_APPLICATIONS and ROUTER_HOSTNAME options did not exist in RHOSE
+# 1.2; they are new in RHOSE 2.0 (commit
+# c6a6910550e3bb1cb681881a10dfded65c2495bf).
+#
+# The MAX_MEMBERS_PER_RESOURCE and MAX_DOMAINS_PER_USER options did not exist in
+# RHOSE 1.2; they are new in RHOSE 2.0 (commit
+# 0b7cbbb777dcefc089dd1b3f1b92cf73fd368833).
+cat <<EOF >> "$conf"
+
+# For downloading cartridges, follow these constraints
+MAX_DOWNLOADED_CARTS_PER_APP="5"
+MAX_DOWNLOAD_REDIRECTS="2"
+MAX_DOWNLOAD_TIME="10"
+# Maximum size for downloadable manifest file (in bytes)
+MAX_CART_SIZE="20480"
+
+# Team collaboration settings
+MAX_MEMBERS_PER_RESOURCE="100"
+MAX_DOMAINS_PER_USER="1"
+
+# Whether cartridges that specify direct SSL connection to the gear
+# are allowed, denied or forced.
+SSL_ENDPOINT="allow"
+# SSL_ENDPOINT="deny"
+# SSL_ENDPOINT="force"
+
+# Config flag to allow scalable applications to become Highly Available
+ALLOW_HA_APPLICATIONS="false"
+ROUTER_HOSTNAME="www.example.com"
+EOF
+
+# Following are additional differences in the default broker.conf files
+# for RHOSE 1.2 and for RHOSE 2.0:
+#
+# * The default value of ENABLE_USAGE_TRACKING_DATASTORE is changed to "true" in
+#   RHOSE 2.0 (commit 4f197c015410cbdef1a8869408a04ef8ef09a0f2); however,
+#   initializing the database for usage tracking is not straightforward once the
+#   PaaS is already in use.
+#
+# * The default value of VALID_GEAR_SIZES is changed from "small,medium" to
+#   "small" in RHOSE 2.0 (commit d4890c3745f92a1640eb4c5490ab5375ac020600);
+#   however, the sysadmin is likely to have changed VALID_GEAR_SIZES gears
+#   already when installing the previous version of RHOSE.
+#
+# * The setting MONGO_TEST_DB has been added to the shipped broker.conf in RHOSE
+#   2.0; however, this option is irrelevant for production systems.
+
+# We also need to update the httpd configuration for the broker.
+
+# Backup broker.conf.
+conf='/var/www/openshift/broker/httpd/broker.conf'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# Update the document root of the broker so that it will not conflict with the
+# administrative console (see commit 97e787c14d31ee557dc75712a68a24af7c4453d3
+# and <https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.31#Comment2sosiouxme-DONEtwiestc1e2da910cfcc2>).
+sed -i "$conf" \
+  -e '/^\s*DocumentRoot\s/ s,"/var/www/openshift/broker/httpd/root","/var/www/openshift/broker/public",' \
+  -e '/^\s*<\s*Directory\s/ s,/var/www/openshift/broker/httpd/root/broker,/var/www/openshift/broker/public,' \
+  -e '/^\s*PassengerPreStart\s/ s,http://127.0.0.1:8080/$,http://127.0.0.1:8080/broker/rest/api.json,'

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -xe
+
+# Disable the outage notification so that the broker will respond to
+# clients as usual again.
+sed -i /etc/openshift/broker.conf \
+  -e '/ENABLE_MAINTENANCE_MODE/ s/true/false/'

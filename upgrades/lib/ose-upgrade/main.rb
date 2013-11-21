@@ -142,6 +142,7 @@ module OSEUpgrader
       verbose "Starting upgrade number #{num} to version #{VERSION_MAP[num]}."
       @upgrade_state['status'] = 'STARTED'
       source = self.detect_package_source
+      return 1 unless source
       if source == :rhn
         puts "In order to reconfigure your RHN channels, we will need credentials."
         STDOUT.write "What is your RHN username? "
@@ -152,7 +153,7 @@ module OSEUpgrader
         system "stty echo"
         puts
       end
-      rc, o = run_scripts_in(__FILE__, "host", "upgrades", num, source)
+      rc, _ = run_scripts_in(__FILE__, "host", "upgrades", num, source)
       File.open(RELEASE_FILE, 'w') do |file|
         file.write "OpenShift Enterprise #{VERSION_MAP[num]}\n"
         verbose "updating #{RELEASE_FILE}"
@@ -280,10 +281,16 @@ HOST
     def detect_package_source
       return @package_source if @package_source
       load_rpm_list
-      if File.exists? '/etc/sysconfig/rhn/systemid'
+      have_rhn = File.exists? '/etc/sysconfig/rhn/systemid'
+      have_rhsm = @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null')
+      if have_rhn && have_rhsm
+        do_fail "Both RHN and RHSM are enabled on this host.  Please disable one or the other\n" +
+                "and re-run this tool."
+        @package_source = nil
+      elsif have_rhn
         @package_source = :rhn
         verbose "RHN subscription detected."
-      elsif @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null')
+      elsif have_rhsm
         @package_source = :rhsm
         verbose "Subscription-manager subscription detected."
       else

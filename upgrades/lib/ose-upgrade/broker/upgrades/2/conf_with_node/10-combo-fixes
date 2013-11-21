@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -xe
+
+# We need these workarounds when broker and node are installed together.
+# RHOSE 1.2 already has mod_rewrite rules for the broker and developer's
+# console.  For RHOSE 2.0, we must add rules for the administrative
+# console and assets.
+cat <<EOF >> /var/lib/openshift/.httpd.d/nodes.txt
+__default__/admin-console TOHTTPS:127.0.0.1:8080/admin-console
+__default__/assets TOHTTPS:127.0.0.1:8080/assets
+EOF
+
+httxt2dbm -f DB -i /etc/httpd/conf.d/openshift/nodes.txt -o /etc/httpd/conf.d/openshift/nodes.db

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -xe
+
+# Assumptions: Console is installed on the broker.
+# (Although actually services that aren't installed will simply fail to stop and complain.)
+
+for svc in openshift-broker openshift-console
+do
+	service "$svc" stop
+done

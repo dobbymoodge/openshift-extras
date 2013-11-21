@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -xe
+
+# Restart MCollective now that we've disabled the gear upgrade extension.
+service ruby193-mcollective restart
