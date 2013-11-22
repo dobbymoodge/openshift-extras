@@ -236,6 +236,11 @@ and version of OpenShift Enterprise.
 
 
 %changelog
+* Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0a-1
+- Adding the oo-admin-yum-validator manpage from upstream (bleanhar@redhat.com)
+- <ose-upgrade> 2.0 upgrade fixes (jdetiber@redhat.com)
+- ose-upgrade for RHOSE 2.0 (miciah.masters@gmail.com)
+
 * Mon Nov 18 2013 Luke Meyer <lmeyer@redhat.com> 2.0.0-1
 - <o-e-upgrade> update version/release (lmeyer@redhat.com)
 - <o-e-upgrade> spec file adjustments (lmeyer@redhat.com)
