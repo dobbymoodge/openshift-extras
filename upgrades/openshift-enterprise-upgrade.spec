@@ -6,8 +6,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.0
-Release:   2%{?dist}
+Version:   2.0.0a
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -79,6 +79,9 @@ mkdir -p %{buildroot}%yumv_lib
 cp -r yum-validator/yumvalidator/* %{buildroot}%yumv_lib
 mkdir -p %{buildroot}%yumv_etc
 cp -r yum-validator/etc/* %{buildroot}%yumv_etc
+
+mkdir -p %{buildroot}%{_mandir}/man8/
+cp -p yum-validator/man/*.8 %{buildroot}%{_mandir}/man8/
 
 # create the version file
 mkdir -p %{buildroot}%{etc}
@@ -158,6 +161,7 @@ subscription-manager or RHN classic as the RPM delivery mechanism.
 %config(noreplace) %yumv_etc/beta2.ini
 %defattr(0500,root,root,700)
 %_bindir/oo-admin-yum-validator
+%{_mandir}/man8/oo-admin-yum-validator.8.gz
 
 ############################# broker ###############################
 %package broker
