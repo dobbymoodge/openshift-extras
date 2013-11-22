@@ -37,7 +37,7 @@ then
     file=/etc/yum.repos.d/$i
     if [[ -f "$file" ]]
     then
-      repo_base="$(sed -n -e '/^baseurl=/ s,.*\(http://.*/x86_64\).*,\1,p')"
+      repo_base="$(sed -n -e '/^baseurl=/ s,.*\(http://.*/x86_64\).*,\1,p' $file)"
       [[ -n "$repo_base" ]] && break 2
     fi
   done
