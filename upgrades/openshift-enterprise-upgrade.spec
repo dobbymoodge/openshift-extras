@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.0a
+Version:   2.0.0b
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -200,6 +200,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0b-1
+- check-sources -> yum-validator (bleanhar@redhat.com)
+
 * Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0a-1
 - Adding the oo-admin-yum-validator manpage from upstream (bleanhar@redhat.com)
 - <ose-upgrade> 2.0 upgrade fixes (jdetiber@redhat.com)
