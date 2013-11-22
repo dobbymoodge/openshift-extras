@@ -29,16 +29,10 @@ set -xe
 # the ruby193-mcollective package in RHOSE 2.0:
 #
 #     /etc/mcollective/server.cfg
-#
-# In RHOSE 1.2, the mcollective-client package owns the following file that is
-# owned by the ruby193-mcollective-client package in RHOSE 2.0:
-#
-#     /etc/mcollective/client.cfg
 
 mkdir -p /etc/openshift/upgrade/2/
 
 for file in \
-  /etc/mcollective/client.cfg \
   /etc/mcollective/server.cfg \
   /etc/httpd/conf.d/000001_openshift_origin_node_servername.conf \
   /var/lib/openshift/.httpd.d/nodes.db \
