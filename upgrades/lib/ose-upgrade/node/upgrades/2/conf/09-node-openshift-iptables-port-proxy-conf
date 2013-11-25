@@ -2,6 +2,16 @@
 
 set -xe
 
+migrate_all() {
+    sed -r -n -e 's/^listen ([0-9]+):([0-9.]+):([0-9]+)/\1 \2 \3/ p' /etc/openshift/port-proxy.cfg | {
+        while read port daddr dport
+        do
+            echo $port $daddr:$dport
+            oo-iptables-port-proxy addproxy $port $daddr:$dport
+        done
+    }
+}
+
 conf='/etc/sysctl.conf'
 command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
 
@@ -27,6 +37,7 @@ EOF
 fi
 
 chkconfig openshift-iptables-port-proxy on
+chkconfig openshift-port-proxy off
 
 # openshift-iptables-port-proxy hooks into the iptables configuration by
 # adding a new table and having the INPUT chain jump to this new table.
@@ -38,3 +49,10 @@ fi
 
 # Make sure that the above modifications to iptables persist.
 service iptables save
+
+# reload the sysctl config to pick up the changes
+sysctl -p $conf || true
+
+# Migrate the existing openshift-port-proxy config to 
+# openshift-iptables-port-proxy
+migrate_all

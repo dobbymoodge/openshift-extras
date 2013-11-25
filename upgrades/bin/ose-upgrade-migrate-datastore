@@ -27,6 +27,9 @@ end
 # * Replaced $version by opt['version'].
 #
 # * Replaced $db by db.
+#
+# * Added remove_gear_id_index to replicate the manual step done in 2.0.29.1: 
+#   https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.29.1
 
 module Migrate_2_0_29
   #####################
@@ -43,8 +46,13 @@ module Migrate_2_0_29
     when :postrelease
     when :non_compatible
     when :compatible
+      remove_gear_id_index
       migrate_apps
     end
+  end
+
+  def self.remove_gear_id_index
+    db.collection("usage_records").drop_index("gear_id_1")
   end
 
   def self.rhdomain
@@ -377,13 +385,15 @@ end
 # rhc-broker/script/rhc-admin-migrate-datastore.  Changes:
 #
 # * Wrapped the script in a module.
+# * Commented out postrelease steps, since they were not run for this release
+#   per https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.32#Comment14
 
 module Migrate_2_0_32
   VERSIONS = {
     :compatible => false,
     :non_compatible => true,
-    :prerelease => true,
-    :postrelease => true
+    :prerelease => true #,
+    #:postrelease => true
   }
 
   CARTRIDGE_CHANGES = [{"old_name" => "phpmyadmin-3.4", "new_name" => "phpmyadmin-3", "old_version" => "3.4", "new_version" => "3"},
@@ -398,9 +408,9 @@ module Migrate_2_0_32
       ensure_members_index
       create_domain_members
       create_application_members
-    when :postrelease
-      update_gears
-      verify_gears
+    #when :postrelease
+      #update_gears
+      #verify_gears
     when :non_compatible
       ensure_members_index
       create_domain_members

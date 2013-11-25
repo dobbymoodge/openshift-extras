@@ -105,6 +105,17 @@ module OpenShift
     end
 
     def pre_cartridge_upgrade(progress, itinerary)
+      # Replace any jbossews symlinked webapps directories with a physical directory
+      # Was performed in 2.0.29 using cartridge setup script
+      path = File.join(@gear_home, 'jbossews')
+      webappsdir = File.join(path, 'webapps')
+      if File.directory? path and File.symlink? webappsdir
+        FileUtils.rm_f webappsdir
+        FileUtils.mkdir_p webappsdir
+        webappssrc = File.join(@gear_home, 'app-root/runtime/repo/webapps/*')
+        FileUtils.mv(Dir.glob(webappssrc), webappsdir)
+      end
+
       # Repair @gear_home/jbosseap/ symlinks to /etc/alternatives/ links.
       jboss_version = '6'
       jboss_home = "/etc/alternatives/jbosseap-#{jboss_version}"
