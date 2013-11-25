@@ -6,4 +6,4 @@ set -xe
 # steps that can be performed after the outage (instead of during, thus
 # reducing downtime) but must run after steps that must be run during
 # the outage.
-/usr/libexec/openshift/bin/ose-upgrade-migrate-datastore --postrelease
+/usr/libexec/openshift/ose-upgrade-migrate-datastore --postrelease
