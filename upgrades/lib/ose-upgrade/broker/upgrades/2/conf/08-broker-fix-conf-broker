@@ -70,17 +70,3 @@ EOF
 #
 # * The setting MONGO_TEST_DB has been added to the shipped broker.conf in RHOSE
 #   2.0; however, this option is irrelevant for production systems.
-
-# We also need to update the httpd configuration for the broker.
-
-# Backup broker.conf.
-conf='/var/www/openshift/broker/httpd/broker.conf'
-command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
-
-# Update the document root of the broker so that it will not conflict with the
-# administrative console (see commit 97e787c14d31ee557dc75712a68a24af7c4453d3
-# and <https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.31#Comment2sosiouxme-DONEtwiestc1e2da910cfcc2>).
-sed -i "$conf" \
-  -e '/^\s*DocumentRoot\s/ s,"/var/www/openshift/broker/httpd/root","/var/www/openshift/broker/public",' \
-  -e '/^\s*<\s*Directory\s/ s,/var/www/openshift/broker/httpd/root/broker,/var/www/openshift/broker/public,' \
-  -e '/^\s*PassengerPreStart\s/ s,http://127.0.0.1:8080/$,http://127.0.0.1:8080/broker/rest/api.json,'
