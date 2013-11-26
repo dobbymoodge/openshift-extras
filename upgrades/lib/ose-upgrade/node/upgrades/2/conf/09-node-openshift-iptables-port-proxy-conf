@@ -37,7 +37,6 @@ EOF
 fi
 
 chkconfig openshift-iptables-port-proxy on
-chkconfig openshift-port-proxy off
 
 # openshift-iptables-port-proxy hooks into the iptables configuration by
 # adding a new table and having the INPUT chain jump to this new table.
