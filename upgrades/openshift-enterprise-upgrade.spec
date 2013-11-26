@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.0a
+Version:   2.0.0b
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -52,12 +52,6 @@ mkdir -p %{buildroot}%{_libexecdir}/openshift
 cp mcollective/gear_upgrade_extension.rb %{buildroot}%{_libexecdir}/openshift/
 cp bin/ose-upgrade-migrate-datastore %{buildroot}%{_libexecdir}/openshift/
 cp bin/ose-upgrade-gears %{buildroot}%{_libexecdir}/openshift/
-
-mkdir -p %{buildroot}%{_libexecdir}/openshift/check-sources
-cp libexec/check-sources/oo-admin-check-sources.py %{buildroot}%{_libexecdir}/openshift/check-sources/
-cp libexec/check-sources/check_sources.py %{buildroot}%{_libexecdir}/openshift/check-sources/
-cp libexec/check-sources/repo_db.py %{buildroot}%{_libexecdir}/openshift/check-sources/
-cp libexec/check-sources/beta2.ini %{buildroot}%{_libexecdir}/openshift/check-sources/
 
 # Ruby libs and bin
 mkdir -p %{buildroot}%{upgrade_path}
@@ -172,7 +166,7 @@ Group:     Network/Daemons
 Requires:  openshift-origin-broker-util
 Requires:  openshift-origin-broker
 Requires:  openshift-enterprise-release >= %version
-Requires:  openshift-enterprise-check-sources
+Requires:  openshift-enterprise-yum-validator
 
 %description broker
 
@@ -194,7 +188,7 @@ Group:     Network/Daemons
 Requires:  openshift-origin-node-util
 Requires:  rubygem-openshift-origin-node
 Requires:  openshift-enterprise-release >= %{version}
-Requires:  openshift-enterprise-check-sources
+Requires:  openshift-enterprise-yum-validator
 %description node
 
 This contains mechanisms for upgrading an OpenShift Enterprise node host.
@@ -207,37 +201,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node
 %{upgrade_path}/ose-upgrade/node.rb
 
-########################### check-sources ###########################
-%package -n openshift-enterprise-check-sources
-Summary:   Tool to check and fix Yum repos or RHN/RHSM channels for OpenShift Enterprise
-Group:     Network/Daemons
-Requires:  python
-%description -n openshift-enterprise-check-sources
-This package contains the oo-admin-check-sources.py tool for checking
-what Yum repos or RHN/RHSM channels are available and enabled and
-setting appropriate priorities to assure that Yum will get packages from
-the appropriate sources based on the host's role (broker or node host)
-and version of OpenShift Enterprise.
-
-#############################
-%files -n openshift-enterprise-check-sources
-%defattr(644,root,root,700)
-%{_libexecdir}/openshift/check-sources/beta2.ini
-%attr(755,root,root) %{_libexecdir}/openshift/check-sources/oo-admin-check-sources.py
-# The rpm-build's brp-python-bytecompile script automatically generates
-# these bytecode files:
-%{_libexecdir}/openshift/check-sources/oo-admin-check-sources.pyc
-%{_libexecdir}/openshift/check-sources/oo-admin-check-sources.pyo
-%{_libexecdir}/openshift/check-sources/check_sources.py
-%{_libexecdir}/openshift/check-sources/check_sources.pyc
-%{_libexecdir}/openshift/check-sources/check_sources.pyo
-%{_libexecdir}/openshift/check-sources/repo_db.py
-%{_libexecdir}/openshift/check-sources/repo_db.pyc
-%{_libexecdir}/openshift/check-sources/repo_db.pyo
-
-
-
 %changelog
+* Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0b-1
+- check-sources -> yum-validator (bleanhar@redhat.com)
+
 * Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0a-1
 - Adding the oo-admin-yum-validator manpage from upstream (bleanhar@redhat.com)
 - <ose-upgrade> 2.0 upgrade fixes (jdetiber@redhat.com)
