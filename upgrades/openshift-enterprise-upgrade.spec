@@ -17,10 +17,11 @@ Source0:   %{name}-%{version}.tar.gz
 %global brokerdir %{_var}/www/openshift/broker
 %global etc_upgrade /etc/openshift/upgrade
 
+%global upgrade_path /usr/lib/ruby/site_ruby/1.8
+
 # OpenShift Enterprise uses the ruby193 software collection since
 # the 1.2 release, so we will only use Ruby packages in that collection.
 %global mco_root /opt/rh/ruby193/root/usr/libexec/mcollective/mcollective
-%global upgrade_path /opt/rh/ruby193/root/usr/local/share/ruby/site_ruby
 
 # yum-validator locations
 %global yumv_lib /usr/lib64/python2.6/site-packages/yumvalidator
