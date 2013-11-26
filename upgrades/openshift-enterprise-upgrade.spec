@@ -82,6 +82,7 @@ cp -r yum-validator/etc/* %{buildroot}%yumv_etc
 
 mkdir -p %{buildroot}%{_mandir}/man8/
 cp -p yum-validator/man/*.8 %{buildroot}%{_mandir}/man8/
+cp -p man/*.8 %{buildroot}%{_mandir}/man8/
 
 # create the version file
 mkdir -p %{buildroot}%{etc}
@@ -119,6 +120,7 @@ This RPM contains mechanisms for upgrading an OpenShift Enterprise installation.
 %{upgrade_path}/ose-upgrade/finder.rb
 %{upgrade_path}/ose-upgrade/main.rb
 
+%{_mandir}/man8/ose-upgrade.8.gz
 %defattr(0500,root,root,700)
 %{_bindir}/ose-upgrade
 %{upgrade_path}/ose-upgrade/host/

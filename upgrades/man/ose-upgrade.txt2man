@@ -1,0 +1,97 @@
+NAME
+
+  ose-upgrade
+
+SYNOPSIS
+
+  ose-upgrade [status|all|<step> [<step>...]]
+    [-s|--skip] [-q|--quiet] [-d|--debug] [--complete INTEGER]
+    [-h|--help]
+
+
+DESCRIPTION
+
+  ose-upgrade is a tool for upgrading an OpenShift Enterprise host
+  when that upgrade requires coordination and/or changes more substantial
+  than a simple yum update. 
+
+OPTIONS
+
+  -h|--help  
+    Show a usage summary and exit.
+
+  -q|--quiet  
+    Only display warnings and failures. The default output can be rather verbose.
+    All output is still logged to /var/log/openshift/upgrade.log even with this option.
+
+  -s|--skip  
+    Mark upgrade step(s) complete rather than running. Used mainly for
+    testing or when a problem with a step has been resolved manually.
+
+  -d|--debug  
+    Enable extra debugging output.
+
+  --complete INTEGER  
+    Mark given upgrade number as complete. This clears all upgrade state
+    in preparation for the next upgrade. Upgrades are numbered beginning with 1,
+    which was the upgrade of OpenShift Enterprise 1.1 to 1.2.
+
+USAGE
+
+  An upgrade consists of one or more steps, each of which often consists of one or more
+  scripts, all of which must run sequentially. The state of the last completed or current
+  upgrade is stored in the state file /etc/openshift/upgrade/state.yaml, indicating completed
+  steps and scripts for the current upgrade. The upgrade log is stored in
+  /var/log/openshift/upgrade.log.
+
+  Consult the OpenShift Enterprise release notes for step details for specific releases.
+
+  * With no arguments, ose-upgrade displays status as if "status" had been requested.
+
+  * With "status", ose-upgrade displays the current upgrade number, the known steps, and the next step.
+  If no upgrade is pending or in progress, the previous upgrade number is displayed.
+
+  * With "all", ose-upgrade will run all available steps for this host. Note that part of the upgrade
+  is likely to require a manual update of ose-upgrade itself, after which more steps may become available.
+  If any step fails, ose-upgrade exits at that time.
+
+  * Given one or more steps, ose-upgrade will run the given steps in order. A step must succeed or be
+  skipped before the next step can be run.
+
+  Normally ose-upgrade exits with exit code 0 for success. A non-zero exit code indicates
+  a failure to complete a step.
+
+FAILURE
+
+  ose-upgrade is designed to enable retrying in the event a failure is detected. Nearly all
+  of the upgrade logic is implemented with scripts that perform a specific update and check
+  for success; usually these can safely run again until they succeed. Examine the upgrade.log to
+  determine what failed and how to resolve it (for
+  example, if a filesystem runs out of space, clear some space or expand the filesystem).
+  Then run ose-upgrade with the failed step again; it will continue running the step/script that
+  failed, without re-running any that succeeded.
+
+WARNINGS
+
+  Prior to an upgrade, it is a good idea to execute oo-admin-chk on a broker and oo-diagnostics
+  on every deployed host. Address any existing problems prior to using ose-upgrade.
+
+  An upgrade requires an outage and generally makes irreversible changes. Read the release notes
+  to understand what an upgrade entails, and practice upgrading a test deployment if possible.
+  Ensure that your entire deployment is adequately backed up and can be recovered in the event
+  of an unexpected failure during an upgrade.
+
+FILES
+
+  /var/log/openshift/upgrade.log - a complete log of the host upgrade output for troubleshooting purposes.
+
+  /etc/openshift/upgrade/state.yaml - a YAML file that records the status of the current upgrade,
+  including steps and scripts that completed or failed.
+
+SEE ALSO
+
+  oo-admin-chk(8), oo-accept-broker(8), oo-accept-systems(8),
+  oo-accept-node(8), oo-diagnostics(8)
+
+AUTHOR
+  Luke Meyer <lmeyer@redhat.com> - man page written for OpenShift
