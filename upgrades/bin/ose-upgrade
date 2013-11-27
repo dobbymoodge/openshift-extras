@@ -1,4 +1,4 @@
-#!/usr/bin/env oo-ruby
+#!/usr/bin/env ruby
 # The 1.1 => 1.2 upgrade is particularly tricky because we can't rely on the
 # ruby193 scl being installed until we've performed the first part of the upgrade.
 # So, use the system ruby.

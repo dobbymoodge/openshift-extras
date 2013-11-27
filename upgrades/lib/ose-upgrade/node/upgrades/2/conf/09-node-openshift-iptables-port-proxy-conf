@@ -3,7 +3,7 @@
 set -xe
 
 migrate_all() {
-    sed -r -n -e 's/^listen ([0-9]+):([0-9.]+):([0-9]+)/\1 \2 \3/ p' /etc/openshift/port-proxy.cfg | {
+    sed -r -n -e 's/^listen ([0-9]+):([0-9.]+):([0-9]+)/\1 \2 \3/ p' /etc/openshift/port-proxy.cfg.rpmsave | {
         while read port daddr dport
         do
             echo $port $daddr:$dport
@@ -37,7 +37,6 @@ EOF
 fi
 
 chkconfig openshift-iptables-port-proxy on
-chkconfig openshift-port-proxy off
 
 # openshift-iptables-port-proxy hooks into the iptables configuration by
 # adding a new table and having the INPUT chain jump to this new table.
