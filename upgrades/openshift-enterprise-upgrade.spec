@@ -203,6 +203,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Wed Nov 27 2013 Jason DeTiberus <jdetiber@redhat.com> 2.0.0c-1
+- Temporarily remove host v2 upgrade for GA release
+- add man page (lmeyer@redhat.com)
+
 * Fri Nov 22 2013 Brenton Leanhardt <bleanhar@redhat.com> 2.0.0b-1
 - check-sources -> yum-validator (bleanhar@redhat.com)
 
