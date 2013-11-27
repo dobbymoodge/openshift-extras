@@ -3,7 +3,7 @@
 set -xe
 
 migrate_all() {
-    sed -r -n -e 's/^listen ([0-9]+):([0-9.]+):([0-9]+)/\1 \2 \3/ p' /etc/openshift/port-proxy.cfg | {
+    sed -r -n -e 's/^listen ([0-9]+):([0-9.]+):([0-9]+)/\1 \2 \3/ p' /etc/openshift/port-proxy.cfg.rpmsave | {
         while read port daddr dport
         do
             echo $port $daddr:$dport
