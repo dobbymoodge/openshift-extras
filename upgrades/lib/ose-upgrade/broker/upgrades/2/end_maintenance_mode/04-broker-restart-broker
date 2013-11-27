@@ -9,3 +9,6 @@ for svc in openshift-broker openshift-console
 do
 	service "$svc" restart
 done
+
+# Clear the broker and console cache
+oo-admin-broker-cache --clear --console
