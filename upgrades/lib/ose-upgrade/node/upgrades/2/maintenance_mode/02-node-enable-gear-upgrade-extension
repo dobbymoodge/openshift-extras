@@ -2,4 +2,4 @@
 
 set -xe
 
-printf '\n%s\n' 'GEAR_UPGRADE_EXTENSION=/usr/libexec/openshift/lib/gear_upgrade_extension' >> /etc/openshift/node.conf
+printf '\n%s\n' 'GEAR_UPGRADE_EXTENSION=/usr/libexec/openshift/gear_upgrade_extension' >> /etc/openshift/node.conf

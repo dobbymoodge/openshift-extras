@@ -66,8 +66,8 @@ module OpenShift
     end
 
     def pre_upgrade(progress)
-      progress.log "Creating #{path}"
       path = File.join(@gear_home, '.env', 'user_vars')
+      progress.log "Creating #{path}"
       FileUtils.mkpath(path)
       FileUtils.chmod(0770, path)
       @container.set_ro_permission(path)
@@ -283,7 +283,8 @@ module OpenShift
     end
 
     def migrate_deployment_system_post(progress)
-      progress.step 'populate_deployment_dir' do
+      progress.step 'populate_deployment_dir' do |context, errors|
+        progress.log @container.check_deployments_integrity
         deployment_datetime = @container.current_deployment_datetime
 
         if deployment_datetime.nil?
@@ -294,17 +295,6 @@ module OpenShift
         @container.sync_runtime_repo_dir_to_deployment(deployment_datetime)
         @container.sync_runtime_dependencies_dir_to_deployment(deployment_datetime)
         @container.sync_runtime_build_dependencies_dir_to_deployment(deployment_datetime)
-      end
-
-      progress.step 'report_deployment' do
-        env = ::OpenShift::Runtime::Utils::Environ.for_gear(@gear_home)
-
-        if env['OPENSHIFT_APP_DNS'] == env['OPENSHIFT_GEAR_DNS']
-          progress.log "Namespace: #{env['OPENSHIFT_NAMESPACE']}"
-          progress.log "App Name: #{env['OPENSHIFT_APP_NAME']}"
-          @container.report_deployments(env)
-          progress.log "Reported deployments to broker"
-        end
       end
     end
 
@@ -342,14 +332,18 @@ module OpenShift
 
           uuid_and_namespace = "#{options[:uuid]}-#{namespace}"
 
-          cfg_entry, _, _ = ::OpenShift::Runtime::Utils.oo_spawn("grep #{uuid_and_namespace} #{haproxy_cfg}")
+          cfg_entry, _, rc = ::OpenShift::Runtime::Utils.oo_spawn("grep #{uuid_and_namespace} #{haproxy_cfg}")
 
-          proxy_host_and_port = cfg_entry.split(' ')[2]
-          options[:proxy_hostname] = proxy_host_and_port.split(':')[0]
-          options[:proxy_port] = proxy_host_and_port.split(':')[1]
-          options[:type] = 'web'
+          if rc == 0
+            proxy_host_and_port = cfg_entry.split(' ')[2]
+            options[:proxy_hostname] = proxy_host_and_port.split(':')[0]
+            options[:proxy_port] = proxy_host_and_port.split(':')[1]
+            options[:type] = 'web'
 
-          platform_registry.add(options)
+            platform_registry.add(options)
+          else
+            progress.log "Unable to locate #{uuid_and_namespace} in #{haproxy_cfg}, skipping."
+          end
         end
 
         progress.log "Added entries from existing haproxy gear registry"

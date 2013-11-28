@@ -1277,9 +1277,23 @@ module Migrate_2_0_35
       end
       ci = app.component_instances.find_by(cartridge_name: "haproxy-1.4")
       hap_expose_job = hap_gear.get_expose_port_job(ci)
-      tag = "" 
+      tag = ""
       RemoteJob.add_parallel_job(handle, "", hap_gear, hap_expose_job)
+
+      if total%20==0
+        RemoteJob.execute_parallel_jobs(handle)
+        RemoteJob.get_parallel_run_results(handle) { |tag, gear, stdout, exit_code|
+          if exit_code!=0
+            puts "Error in executing parallel job for gear #{gear}"
+          else
+            exposed += 1
+          end
+        }
+        print "."
+        handle = {}
+      end
     }
+
     RemoteJob.execute_parallel_jobs(handle)
     RemoteJob.get_parallel_run_results(handle) { |tag, gear, stdout, exit_code|
       if exit_code!=0
@@ -1288,7 +1302,6 @@ module Migrate_2_0_35
         exposed += 1
       end
     }
-
     puts "Done migrating #{exposed}/#{total} applications."
   end
 
@@ -1316,8 +1329,10 @@ module Migrate_2_0_35
             gear_index += 1
             next if g["port_interfaces"] and g["port_interfaces"].any? { |pi| (not pi["protocols"].to_a.empty?) }
             endpoints = gear_map[g["uuid"]]
+            next if endpoints.nil?
             updated_port_interfaces = endpoints.map do |ep|
               cart = CartridgeCache.find_cartridge(ep["cartridge_name"])
+              cart = CartridgeCache.find_cartridge(ep["cartridge_name"], Application.find_by(_id: app["_id"].to_s)) if cart.nil?
               {
                 "_id" => BSON::ObjectId.new,
                 "cartridge_name" => cart.name,
@@ -1342,6 +1357,37 @@ module Migrate_2_0_35
     end
   end
 end
+
+###############################################################################
+# The 2.0.36 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.36),
+# rhc-broker/script/rhc-admin-migrate-datastore;
+#
+# * Wrapped the script in a module.
+# * Removed refactor_user_capabilities migration, as it only applies to online
+# * Removed update_sparse_carts migration, since 1.2 carts did not have that feature
+
+module Migrate_2_0_36
+  VERSIONS = {
+    :compatible => true,
+    :non_compatible => false,
+    :prerelease => true,
+    :postrelease => false
+  }
+
+  def self.migrate(type)
+    case type
+    when :prerelease
+      #update_sparse_carts
+    when :postrelease
+    when :non_compatible
+    when :compatible
+      #refactor_user_capabilities
+    end
+  end
+  
+end
+
 
 ###############################################################################
 # Migration core code

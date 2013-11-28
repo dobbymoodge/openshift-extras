@@ -59,7 +59,7 @@ module OSEUpgrader
 
       def run_upgrade_step_pending_ops(state)
         return claim_upgrade_step("pending_ops") do
-          rc, _ = run_scripts_in(__FILE__, 'pre')
+          rc, _ = run_scripts_in(__FILE__, 'pending_ops')
           rc
         end
       end
