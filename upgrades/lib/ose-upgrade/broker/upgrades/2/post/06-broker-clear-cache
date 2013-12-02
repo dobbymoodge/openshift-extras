@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -xe
+
+# Assumptions: Console is installed on the broker.
+
+# Clear the broker and console cache
+oo-admin-broker-cache --clear --console

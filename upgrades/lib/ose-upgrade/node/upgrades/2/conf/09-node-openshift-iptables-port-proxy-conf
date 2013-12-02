@@ -55,3 +55,7 @@ sysctl -p $conf || true
 # Migrate the existing openshift-port-proxy config to 
 # openshift-iptables-port-proxy
 migrate_all
+
+# Stop the openshift-iptables-port-proxy since we are in maintenance mode
+# at this point
+service openshift-iptables-port-proxy stop
