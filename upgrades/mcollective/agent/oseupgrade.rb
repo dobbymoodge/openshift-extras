@@ -55,6 +55,13 @@ module MCollective
         reply.fail! "migrate_action failed #{exitcode}.  Output #{output}" unless exitcode == 0
       end
 
+      def gear_upgrades_complete_action
+        Log.instance.info("gear_upgrades_complete_action call / request = #{request.pretty_inspect}")
+        require 'fileutils'
+        FileUtils.touch('/etc/openshift/upgrade/2/gear_upgrades_complete')
+        reply[:exitcode] = 0
+      end
+
       def ping_action
         Log.instance.info("ping_action call / request = #{request.pretty_inspect}")
         reply[:exitcode] = 0
