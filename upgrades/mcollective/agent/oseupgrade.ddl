@@ -49,6 +49,12 @@ action "migrate", :description => "Migrate a gear from previous to current migra
            :display_as  => "exitcode"
 end
 
+action "gear_upgrades_complete", :description => "Mark Gear Upgrades Complete" do
+     output :exitcode,
+           :description => "Exit code from the gear_upgrades_complete command",
+           :display_as  => "exitcode"
+end
+
 action "ping", :description => "Check that this agent is present" do
     output :exitcode,
            :description => "Exit code from the ping command",

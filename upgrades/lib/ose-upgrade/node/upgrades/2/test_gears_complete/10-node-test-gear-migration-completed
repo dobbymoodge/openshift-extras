@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ -e /etc/openshift/upgrade/2/gear_upgrades_complete ]; then
+  exit 0
+else
+  echo "Waiting for gear upgrades to be completed."
+  exit 1
+fi

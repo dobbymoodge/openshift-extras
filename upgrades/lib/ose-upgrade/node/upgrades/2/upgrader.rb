@@ -5,7 +5,7 @@ module OSEUpgrader
     class Number2 < Node
 
       def implemented_steps
-        %w[ pre outage rpms conf maintenance_mode end_maintenance_mode ]
+        %w[ pre outage rpms conf maintenance_mode test_gears_complete end_maintenance_mode ]
       end
 
       def run_upgrade_step_pre(state)
@@ -31,6 +31,11 @@ module OSEUpgrader
 
       def run_upgrade_step_maintenance_mode(state)
         rc, _ = run_scripts_in(__FILE__, 'maintenance_mode')
+        return rc
+      end
+
+      def run_upgrade_step_test_gears_complete(state)
+        rc, _ = run_scripts_in(__FILE__, 'test_gears_complete')
         return rc
       end
 
