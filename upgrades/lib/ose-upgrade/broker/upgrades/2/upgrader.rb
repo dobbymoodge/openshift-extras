@@ -77,7 +77,7 @@ module OSEUpgrader
         end
       end
 
-      def run_upgrade_test_gears_complete(state)
+      def run_upgrade_step_test_gears_complete(state)
         0 # just a passthrough for the node upgrader step
       end
 
