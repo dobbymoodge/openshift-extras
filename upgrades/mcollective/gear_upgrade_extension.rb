@@ -88,6 +88,10 @@ module OpenShift
 
       progress.log 'Setting gear OPENSHIFT_SECRET_TOKEN'
       @upgrader.container.add_env_var('SECRET_TOKEN', @upgrader.secret_token, true)
+
+      # Add GEM_DIR to gear env variables, prior to 2.0.30 this variable was not present
+      progress.log 'Setting gear GEM_DIR'
+      @container.add_env_var("GEM_DIR", File.join(@gear_home, '.gem'), false)
     end
 
     unless VERSION_MAP.empty?
@@ -105,6 +109,17 @@ module OpenShift
     end
 
     def pre_cartridge_upgrade(progress, itinerary)
+      # Create OPENSHIFT_RUBY_PATH_ELEMENT if it doesn't exist, as of 2.0.30 both ruby-1.8 
+      # and ruby-1.9 carts use this variable, previously it was only ruby-1.9.  Without setting
+      # this variable upgraded ruby-1.8 carts will fail on git push.
+      path = File.join(@gear_home, 'ruby')
+      if File.directory? path
+        rpe = File.join(path, 'env', 'OPENSHIFT_RUBY_PATH_ELEMENT')
+        if (! File.file? rpe) and (@upgrader.gear_env['OPENSHIFT_RUBY_VERSION'] == "1.8")
+          IO.write(rpe, File.join(@gear_home, '.gem', '/bin'))
+        end
+      end
+
       # Replace any jbossews symlinked webapps directories with a physical directory
       # Was performed in 2.0.29 using cartridge setup script
       path = File.join(@gear_home, 'jbossews')
