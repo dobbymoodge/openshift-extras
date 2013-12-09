@@ -52,7 +52,6 @@ cp mcollective/agent/oseupgrade.* %{buildroot}%{mco_root}/agent/
 mkdir -p %{buildroot}%{_libexecdir}/openshift
 cp mcollective/gear_upgrade_extension.rb %{buildroot}%{_libexecdir}/openshift/
 cp bin/ose-upgrade-migrate-datastore %{buildroot}%{_libexecdir}/openshift/
-cp bin/ose-upgrade-gears %{buildroot}%{_libexecdir}/openshift/
 
 # Ruby libs and bin
 mkdir -p %{buildroot}%{upgrade_path}
@@ -179,7 +178,6 @@ and through it, an entire installation.
 %defattr(0500,root,root,700)
 %{upgrade_path}/ose-upgrade/broker
 %{upgrade_path}/ose-upgrade/broker.rb
-%{_libexecdir}/openshift/ose-upgrade-gears
 %{_libexecdir}/openshift/ose-upgrade-migrate-datastore
 
 ############################## node ################################
