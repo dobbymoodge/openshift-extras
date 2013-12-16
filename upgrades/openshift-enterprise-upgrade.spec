@@ -199,6 +199,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Mon Dec 16 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.7-1
+- Adding the upstream man page and bumped the -release version
+  (bleanhar@redhat.com)
+
 * Mon Nov 18 2013 Luke Meyer <lmeyer@redhat.com> 1.2.5-2
 - <o-e-upgrade> spec file adjustments (lmeyer@redhat.com)
 - <yum-validator> sync to ed3e5605 from openshift-extras (lmeyer@redhat.com)
