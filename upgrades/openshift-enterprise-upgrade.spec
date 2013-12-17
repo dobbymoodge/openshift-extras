@@ -5,8 +5,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2.5
-Release:   2%{?dist}
+Version:   1.2.7
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -50,21 +50,21 @@ mkdir -p %{buildroot}%{mco_root}/agent/
 cp mcollective/agent/oseupgrade.* %{buildroot}%{mco_root}/agent/
 
 # ruby libs and bin
-mkdir -p %{buildroot}%upgrade_path
-cp -r lib/* %{buildroot}%upgrade_path
-mkdir -p %{buildroot}%_bindir
-cp bin/ose-upgrade %{buildroot}%_bindir
+mkdir -p %{buildroot}%{upgrade_path}
+cp -r lib/* %{buildroot}%{upgrade_path}
+mkdir -p %{buildroot}%{_bindir}
+cp bin/ose-upgrade %{buildroot}%{_bindir}
 
 # once we are doing gear migrations we are in ruby193 land
-mkdir -p %buildroot%upgrade_path_19/ose-upgrade
-cp -r %buildroot%upgrade_path/ose-upgrade/node %buildroot%upgrade_path_19/ose-upgrade/
+mkdir -p %{buildroot}%{upgrade_path_19}/ose-upgrade
+cp -r %{buildroot}%{upgrade_path}/ose-upgrade/node %{buildroot}%{upgrade_path_19}/ose-upgrade/
 
 # create upgrade state file with this version
-mkdir -p %{buildroot}%etc_upgrade
-touch %buildroot%etc_upgrade/state.yaml
+mkdir -p %{buildroot}%{etc_upgrade}
+touch %{buildroot}%{etc_upgrade}/state.yaml
 # and log file
-mkdir -p %buildroot/var/log/openshift/upgrade.log
-touch %buildroot/var/log/openshift/upgrade.log
+mkdir -p %{buildroot}/var/log/openshift/upgrade.log
+touch %{buildroot}/var/log/openshift/upgrade.log
 
 # create yum-validator locations
 cp yum-validator/oo-admin-yum-validator %{buildroot}%_bindir
@@ -73,9 +73,12 @@ cp -r yum-validator/yumvalidator/* %{buildroot}%yumv_lib
 mkdir -p %{buildroot}%yumv_etc
 cp -r yum-validator/etc/* %{buildroot}%yumv_etc
 
+mkdir -p %{buildroot}%{_mandir}/man8/
+cp -p yum-validator/man/*.8 %{buildroot}%{_mandir}/man8/
+
 # create the version file
-mkdir -p %buildroot%etc
-touch %buildroot%etc/openshift-enterprise-release
+mkdir -p %{buildroot}%{etc}
+touch %{buildroot}%{etc}/openshift-enterprise-release
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -152,6 +155,7 @@ subscription-manager or RHN classic as the RPM delivery mechanism.
 %config(noreplace) %yumv_etc/beta2.ini
 %defattr(0500,root,root,700)
 %_bindir/oo-admin-yum-validator
+%{_mandir}/man8/oo-admin-yum-validator.8.gz
 
 ############################# broker ###############################
 %package broker
@@ -187,10 +191,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %files node
 %attr(644,root,root) %mco_root/agent/oseupgrade.rb
 %defattr(700,root,root,700)
-%upgrade_path/ose-upgrade/node
-%upgrade_path/ose-upgrade/node.rb
+%{upgrade_path}/ose-upgrade/node
+%{upgrade_path}/ose-upgrade/node.rb
 # once we are doing gear migrations we are in ruby193 land
-%upgrade_path_19/ose-upgrade/node
+%{upgrade_path_19}/ose-upgrade/node
 
 
 
