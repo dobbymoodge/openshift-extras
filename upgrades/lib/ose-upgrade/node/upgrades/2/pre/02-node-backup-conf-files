@@ -19,6 +19,17 @@ set -xe
 #     /var/lib/openshift/.httpd.d/nodes.txt
 #     /var/lib/openshift/.httpd.d/geardb.json
 #
+# In RHOSE 1.2, the rubygem-openshift-origin-node package the following files
+# that are owned by the rubygem-openshift-origin-frontend-apache-mod-rewrite 
+# package in RHOSE 2.0:
+#
+#     /var/lib/openshift/.httpd.d/sts.db
+#     /var/lib/openshift/.httpd.d/sts.txt
+#     /var/lib/openshift/.httpd.d/aliases.db
+#     /var/lib/openshift/.httpd.d/aliases.txt
+#     /var/lib/openshift/.httpd.d/idler.db
+#     /var/lib/openshift/.httpd.d/idler.txt
+#
 # In RHOSE 1.2, the rubygem-openshift-origin-node package owns the following
 # files that are owned by the rubygem-openshift-origin-frontend-nodejs-websocket
 # package in RHOSE 2.0:
@@ -38,6 +49,12 @@ for file in \
   /var/lib/openshift/.httpd.d/nodes.db \
   /var/lib/openshift/.httpd.d/nodes.txt \
   /var/lib/openshift/.httpd.d/geardb.json \
+  /var/lib/openshift/.httpd.d/sts.db \
+  /var/lib/openshift/.httpd.d/sts.txt \
+  /var/lib/openshift/.httpd.d/aliases.db \
+  /var/lib/openshift/.httpd.d/aliases.txt \
+  /var/lib/openshift/.httpd.d/idler.db \
+  /var/lib/openshift/.httpd.d/idler.txt \
   /var/lib/openshift/.httpd.d/routes.json
 do
   command cp -f "$file" /etc/openshift/upgrade/2/
