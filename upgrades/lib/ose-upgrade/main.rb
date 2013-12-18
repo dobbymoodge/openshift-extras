@@ -282,7 +282,7 @@ HOST
       return @package_source if @package_source
       load_rpm_list
       have_rhn = File.exists? '/etc/sysconfig/rhn/systemid'
-      have_rhsm = @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null')
+      have_rhsm = @rpms['subscription-manager'] && system('subscription-manager identity | grep "Current identity" >& /dev/null')
       if have_rhn && have_rhsm
         do_fail "Both RHN and RHSM are enabled on this host.  Please disable one or the other\n" +
                 "and re-run this tool."
