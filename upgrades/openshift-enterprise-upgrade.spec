@@ -50,7 +50,6 @@ mkdir -p %{buildroot}%{mco_root}/agent/
 cp mcollective/agent/oseupgrade.* %{buildroot}%{mco_root}/agent/
 
 mkdir -p %{buildroot}%{_libexecdir}/openshift
-cp mcollective/gear_upgrade_extension.rb %{buildroot}%{_libexecdir}/openshift/
 cp bin/ose-upgrade-migrate-datastore %{buildroot}%{_libexecdir}/openshift/
 
 # Ruby libs and bin
@@ -195,7 +194,6 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 #############################
 %files node
 %attr(644,root,root) %{mco_root}/agent/oseupgrade.rb
-%attr(644,root,root) %{_libexecdir}/openshift/gear_upgrade_extension.rb
 %defattr(700,root,root,700)
 %{upgrade_path}/ose-upgrade/node
 %{upgrade_path}/ose-upgrade/node.rb

@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -xe
-
-# Configure the broker to disable the API and return an outage
-# notification to all requests.
-sed -i /etc/openshift/node.conf \
-  -e '/^GEAR_UPGRADE_EXTENSION=/ d'
