@@ -3,7 +3,7 @@ metadata    :name        => "OpenShift Enterprise Upgrade Agent",
             :description => "Agent to assist with the ose-upgrade process",
             :author      => "Red Hat, Inc.",
             :license     => "ASL 2.0",
-            :version     => "0.1",
+            :version     => "0.2",
             :url         => "http://openshift.redhat.com/",
             :timeout     => 240
 
@@ -59,4 +59,7 @@ action "ping", :description => "Check that this agent is present" do
     output :exitcode,
            :description => "Exit code from the ping command",
            :display_as  => "exitcode"
+    output :version,
+           :description => "Upgrade version",
+           :display_as  => "version"
 end
