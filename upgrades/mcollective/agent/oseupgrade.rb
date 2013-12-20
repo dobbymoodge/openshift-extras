@@ -23,6 +23,13 @@ module MCollective
 
     class Oseupgrade < RPC::Agent
 
+      RELEASE_FILE = ENV['OPENSHIFT_RELEASE_FILE'] || '/etc/openshift-enterprise-release'
+      VERSION_MAP = {
+        0  => "1.1",
+        1  => "1.2",
+        2  => "2.0",
+      }
+
       #
       # Migrate a gear from previous to current migration number
       #
@@ -65,6 +72,8 @@ module MCollective
       def ping_action
         Log.instance.info("ping_action call / request = #{request.pretty_inspect}")
         reply[:exitcode] = 0
+        reply[:version] = VERSION_MAP.index(IO.read(RELEASE_FILE).strip.gsub(/OpenShift Enterprise /, ''))
+
       end
 
     end
