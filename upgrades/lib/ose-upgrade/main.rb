@@ -206,7 +206,11 @@ HOST
       if @upgrade_state['status'] == 'COMPLETE' and
         version = VERSION_MAP[new_num = @upgrade_state['number'] + 1]
 
-        verbose "Upgrade number #{new_num} to version #{version} is available to run."
+        do_warn <<UPGRADE
+Upgrade number #{new_num} to OpenShift Enterprise version #{version} is available.
+WARNING: This is a major upgrade! Please read all relevant release notes and
+ensure that you want to upgrade and are fully prepared to proceed.
+UPGRADE
         @upgrade_state = initial_state(new_num)
       end
     end
@@ -234,7 +238,8 @@ HOST
         if u = finder.find_upgrader(@params.merge(params))
           upgrader = u
         else
-          do_warn "There is no #{type} upgrader for upgrade #{@params[:number]}"
+          # need to give instructions to install the <type> upgrader
+          @host_is[type] = false
         end
       rescue LoadError
         @host_is[type] = false

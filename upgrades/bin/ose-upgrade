@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
-# The 1.1 => 1.2 upgrade is particularly tricky because we can't rely on the
-# ruby193 scl being installed until we've performed the first part of the upgrade.
-# So, use the system ruby.
+# We do not want to require ruby193 SCL just to install o-e-release,
+# when we use that to bootstrap the channel configuration, including RHSCL.
+# So, require and use the system ruby.
 
 #--
 # Copyright 2013 Red Hat, Inc.
@@ -34,7 +34,7 @@ optparse = OptionParser.new do |opts|
     Example: #{$0}
     Example: #{$0} status
     Example: #{$0} all
-    Example: #{$0} -q channels 
+    Example: #{$0} -q channels
 
     Switches:
   USAGE
