@@ -5,7 +5,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2.7
+Version:   1.2.7.0
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Mon Dec 30 2013 Luke Meyer <lmeyer@redhat.com> 1.2.7.0-1
+- <ose-upgrade> detect non-current upgrader (lmeyer@redhat.com)
+- <ose-upgrade> begin step of upgrade 2 => 2.0 (lmeyer@redhat.com)
+
 * Mon Dec 16 2013 Brenton Leanhardt <bleanhar@redhat.com> 1.2.7-1
 - Adding the upstream man page and bumped the -release version
   (bleanhar@redhat.com)
