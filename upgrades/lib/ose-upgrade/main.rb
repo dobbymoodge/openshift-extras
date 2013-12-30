@@ -238,7 +238,8 @@ UPGRADE
         if u = finder.find_upgrader(@params.merge(params))
           upgrader = u
         else
-          do_warn "There is no #{type} upgrader for upgrade #{@params[:number]}"
+          # need to give instructions to install the <type> upgrader
+          @host_is[type] = false
         end
       rescue LoadError
         @host_is[type] = false
