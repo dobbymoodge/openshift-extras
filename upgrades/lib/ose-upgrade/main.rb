@@ -16,7 +16,6 @@
 #++
 
 require 'ose-upgrade'
-require 'rubygems'
 
 module OSEUpgrader
   class Main < Abstract
@@ -26,8 +25,8 @@ module OSEUpgrader
     VERSION_MAP = {
         0  => "1.1",
         1  => "1.2",
+        2  => "2.0",
     }
-    require 'rubygems'
     require 'yaml'
     require 'pp'
 
@@ -143,6 +142,7 @@ module OSEUpgrader
       verbose "Starting upgrade number #{num} to version #{VERSION_MAP[num]}."
       @upgrade_state['status'] = 'STARTED'
       source = self.detect_package_source
+      return 1 unless source
       if source == :rhn
         puts "In order to reconfigure your RHN channels, we will need credentials."
         STDOUT.write "What is your RHN username? "
@@ -153,7 +153,7 @@ module OSEUpgrader
         system "stty echo"
         puts
       end
-      rc, o = run_scripts_in(__FILE__, "host", "upgrades", num, source)
+      rc, _ = run_scripts_in(__FILE__, "host", "upgrades", num, source)
       File.open(RELEASE_FILE, 'w') do |file|
         file.write "OpenShift Enterprise #{VERSION_MAP[num]}\n"
         verbose "updating #{RELEASE_FILE}"
@@ -206,7 +206,11 @@ HOST
       if @upgrade_state['status'] == 'COMPLETE' and
         version = VERSION_MAP[new_num = @upgrade_state['number'] + 1]
 
-        verbose "Upgrade number #{new_num} to version #{version} is available to run."
+        do_warn <<UPGRADE
+Upgrade number #{new_num} to OpenShift Enterprise version #{version} is available.
+WARNING: This is a major upgrade! Please read all relevant release notes and
+ensure that you want to upgrade and are fully prepared to proceed.
+UPGRADE
         @upgrade_state = initial_state(new_num)
       end
     end
@@ -234,7 +238,8 @@ HOST
         if u = finder.find_upgrader(@params.merge(params))
           upgrader = u
         else
-          do_warn "There is no #{type} upgrader for upgrade #{@params[:number]}"
+          # need to give instructions to install the <type> upgrader
+          @host_is[type] = false
         end
       rescue LoadError
         @host_is[type] = false
@@ -281,10 +286,16 @@ HOST
     def detect_package_source
       return @package_source if @package_source
       load_rpm_list
-      if File.exists? '/etc/sysconfig/rhn/systemid'
+      have_rhn = File.exists? '/etc/sysconfig/rhn/systemid'
+      have_rhsm = @rpms['subscription-manager'] && system('subscription-manager identity | grep "Current identity" >& /dev/null')
+      if have_rhn && have_rhsm
+        do_fail "Both RHN and RHSM are enabled on this host.  Please disable one or the other\n" +
+                "and re-run this tool."
+        @package_source = nil
+      elsif have_rhn
         @package_source = :rhn
         verbose "RHN subscription detected."
-      elsif @rpms['subscription-manager'] && system('subscription-manager identity >& /dev/null')
+      elsif have_rhsm
         @package_source = :rhsm
         verbose "Subscription-manager subscription detected."
       else
