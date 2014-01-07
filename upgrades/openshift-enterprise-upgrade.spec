@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.0c
+Version:   2.0.1
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,36 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Tue Jan 07 2014 Luke Meyer <lmeyer@redhat.com> 2.0.1-1
+- <ose-upgrade> test_gears_complete bug 1046012 (lmeyer@redhat.com)
+- <ose-upgrade> confirm_nodes bugs 1046013, 1046017 (lmeyer@redhat.com)
+- <ose-upgrade> detect non-current upgrader (lmeyer@redhat.com)
+- <ose-upgrade> wording improvements (lmeyer@redhat.com)
+- <ose-upgrade> Update node connection hooks after running gear migrations
+  (jdetiber@redhat.com)
+- <ose-upgrade> Wait for gear upgrades to complete in
+  test_gear_migration_completed instead of returning failure.
+  (jdetiber@redhat.com)
+- <ose-upgrade> Update confirm_nodes to verify upgrade version on nodes
+  (jdetiber@redhat.com)
+- <ose-upgrade> Move gear_upgrade_extension to rubygem-openshift-origin-node
+  (jdetiber@redhat.com)
+- <ose-upgrade> Update rhsm detection logic (jdetiber@redhat.com)
+- <ose-upgrade> make sure to backup and restore aliases.{db,txt} idler.{db,txt}
+  and sts.{db,txt} on node (jdetiber@redhat.com)
+- <ose-upgrade> Remove beta flag from oo-admin-yum-validator
+  (jdetiber@redhat.com)
+- <ose-upgrade> Remove custom ose-upgrade-gears script, use oo-admin-upgrade
+  instead (jdetiber@redhat.com)
+- <ose-upgrade> Fix ruby-1.8 migrations (jdetiber@redhat.com)
+- <ose-upgrade> fix typo (jdetiber@redhat.com)
+- <ose-upgrade> Add node step to block on gear upgrades (jdetiber@redhat.com)
+- <ose-upgrade> Do not start openshift-tc service during end_maintenance_mode
+  step (jdetiber@redhat.com)
+- <ose-upgrade> More 2.0 upgrade fixes (jdetiber@redhat.com)
+- <ose-upgrade> Upgrade fixes (jdetiber@redhat.com)
+- <ose-upgrade> resurrect host version 2 upgrade (jdetiber@redhat.com)
+
 * Wed Nov 27 2013 Jason DeTiberus <jdetiber@redhat.com> 2.0.0c-1
 - Temporarily remove host v2 upgrade for GA release
 - add man page (lmeyer@redhat.com)
