@@ -585,7 +585,8 @@ sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_o
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            update_remote_tests(hostname, options.branch, "/data", options.ssh_user)
+            wantedbranch = options.install_from_local_source? ? "master" : options.branch
+            update_remote_tests(hostname, wantedbranch, "/data", options.ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
         ensure
