@@ -277,6 +277,8 @@ priority= 1
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
                                                          nil,"cucumber", '*.feature', '/data/openshift-test/rhc',
                                                          nil, '/tmp/rhc_bundle')
+              when 'gear'
+                puts "Not implimented yet for extended: #{extended_test}"
               else
                 puts "Not supported for extended: #{extended_test}"
                 exit 1
@@ -348,6 +350,7 @@ priority= 1
                   singleton_queue << build_cucumber_command("Cartridge singletons", ["@cart_singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
                 when 'site'
                 when 'rhc'
+                when 'gear'
                 else
                   puts "Not supported for extended: #{extended_test}"
                   exit 1
