@@ -324,6 +324,8 @@ priority= 1
                 #test_queues[0] << ["RHC Extended", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests"), {:retry_individually => true}]
                 # TODO: BROKEN /data/openshift-test/rhc doesn't even exist
                 # test_queues[1] << ["RHC Integration", "cd /data/openshift-test/rhc && " + wrap_test_command("RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} features\\\""), {:retry_individually => true}]
+              when 'gear'
+                puts "No extended tests implimented for: #{extended_test}"
               else
                 puts "No extended tests available for: #{extended_test}"
               end
@@ -413,6 +415,7 @@ priority= 1
                 when 'site'
                 when 'cartridge'
                 when 'rhc'
+                when 'gear'
                 else
                   puts "Not supported for extended: #{extended_test}"
                   exit 1
