@@ -80,7 +80,7 @@ module Origin
 
       run "wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
       run "rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key"      
-      run "yum install -y tito make tig mlocate bash-completion activemq-client"
+      run "yum install -y tito make tig mlocate bash-completion activemq-client zlib-devel"
 
       old_install_required_packages
     end
@@ -247,7 +247,12 @@ priority= 1
             end
           end
  
+          # test dependencies only
           ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
+          ssh(hostname, "sudo yum install -y ruby193-rubygem-net-scp ruby193-ruby-mysql ruby193-rubygem-fakefs", 60 * 5, true, 1, ssh_user)
+
+          # non-test dependencies that should be required by cartridges
+          ssh(hostname, "sudo yum install -y python-virtualenv python27-python-virtualenv python33-python-virtualenv mod_wsgi python27-mod_wsgi python33-mod_wsgi jboss-eap6-modules jboss-eap6-index jbossas-product-eap", 60 * 5, true, 1, ssh_user)
 
           if options.include_extended
             extended_tests.each do |extended_test|
@@ -256,29 +261,32 @@ priority= 1
                 (1..4).each do |i|
                   test_queues[i-1] << build_cucumber_command("REST API Group #{i}", ["@broker_api#{i}", "~@not-enterprise"])
                 end
-                test_queues[0] << build_rake_command("OpenShift Broker Application System", "cd /data/openshift-test/broker; rake test:application_system_test", {}, true)
-                test_queues[2] << build_rake_command("OpenShift Broker Cartridge System", "cd /data/openshift-test/broker; rake test:cartridge_system_test", {}, true)
-                test_queues[0] << build_rake_command("OpenShift Broker Domain System", "cd /data/openshift-test/broker; rake test:domain_system_test", {}, true)
-                test_queues[2] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext")
+                (1..2).each do |i|
+                  test_queues[i-1] << build_rake_command("OpenShift Broker Functionals Ext #{i}", "cd /data/openshift-test/broker; rake test:functionals_ext#{i}")
+                end
                 test_queues[3] << build_rake_command("OpenShift Broker Integration Ext", "cd /data/openshift-test/broker; rake test:integration_ext", {}, true)
-                test_queues[0] << build_rake_command("OpenShift Broker OO Admin Scripts", "cd /data/openshift-test/broker; rake test:oo_admin_scripts", {}, true)
+                test_queues[3] << build_rake_command("OpenShift Broker OO Admin Scripts", "cd /data/openshift-test/broker; rake test:oo_admin_scripts", {}, true)
               when 'node'
                 (1..3).each do |i|
                   test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}", "~@not-enterprise"])
                 end
                 test_queues[3] << build_rake_command("OpenShift Node Functionals Ext", "cd /data/openshift-test/node; rake ext_node_func_test", {}, true)
               when 'cartridge'
-                (1..3).each do |i|
+                (1..4).each do |i|
                   test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}", "~@not-enterprise"])
                 end
-                test_queues[3] << build_rake_command("OpenShift Cartridge Functionals Ext", "cd /data/openshift-test/node; rake ext_cart_func_test", {}, true)
+              when 'gear'
+                (1..3).each do |i|
+                  test_queues[i-1] << build_cucumber_command("Extended Gear Group #{i}", ["@gear_extended#{i}", "~@not-enterprise"])
+                end
+                (1..3).each do |i|
+                  test_queues[i-1] << build_rake_command("OpenShift Gear Functionals Ext #{i}", "cd /data/openshift-test/node; rake ext_gear_func_test#{i}", {}, true)
+                end
               when 'rhc'
                 test_queues[0] << build_cucumber_command("RHC Integration",["~@not-enterprise"],
                                                          {"RHC_SERVER" => "localhost", "QUIET" => "1"},
                                                          nil,"cucumber", '*.feature', '/data/openshift-test/rhc',
                                                          nil, '/tmp/rhc_bundle')
-              when 'gear'
-                puts "Not implimented yet for extended: #{extended_test}"
               else
                 puts "Not supported for extended: #{extended_test}"
                 exit 1
@@ -303,27 +311,29 @@ priority= 1
 
             unless options.exclude_broker?
               test_queues[3] << build_rake_command("OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units", {}, false)
-              test_queues[0] << build_rake_command("OpenShift Broker Integration", "cd /data/openshift-test/broker; rake test:integration", {}, false)
-              test_queues[2] << build_rake_command("OpenShift Broker Functional", "cd /data/openshift-test/broker; rake test:functionals", {}, false)
+              test_queues[1] << build_rake_command("OpenShift Broker Integration", "cd /data/openshift-test/broker; rake test:integration", {}, false)
+              (1..3).each do |i|
+                test_queues[i-1] << build_rake_command("OpenShift Broker Functional #{i}", "cd /data/openshift-test/broker; rake test:functionals#{i}", {}, false)
+              end
               test_queues[1] << build_rake_command("OpenShift Admin Console Functional", "cd /data/openshift-test/broker; rake test:admin_console_functionals", {}, false)
               test_queues[3] << build_cucumber_command("Broker Cucumber", ["@broker", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
             end
 
             unless options.exclude_node?
-              test_queues[0] << build_rake_command("Node Essentials", "cd /data/openshift-test/node; rake essentials_test", {}, false)
+              test_queues[2] << build_rake_command("Node Essentials", "cd /data/openshift-test/node; rake essentials_test", {}, false)
               test_queues[1] << build_rake_command("Node Frontend Plugin ApacheDB", "cd /data/openshift-test/plugins/frontend/apachedb; rake test", {}, false)
               test_queues[2] << build_rake_command("Node Frontend Plugin Apache Mod Rewrite", "cd /data/openshift-test/plugins/frontend/apache-mod-rewrite; rake test", {}, false)
-              test_queues[3] << build_rake_command("Node Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
-              test_queues[0] << build_rake_command("Node Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
+              test_queues[0] << build_rake_command("Node Frontend Plugin Apache Vhost", "cd /data/openshift-test/plugins/frontend/apache-vhost; rake test", {}, false)
+              test_queues[3] << build_rake_command("Node Frontend Plugin NodeJS Websocket", "cd /data/openshift-test/plugins/frontend/nodejs-websocket; rake test", {}, false)
               test_queues[2] << build_rake_command("Node Frontend Plugin Haproxy SNI Proxy", "cd /data/openshift-test/plugins/frontend/haproxy-sni-proxy; rake test", {}, false)
-              (1..4).each do |i|
+              (1..3).each do |i|
                 test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
               end
             end
 
             unless options.exclude_cartridge?
               #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/node; rake cart_essentials_test", {}, false)
-              (1..4).each do |i|
+              (1..3).each do |i|
                 test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
               end
             end
@@ -345,12 +355,12 @@ priority= 1
                 when 'node'
                   idle_all_gears(hostname)
                   singleton_queue << build_cucumber_command("Node singletons", ["@singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
-                when 'cartridge'
+                when 'gear'
                   idle_all_gears(hostname)
-                  singleton_queue << build_cucumber_command("Cartridge singletons", ["@cart_singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
+                  singleton_queue << build_cucumber_command("Gear singletons", ["@gear_singleton", "~@not-enterprise"], nil, nil, '/data/openshift-test/tests')
+                when 'cartridge'
                 when 'site'
                 when 'rhc'
-                when 'gear'
                 else
                   puts "Not supported for extended: #{extended_test}"
                   exit 1
@@ -452,7 +462,7 @@ echo SUCCESS
 
         begin
           puts "Updating all packages on the system..."
-          ssh_pty(hostname, "sudo yum clean metadata; sudo -s yum -y update", 60 * 20, ssh_user)
+          ssh_pty(hostname, "sudo yum clean metadata; sudo -s yum -y update", 1800, ssh_user)
 
           if options.install_required_packages?
             puts "Uploading yum client certificates..."
@@ -477,14 +487,14 @@ echo SUCCESS
             puts "Setting up yum priorities..."
             ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, ssh_user)
             repo = 'rhui-REGION-rhel-server-rhscl'
-            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, ssh_user)
+            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=10 #{repo} --save", 60 * 20, ssh_user)
             repo = 'rhui-REGION-rhel-server-releases'
-            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 60 * 20, ssh_user)
+            ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=20 #{repo} --save", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum install -y rh-amazon-rhui-client-jbeap6 rh-amazon-rhui-client-jbews2", 60 * 20, ssh_user)
             repos = ['rhui-REGION-jbeap-6-rhui-rhel-6-rpms', 'rhui-REGION-rhel-server-6-jbews2'] 
             repos.each do |repo|
-              ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=4 #{repo} --save", 60 * 20, ssh_user)
+              ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=30 #{repo} --save", 60 * 20, ssh_user)
             end
           end
 
@@ -524,14 +534,18 @@ popd > /dev/null
 }
           elsif options.install_required_packages?
             puts "Installing bootstrap packages..."
-            output, exit_code = ssh(hostname, "sudo -s yum install -y ruby193-ruby ruby193-rubygem-thor ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock ruby193-rubygem-net-ssh-multi ruby193-rubygem-net-ssh-gateway ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 20, true, 1, ssh_user)
+            output, exit_code = ssh(hostname, "sudo -s yum install -y ruby193-ruby ruby193-rubygem-thor ruby193-rubygem-capybara ruby193-rubygem-ci_reporter ruby193-rubygem-minitest ruby193-rubygem-mocha ruby193-rubygem-poltergeist ruby193-rubygem-simplecov ruby193-rubygem-webmock ruby193-net-scp ruby193-rubygem-net-ssh-multi ruby193-rubygem-net-ssh-gateway ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig ruby193-rubygem-archive-tar-minitar", 60 * 20, true, 1, ssh_user)
 
             #output, exit_code = ssh(hostname, "yum -y install git tito ruby rubygems rubygem-thor rubygem-parseconfig rubygem-json rubygem-aws-sdk ruby193-rubygem-thor ruby193-rubygem-parseconfig ruby193-rubygem-json ruby193-rubygem-aws-sdk scl-utils-build createrepo yum-priorities", 600, true)
             print_highlighted_output('Install Bootstrap Packages Output', output)
             exit 1 unless exit_code == 0
-            puts "Install more bootstrap packages..."
-            output, exit_code = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
-            print_highlighted_output('Install More Bootstrap Packages Output', output)
+            puts "Install tito..."
+            output, exit_code = ssh(hostname, "sudo yum install -y --enablerepo=epel --disablerepo=Node tito", 60 * 15, true, 1, ssh_user) if ret == 0
+            print_highlighted_output('Install tito Output', output)
+            exit 1 unless exit_code == 0
+            puts "Install puppet..."
+            output, exit_code = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --disableplugin=priorities puppet-3.1.1-1.el6", 60 * 15, true, 1, ssh_user) if ret == 0
+            print_highlighted_output('Install puppet Output', output)
             exit 1 unless exit_code == 0
             puts "Done"
 
@@ -552,7 +566,7 @@ sudo -s rm -rf /etc/puppet/modules &&
 sudo -s mkdir -p /etc/puppet/modules &&
 sudo -s puppet module install puppetlabs/stdlib &&
 sudo -s puppet module install puppetlabs/ntp &&
-sudo -s ln -sf /data/puppet-openshift_enterprise /etc/puppet/modules/openshift_origin
+sudo -s ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin
 }
           else
             puts "Performing clean install with the last published rpms..."
@@ -650,49 +664,61 @@ exec { "set hostname":
   command => "/bin/hostname \\\${ec2_public_hostname}"
 }
 EOF
-        }, 60 * 2, true, 1, options.ssh_user)
+        }, 60 * 2, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         out, ret = ssh(hostname, %{
 cat<<EOF > ~#{options.ssh_user}/configure_origin.pp
 \\\$keyfile="/var/named/Kdev.rhcloud.com.*.key"
 \\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
 class { "openshift_origin" :
-  node_fqdn              => \\\$ec2_public_hostname,
-  broker_fqdn            => "broker.dev.rhcloud.com",
-  cloud_domain           => "dev.rhcloud.com",
-  named_tsig_priv_key    => \\\$key,
-  dns_servers            => ["172.16.0.23"],
-  os_unmanaged_users     => ["#{options.ssh_user}"],
-  install_repo           => "file:///data/origin-rpms",
-  development_mode       => true,
-  configure_cgroups      => true,
-  broker_auth_plugin     => "#{authtype}",
-  configure_ntp          => false,
-  broker_auth_salt       => "ClWqe5zKtEW4CJEMyjzQ2",
-  broker_session_secret  => "devenv_secret",
-  console_session_secret => "devenv_secret",
+  node_public_hostname               => \\\$ec2_public_hostname,
+  domain                             => "dev.rhcloud.com",
+  conf_named_upstream_dns            => ["172.16.0.23"],
+  bind_key                           => \\\$key,
+  register_host_with_named           => true,
+  node_unmanaged_users               => ["#{options.ssh_user}"],
+  install_method                     => 'none',
+  development_mode                   => true,
+  configure_ntp                      => false,
+  conf_broker_session_secret         => "devenv_secret",
+  conf_console_session_secret        => "devenv_secret",
+  conf_valid_gear_sizes              => ['small', 'medium'],
+  conf_broker_multi_haproxy_per_node => true,
+  node_frontend_plugins              => ['apache-mod-rewrite', 'nodejs-websocket',
+                                         'haproxy-sni-proxy'],
+  install_cartridges                 => ['cron','diy','haproxy','mongodb',
+                                         'nodejs','perl','php','postgresql',
+                                         'python','ruby','jenkins','jenkins-client',
+                                         'mysql', 'phpmyadmin'],
 }
 EOF
-        }, 60 * 2, true, 1, options.ssh_user)
+        }, 60 * 2, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
       end
       
       def post_launch_setup(hostname, options)                        
-        puts "Setting machine hostname"
+        puts "Updating puppet manifests"
         update_puppet_manifests(hostname, options, "basic-auth")
- 
+
         # Configure httpd virtual host for binary artifacts
         # Needed for binary deployment tests
-        ssh(hostname, "sudo -s mkdir -p /var/www/html/binaryartifacts; sudo chmod 775 /var/www/html/binaryartifacts", 60 * 10, true, 1, ssh_user)
+        puts "Configuring Virtual Host for binary artifact deployment tests"
+        out, ret = ssh(hostname, "sudo -s mkdir -p /var/www/html/binaryartifacts; sudo chmod 775 /var/www/html/binaryartifacts", 60 * 10, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
         binartifacts_path = File.expand_path(File.dirname(__FILE__) + "/../misc/binaryartifacts.conf")
         scp_to(hostname, binartifacts_path, "~/", 60*10, 5, ssh_user)
-        ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
 
         # reset the eth0 network config to add the dns entries
         puts "Running puppet - configure_hostname.pp"
         ssh_pty(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp", 60 * 20, ssh_user)
-        
-        ssh(hostname, 'sudo -s rm -rf /var/named/Kdev.rhcloud.com*', 60 * 20, true, 1, ssh_user)
+
+        puts "Cleaning up old dnssec keys"
+        out = ssh(hostname, 'sudo find /var/named -name Kdev.rhcloud.com* -exec rm {} \;', 60 * 20, false, 1, ssh_user)
+        print_highlighted_output( "Cleaning up old dnssec keys", out)
+
+        puts "Configuring dnssec keys"
         out, ret = ssh(hostname, 'sudo -s yum install -y bind', 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
         out, ret = ssh(hostname, 'sudo -s /usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named dev.rhcloud.com', 60 * 20, true, 1, ssh_user)
@@ -700,29 +726,32 @@ EOF
         out, ret = ssh(hostname, 'TSIG_KEY=`sudo -s cat /var/named/Kdev.rhcloud.com.*.key | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
 
+        puts "Cleanup mongo setup marker"
         out, ret = ssh(hostname, 'sudo -s rm -f /etc/openshift/.mongo-setup-complete', 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
         puts "Running puppet - configure_origin.pp"
         ssh_pty(hostname, "sudo -s puppet apply --verbose ~#{SSH_USER}/configure_origin.pp", 60 * 30, ssh_user)
 
         # Overwrite iptables rules after puppet run
+        puts "Cleanup iptables rules"
         iptables_path = File.expand_path(File.dirname(__FILE__) + "/../misc/iptables")
         scp_to(hostname, iptables_path, "~/", 60*10, 5, ssh_user)
-        ssh(hostname, "sudo -s mv iptables /etc/sysconfig/iptables; sudo restorecon /etc/sysconfig/iptables; sudo service iptables restart", 60 * 20, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo -s mv iptables /etc/sysconfig/iptables; sudo restorecon /etc/sysconfig/iptables; sudo service iptables restart", 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
 
         # TODO: activemq is failing to start or crashing
+        puts "Restart Services"
         out, ret = ssh(hostname, "sudo -s service activemq restart; sleep 10; sudo -s service ruby193-mcollective restart", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
         print_highlighted_output( "Service Restart", out)
         restart_services_remote(hostname)
 
-        # TODO: find out why the %post section of the cartridge rpms is failing without showing up in output
-        out, ret = ssh(hostname, "sudo -s oo-admin-cartridge -a install -R -s /usr/libexec/openshift/cartridges/v2/", 60 * 20, true, 1, ssh_user)
+        # ensure all cartridges are recognized by the broker
+        puts "Add cartridges to mongo"
+        out, ret = ssh(hostname, "sudo -s oo-admin-ctl-cartridge -c import-node --activate --obsolete", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
-        print_highlighted_output( "Verify all cartridges installed into cartridge repository", out)
-       
-        # Remove abrt-addon-python until https://bugzilla.redhat.com/show_bug.cgi?id=907449 is resolved
-        out, ret = ssh(hostname, "sudo -s yum remove -y abrt-addon-python", 60 * 20, true, 1, ssh_user)
-        print_highlighted_output( "Removing abrt-addon-python for bz907449", out)
+        out, ret = ssh(hostname, "sudo -s RAILS_ENV=test oo-admin-ctl-cartridge -c import-node --activate --obsolete", 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
       end
 
       def restart_services

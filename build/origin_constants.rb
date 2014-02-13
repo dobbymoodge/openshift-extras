@@ -1,12 +1,14 @@
 require 'fileutils'
 require 'rubygems'
+require 'aws-sdk'
+
 #
 # Global definitions
 #
 
 OPTIONS = {
   "rhel"   => {
-    "amis"            => {"us-east-1" =>"ami-7b0c6312"},
+    "amis"            => {"us-east-1" =>"ami-15c59f7c"},
     "devenv_name"     => "enterprise",
     "ssh_user"        => "ec2-user",
     "ignore_packages" => [
@@ -16,7 +18,6 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-mariadb',
       'openshift-origin-cartridge-mongodb',
-      'openshift-origin-cartridge-phpmyadmin',
       'openshift-origin-cartridge-switchyard',
       'openshift-origin-util',
       'rubygem-openshift-origin-auth-kerberos',
@@ -27,6 +28,7 @@ OPTIONS = {
       'rubygem-openshift-origin-dns-route53',
       'rubygem-openshift-origin-frontend-apache-vhost',
       'openshift-origin-port-proxy',
+      'openshift-origin-cartridge-dependencies-optional-*',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@not-enterprise',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@not-enterprise',
@@ -35,6 +37,7 @@ OPTIONS = {
 
 TYPE = "m1.large"
 ZONE = 'us-east-1d'
+DISK_SIZE = 17
 VERIFIER_REGEXS = {}
 TERMINATE_REGEX = /terminate/
 VERIFIED_TAG = "qe-ready"
@@ -57,21 +60,28 @@ SIBLING_REPOS = {'enterprise-server' => ['../enterprise-server'],
                  'enterprise-rhc' => ['../enterprise-rhc'],
                  'enterprise' => ["../#{File.basename(FileUtils.pwd)}"],
                  'enterprise-dev-tools' => ['../enterprise-dev-tools'],
-                 'puppet-openshift_enterprise' => ['../puppet-openshift_enterprise'],
+                 'puppet-openshift_origin' => ['../puppet-openshift_origin'],
                  'openshift-extras' => ['../openshift-extras']}
 OPENSHIFT_ARCHIVE_DIR_MAP = {'enterprise-rhc' => 'rhc/'}
 SIBLING_REPOS_GIT_URL = {'enterprise-server' => 'git@github.com:openshift/enterprise-server.git',
                         'enterprise-rhc' => 'git@github.com:openshift/enterprise-rhc.git',
                         'enterprise' => 'git@github.com:openshift/enterprise.git',
                         'enterprise-dev-tools' => 'git@github.com:openshift/enterprise-dev-tools.git',
-                        'puppet-openshift_enterprise' => 'git@github.com:openshift/puppet-openshift_enterprise.git',
+                        'puppet-openshift_origin' => 'git@github.com:openshift/puppet-openshift_origin.git',
                         'openshift-extras' => 'git@github.com:openshift/openshift-extras.git'}
 
 DEV_TOOLS_REPO = 'enterprise-dev-tools'
 DEV_TOOLS_EXT_REPO = 'enterprise'
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO, DEV_TOOLS_EXT_REPO]
 ACCEPT_DEVENV_SCRIPT = 'true'
-$amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
+
+if (Gem.loaded_specs['aws-sdk'].version <=> Gem::Version.create('1.10')) > 0
+  DEVICE_MAPPING = [{:device_name => '/dev/sda1', :ebs => {:volume_size => DISK_SIZE}}]
+else
+  DEVICE_MAPPING = {'/dev/sda1' => { 'volume_size' => DISK_SIZE}}
+end
+$amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE,
+                :block_device_mappings => DEVICE_MAPPING}
 
 def guess_os(base_os=nil)
   return "rhel"
