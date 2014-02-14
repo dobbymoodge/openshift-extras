@@ -26,6 +26,7 @@ module OSEUpgrader
         0  => "1.1",
         1  => "1.2",
         2  => "2.0",
+        3  => "2.1",
     }
     require 'yaml'
     require 'pp'

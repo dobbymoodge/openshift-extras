@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -xe
+
+# Assumptions: Console is installed on the broker.
+
+# Start the broker and console, now in maintenance mode, so that they
+# will provide clients with an outage notification.
+for svc in openshift-broker openshift-console
+do
+	service "$svc" start
+done

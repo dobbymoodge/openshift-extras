@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -xe
+
+# Perform compatible upgrades.
+/usr/libexec/openshift/ose-upgrade-migrate-datastore --compatible

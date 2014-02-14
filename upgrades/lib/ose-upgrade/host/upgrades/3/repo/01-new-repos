@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -xe
+
+# Update puddle yum repos that point to OSE 2.0 to point to the latest OSE 2.1 errata puddle
+# Assumption: Repos configuration files are named as in our installation script.
+for i in openshift-client_tools-extra.repo openshift-infra-extra.repo openshift-jbosseap_cartridge-extra.repo openshift-node-extra.repo
+do
+  file=/etc/yum.repos.d/$i
+  if [[ -f "$file" ]]
+  then
+    # RHOSE from 2.0.* to 2.1
+    sed -i "$file" -e 's/2\.0\(\.[xz]\)\?/2.1/'
+    sed -i "$file" -e 's/-2\.0/-2.1/'
+
+    # Some puddles use datestamps to reference puddle.  Here we ensure they are
+    # using the 'latest' symlink since we know that will always exist
+    sed -i "$file" -e 's/[[:digit:]]\{4\}-[[:digit:]]\{2\}-[[:digit:]]\{2\}\.[[:digit:]]\{1,2\}/latest/'
+  fi
+done
+
+# Update cdn yum repos that point to OSE 2.0 to point to the latest CDN
+# repositories.  This isn't really needed for the 2.1 GA release since this is
+# only for development and in development these repsositories won't yet have
+# any content.  It could be that at a later time it makes sense to enable this.
+# Say, for testing 2.0.z -> 2.1.z since at that time the internal cdn will have
+# content.
+
+#for i in openshift-client_tools-cdn.repo openshift-infra-cdn.repo openshift-jbosseap_cartridge-cdn.repo openshift-node-cdn.repo
+#do
+#    sed -e 's-2.0/os-2.1/os-'
+#done
+
+yum clean all

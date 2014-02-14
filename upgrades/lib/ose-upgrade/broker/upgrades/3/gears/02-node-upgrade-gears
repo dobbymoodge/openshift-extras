@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -xe
+
+oo-admin-upgrade upgrade-node --version 2

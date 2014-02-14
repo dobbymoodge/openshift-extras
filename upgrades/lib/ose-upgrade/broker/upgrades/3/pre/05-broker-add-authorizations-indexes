@@ -1,0 +1,6 @@
+set -e
+
+# https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.36#Comment6
+
+cd /var/www/openshift/broker
+scl enable ruby193 "bundle exec rails runner 'Authorization.create_indexes'"

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -xe
+
+# Several configuration files are owned by one package in RHOSE 1.2 and are
+# owned by another package in RHOSE 2.0.  Consequently, the Yum upgrade from
+# RHOSE 1.2 to RHOSE 2.0 deletes these files if they have not been modified or
+# saves them with the .rpmsave extension if they have been modified when Yum
+# performs removes the old package.  We must stash copies of these files now so
+# that the conf step later can copy them back in place after Yum has wrought its
+# dastardly deeds.
+#
+
+# In RHOSE 1.2, the mcollective-client package owns the following file that is
+# owned by the ruby193-mcollective-client package in RHOSE 2.0:
+#
+#     /etc/mcollective/client.cfg
+
+mkdir -p /etc/openshift/upgrade/3/
+#
+# for file in \
+#   /etc/mcollective/client.cfg
+# do
+#   command cp -f "$file" /etc/openshift/upgrade/3/
+# done

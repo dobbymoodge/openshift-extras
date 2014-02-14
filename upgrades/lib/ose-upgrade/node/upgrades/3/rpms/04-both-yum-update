@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -xe
+
+# RHOSE 1.2 has the mcollective, mcollective-client, and
+# ruby193-mcollective-common packages, all of which have versioned dependencies
+# on each other.  RHOSE 2.0 has ruby193-mcollective, ruby193-mcollective-client,
+# and ruby193-mcollective-common, all of which also have versioned dependencies
+# on each other.  The RHOSE 1.2 and RHOSE 2.0 versions of
+# ruby193-mcollective-common do not match.  Therefore, we must remove
+# mcollective and mcollective-client (if they are installed) at the same time we
+# update ruby193-mcollective-common and all the other packages.
+yum shell -y <<YUM
+erase mcollective mcollective-client
+update
+transaction run
+YUM
+
+# To deal with cartridge dependency issues, one can use the following instead:
+#yum update -y --skip-broken
+
+# The yum shell command above may return a zero exit code even if there
+# were errors.  Because the yum shell command is the only way to
+# successfully deal with the mcollective package transition, because yum
+# shell's exit code cannot be trusted, and because scraping yum shell's
+# output would be error prone, we run yum check-update here on the
+# assumption that the yum shell transaction was successfull iff there
+# are no updates that can be performed afterwards.
+#
+# Yum's --quiet option appears to be broken for check-update, so we use
+# redirection to avoid potentially dumping a long list of updates to the
+# console should the earlier update have failed and updated nothing.
+yum check-update >/dev/null 2>&1

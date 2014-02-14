@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -xe
+
+# See https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.29#Comment2rmillner-DONEadmiller4ead53f6
+for f in /etc/pam.d/{runuser{,-l},system-auth-ac,sshd}
+do
+  if ! grep -q '^\s*session\s*optional\s*pam_cgroup.so\s*\(#.*\)\?$' "$f"
+  then
+    printf 'session\t\toptional\tpam_cgroup.so' >> "$f"
+  fi
+done

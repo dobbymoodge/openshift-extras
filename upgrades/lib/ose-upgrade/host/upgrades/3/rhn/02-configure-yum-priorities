@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -xe
+
+# It's OK for oo-admin-yum-validator to return a bunch of errors; it
+# does that even if it fixes things.
+/usr/bin/oo-admin-yum-validator --oo-version 2.1 --fix-all || :
+
+# Now we run oo-admin-yum-validator again though to make sure that
+# there are no errors remaining, and this time we heed the exit code.
+/usr/bin/oo-admin-yum-validator --oo-version 2.1 --report-all

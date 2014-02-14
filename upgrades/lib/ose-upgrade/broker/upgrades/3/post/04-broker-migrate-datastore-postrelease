@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -xe
+
+# Perform any postrelease datastore migration steps.  These include
+# steps that can be performed after the outage (instead of during, thus
+# reducing downtime) but must run after steps that must be run during
+# the outage.
+/usr/libexec/openshift/ose-upgrade-migrate-datastore --postrelease

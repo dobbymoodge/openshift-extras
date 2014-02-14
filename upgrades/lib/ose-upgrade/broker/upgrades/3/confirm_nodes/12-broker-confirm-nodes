@@ -1,0 +1,65 @@
+#!/usr/bin/env oo-ruby
+# Check that all node upgrade have completed, meaning that the "oseupgrade" agent
+# is installed and responds to "ping" with the right version.
+# All nodes that are in a district, have a gear, or respond must respond correctly.
+# If any are missing, user must evaluate whether that is OK and --skip if so.
+
+require 'mcollective'
+include MCollective::RPC
+UPGRADE_VERSION=2
+
+def list_nodes
+  puts "Loading the broker rails environment."
+  require "/var/www/openshift/broker/config/environment"
+  # Disable analytics for admin scripts
+  Rails.configuration.analytics[:enabled] = false
+  puts "Retrieving list of expected nodes."
+  ( District.all.distinct('server_identities.name') +
+    Application.all.distinct('group_instances.gears.server_identity')
+  ).uniq
+end
+
+# Via mcollective, check that every node has gone through the upgrade.
+def check_nodes(list)
+  puts "Checking that all known nodes are upgraded."
+  no_response=list.clone
+  not_upgraded=[]
+  mc = rpcclient("oseupgrade")
+  begin
+    reply = mc.ping
+    reply.each do |response|
+      no_response.delete(response[:sender]) # responded, so not missing.
+      if response[:statuscode] != 0
+        not_upgraded.push(response[:sender])
+      elsif response[:data][:version] != UPGRADE_VERSION
+        puts "#{response[:sender]} returned upgrade version '#{response[:data][:version]}', expecting #{UPGRADE_VERSION}"
+        not_upgraded.push(response[:sender])
+      end
+    end
+    if (no_response + not_upgraded).size > 0
+      no_response.each {|s| puts "Node '#{s}' did not respond."}
+      not_upgraded.each {|s| puts "Node '#{s}' has not been upgraded successfully."}
+      return 1 # failure
+    else
+      return 0 # success
+    end
+  ensure
+    mc.disconnect
+  end
+end
+
+# If any appear behind the times, retry for a minute in case the facter just needed to run.
+rc = 0
+node_list = list_nodes()
+rc = check_nodes(node_list)
+6.times do
+  break if rc == 0
+  puts "\nWill try again in 10 seconds...\n"
+  sleep 10
+  rc = check_nodes(node_list)
+end
+
+# All nodes that are in a district, have a gear, or respond must respond correctly.
+# If any are missing, user must evaluate whether that is OK and --skip if so.
+puts "Please ensure all nodes are upgraded successfully before retrying this step." if rc != 0
+exit rc

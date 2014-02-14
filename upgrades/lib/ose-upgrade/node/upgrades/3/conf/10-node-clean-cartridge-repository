@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -xe
+
+# Per https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.35#Comment12
+# we need to clean the cartridge_repository of any old cartridge versions which 
+# may still be present, the mcollective service was previously stopped in the 
+# outage step and will be started during the maintenance_mode step.
+# In 1.2 the cartridge repository had to be rebuilt manually, with 2.0 the 
+# cartridge repository is rebuilt when ruby193-mcollective is started.
+
+rm -rf /var/lib/openshift/.cartridge_repository/*

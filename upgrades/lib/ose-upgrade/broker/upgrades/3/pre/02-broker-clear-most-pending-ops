@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -xe
+
+# Clear out pending operations that are older than 1 hour.  We do this before
+# staging the outage (rather than during) in order to reduce downtime.
+oo-admin-clear-pending-ops

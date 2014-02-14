@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Via mcollective, mark gear upgrades completed
+oo-mco rpc --agent oseupgrade --action gear_upgrades_complete

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -xe
+
+# These files were backed up in the backup-conf step, qv.
+#
+# Note that it is critical that this step be performed before
+# upgrades/2/conf_with_node/10-combo-fixes (which operate on nodes.db and
+# nodes.txt) is run.
+command cp -f /etc/openshift/upgrade/2/000001_openshift_origin_node_servername.conf /etc/httpd/conf.d/
+
+for file in nodes.db nodes.txt geardb.json routes.json sts.db sts.txt aliases.db aliases.txt idler.db idler.txt; do
+  command cp -f /etc/openshift/upgrade/2/${file}    /var/lib/openshift/.httpd.d/
+done
