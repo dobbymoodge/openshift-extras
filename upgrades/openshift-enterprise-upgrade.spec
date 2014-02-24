@@ -91,7 +91,7 @@ rm -rf $RPM_BUILD_ROOT
 # items that have to be specified for each RPM
 Summary:   Version and upgrade capabilities for OpenShift Enterprise installations
 Group:     Network/Daemons
-Requires:  openshift-enterprise-yum-validator >= %version
+Requires:  openshift-enterprise-yum-validator >= %{version}
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires:  ruby
 
@@ -164,7 +164,7 @@ Summary:   Upgrade capabilities for OpenShift Enterprise brokers and installatio
 Group:     Network/Daemons
 Requires:  openshift-origin-broker-util
 Requires:  openshift-origin-broker
-Requires:  openshift-enterprise-release >= %version
+Requires:  openshift-enterprise-release >= %{version}
 Requires:  openshift-enterprise-yum-validator
 
 %description broker
