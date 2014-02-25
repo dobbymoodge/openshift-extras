@@ -2,7 +2,7 @@
 
 set -xe
 
-for svc in mcollective openshift-port-proxy
+for svc in ruby193-mcollective openshift-node-web-proxy openshift-iptables-port-proxy
 do
 	service "$svc" stop
 done

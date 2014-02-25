@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -xe
-
-# openshift-origin-port-proxy has been deprecated with 2.0
-yum -y remove openshift-origin-port-proxy

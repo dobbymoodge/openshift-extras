@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -xe
-
-# The abstract cartridges are required only by v1 cartridges, which no
-# longer work in RHOSE 2.0.
-yum -y erase openshift-origin-cartridge-abstract openshift-origin-cartridge-abstract-jboss

@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -xe
-
-# Per https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.30#Comment7rmillnerDONE622e1b01dandf52b63356admiller
-# we must run the following command after updating packages but prior to
-# running migrations:
-oo-cgroup-enable --with-all-containers
