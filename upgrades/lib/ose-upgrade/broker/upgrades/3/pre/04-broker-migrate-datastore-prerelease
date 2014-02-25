@@ -5,4 +5,5 @@ set -xe
 # Perform any prerelease datastore migration steps.  Typically, these are steps
 # that can be performed before the outage to speed up the actual migration (and
 # thus reduce downtime).
-/usr/libexec/openshift/ose-upgrade-migrate-datastore --prerelease
+#/usr/libexec/openshift/ose-upgrade-migrate-datastore --prerelease
+

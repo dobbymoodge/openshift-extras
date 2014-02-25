@@ -15,1379 +15,200 @@ def migrate(type)
 end
 
 ###############################################################################
-# The 2.0.29 migration code is taken from li repo, stage-2.0.29 branch,
-# misc/maintenance/bin/migrate-mongo-2.0.29.  Changes:
-#
-# * Wrapped the script in a module.
-#
-# * Added the VERSIONS table and migrate method.
-#
-# * Converted rhdomain into a method.
-#
-# * Replaced $version by opt['version'].
-#
-# * Replaced $db by db.
-#
-# * Added remove_gear_id_index to replicate the manual step done in 2.0.29.1: 
-#   https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.29.1
-
-module Migrate_2_0_29
-  #####################
-  # This migrate script will migrate all env vars and ssh keys in all apps and domains 
-  #####################
-
-  VERSIONS = {
-    :compatible => true
-  }
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-    when :postrelease
-    when :non_compatible
-    when :compatible
-      remove_gear_id_index
-      migrate_apps
-    end
-  end
-
-  def self.remove_gear_id_index
-    db.collection("usage_records").drop_index("gear_id_1")
-  end
-
-  def self.rhdomain
-    Rails.configuration.openshift[:domain_suffix]
-  end
-
-  def self.get_domain(domain_id)
-    ret_d = nil
-    $dom.find({ "_id" => domain_id }, { :fields => ["namespace", "env_vars"] }) do |cursor|
-      cursor.each do |d|
-        ret_d = d
-        break
-      end
-    end
-    ret_d
-  end
-
-  def self.fix_domain(d, domain_id, new_env_vars)
-    env_attrs = d["env_vars"].dup
-    return if env_attrs.find { |env| env["key"]=="JENKINS_URL" }
-    env_attrs << new_env_vars
-    env_attrs.flatten!
-    env_attrs.uniq!
-    $dom.update( {"_id" => domain_id}, { "$set" => { env_vars: env_attrs }})
-  end
-
-  def self.migrate_apps
-    $coll = db.collection('applications')
-    $dom = db.collection('domains')
-    query = { "component_instances.cartridge_name" => "jenkins-1.4" }
-    selection = {:fields => ["component_instances.cartridge_name",
-                           "component_instances.component_properties",
-                           "component_instances._id",
-                           "name",
-                           "domain_id"], :timeout => false}
-
-    total = 0
-    $coll.find(query, selection) do |cursor|
-      cursor.each do |app|
-        print "Migrating app #{app.inspect}.. " if opt['version']
-        begin
-          print "."
-          component_id = nil
-          d = get_domain(app["domain_id"])
-          if d.nil?
-            puts "Domain not found for app #{app['_id']}!"
-            next
-          end
-          app["component_instances"].each do |comp|
-            if comp["cartridge_name"]=="jenkins-1.4"
-              component_id = comp["_id"]
-              if component_id.nil?
-                puts "ERROR : jenkins cartridge not found in app #{app['_id'].to_s}"
-                next
-              end
-              if comp["component_properties"].is_a?(Hash) and comp["component_properties"].has_key?("username") and comp["component_properties"].has_key?("password")
-                env_vars = []
-                env_vars << { "key" => "JENKINS_USERNAME", "value" => comp["component_properties"]["username"], "component_id" => component_id }
-                env_vars << { "key" => "JENKINS_PASSWORD", "value" => comp["component_properties"]["password"], "component_id" => component_id }
-                url = "https://#{app["name"]}-#{d["namespace"]}.#{rhdomain}/"
-                env_vars << { "key" => "JENKINS_URL", "value" => url, "component_id" => component_id }
-                fix_domain(d, app["domain_id"], env_vars)
-                break
-              else
-                puts "ERROR : insufficient component_properties in app #{app['_id'].to_s}"
-              end
-            end
-          end
-          total +=1
-        rescue Exception=>e
-          puts
-          puts "Exception (#{e.message}) while migrating app #{app.inspect}"
-          print e.backtrace
-        end
-      end
-    end
-    puts
-    puts "Mongo migrated #{total} domains with jenkins applications"
-  end
-end
-
-###############################################################################
-# The 2.0.30 migration code is taken from li repo, stage-2.0.30 branch,
-# misc/maintenance/bin/migrate-mongo-2.0.30.
-#
-# * Wrapped the script in a module.
-#
-# * Added the VERSIONS table and migrate method.
-#
-# * Converted rhdomain into a method.
-#
-# * Replaced $db by db.
-
-module Migrate_2_0_30
-  VERSIONS = {
-    :compatible => true
-  }
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-    when :postrelease
-    when :non_compatible
-    when :compatible
-      migrate_apps
-    end
-  end
-
-  def self.rhdomain
-    Rails.configuration.openshift[:domain_suffix]
-  end
-
-  def self.get_domain(domain_id)
-    ret_d = nil
-    $dom.find({ "_id" => domain_id }, { :fields => ["namespace", "env_vars"] }) do |cursor|
-      cursor.each do |d|
-        ret_d = d
-        break
-      end
-    end
-    ret_d
-  end
-
-  def self.fix_domain(d, domain_id, new_env_vars)
-    env_attrs = d["env_vars"].dup
-    return if env_attrs.find { |env| env["key"]=="JENKINS_URL" }
-    env_attrs << new_env_vars
-    env_attrs.flatten!
-    env_attrs.uniq!
-    $dom.update( {"_id" => domain_id}, { "$set" => { env_vars: env_attrs }})
-  end
-
-  def self.migrate_apps
-    $coll = db.collection('applications')
-    $dom = db.collection('domains')
-    query = { "component_instances.cartridge_name" => "jenkins-1.4" }
-    selection = {:fields => ["component_instances.cartridge_name",
-                           "component_instances.component_properties",
-                           "component_instances._id",
-                           "name",
-                           "domain_id"], :timeout => false}
-
-    total = 0
-    fixed_total = 0
-    $coll.find(query, selection) do |cursor|
-      cursor.each do |app|
-        print "Migrating app #{app.inspect}.. " if opt['verbose']
-        begin
-          print "."
-          component_id = nil
-          d = get_domain(app["domain_id"])
-          if d.nil?
-            puts "Domain not found for app #{app['_id']}!"
-            next
-          end
-          comp_count=-1
-          app["component_instances"].each do |comp|
-            comp_count += 1
-            if comp["cartridge_name"]=="jenkins-1.4"
-              component_id = comp["_id"]
-              if component_id.nil?
-                puts "ERROR : jenkins cartridge not found in app #{app['_id'].to_s}"
-                next
-              end
-              if comp["component_properties"].is_a?(Hash) and comp["component_properties"].has_key?("username") and comp["component_properties"].has_key?("password")
-                # do nothing, this portion was fixed already in migrate-2.0.29
-              else
-                jenk_app = Application.find_by({"_id" => app["_id"].to_s})
-                gear = nil
-                jenk_app.group_instances.each { |gi|
-                  gi.gears.each { |g|
-                    if g.uuid==jenk_app.uuid
-                      gear = g
-                      break
-                    end
-                  }
-                }
-                if gear
-                  env_hash = gear.get_proxy.get_gear_envs(gear.uuid)
-                  if env_hash.has_key?("JENKINS_USERNAME") and env_hash.has_key?("JENKINS_PASSWORD")
-                    env_vars = []
-                    env_vars << { "key" => "JENKINS_USERNAME", "value" => env_hash["JENKINS_USERNAME"], "component_id" => component_id }
-                    env_vars << { "key" => "JENKINS_PASSWORD", "value" => env_hash["JENKINS_PASSWORD"], "component_id" => component_id }
-                    url = "https://#{app['name']}-#{d['namespace']}.#{rhdomain}/"
-                    env_vars << { "key" => "JENKINS_URL", "value" => url, "component_id" => component_id }
-                    fix_domain(d, app["domain_id"], env_vars)
-                    app_update = { "$set" => { "component_instances.#{comp_count}.component_properties" => { "username" => env_hash["JENKINS_USERNAME"],
-                                                                                                              "password" => env_hash["JENKINS_PASSWORD"] } } }
-                    $coll.update({"_id"=>app["_id"], "component_instances.#{comp_count}._id" => component_id}, app_update)
-                    fixed_total += 1
-                  else
-                    puts "The gear for app #{app['_id']} does not have JENKINS env variables"
-                  end
-                else
-                  puts "Could not find gear for app #{app['_id'].to_s}"
-                end
-              end
-            end
-          end
-          total +=1
-        rescue Exception=>e
-          puts
-          puts "Exception (#{e.message}) while migrating app #{app.inspect}"
-          print e.backtrace
-        end
-      end
-    end
-    puts
-    puts "Mongo migrated #{fixed_total}/#{total} domains with jenkins applications"
-  end
-end
-
-###############################################################################
-# The 2.0.30.1 migration code is taken from li repo, stage-2.0.30 branch,
-# misc/maintenance/bin/rhc-fix-gear-filelimit.  Changes:
-#
-# * Wrapped the script in a module.
-#
-# * Added the VERSIONS table and migrate method.
-#
-# * Deleted definition of db.
-
-module Migrate_2_0_30_1
-  VERSIONS = {
-    :compatible => true
-  }
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-    when :postrelease
-    when :non_compatible
-    when :compatible
-      migrate_apps
-    end
-  end
-
-  def self.migrate_apps
-    total_count = failure_count = 0
-
-    app_collection = db.collection('applications')
-    query = { "group_overrides.additional_filesystem_gb" => { "$ne" => nil } }
-    selection = {:fields => [], :timeout => false}
-
-    app_collection.find(query, selection) do |cursor|
-      cursor.each do |app|
-        begin
-          total_count += 1
-          print "Migrating app #{app['_id']}... " if opt['verbose']
-          app_obj = Application.find_by(_id: Moped::BSON::ObjectId(app['_id'].to_s))
-          Application.run_in_application_lock(app_obj) do 
-            app_obj.reload
-            app_obj.group_instances.each do |gi|
-              addtl_fs_gb = gi.addtl_fs_gb
-              next if addtl_fs_gb == 0
-              handle = RemoteJob.create_parallel_job
-              gi.gears.each do |gear|
-                gear.set_addtl_fs_gb(addtl_fs_gb, handle)
-              end
-              RemoteJob.execute_parallel_jobs(handle)
-              RemoteJob.get_parallel_run_results(handle) do |tag, gear_id, output, status|
-                raise Exception.new "Failed to fix max file limit for gear #{gear_id}" if status != 0
-              end
-            end
-          end
-          puts "Done" if opt['verbose']
-        rescue Exception=>e
-          failure_count += 1
-          puts "Exception (#{e.message}) while migrating app_id #{app['_id']}"
-          puts e.backtrace.inspect
-        end
-      end
-    end
-
-    print "Summary:: "
-    if failure_count == 0
-      print "SUCCESS"
-    else
-      print "FAILED"
-    end
-    puts " (total: #{total_count}, failed: #{failure_count})"
-  end
-end
-
-###############################################################################
-# The 2.0.31 migration code is taken from li repo, stage-2.0.31 branch,
-# rhc-broker/script/rhc-admin-migrate-datastore;
-#
-# * Wrapped the script in a module.
-#
-# * Added the VERSIONS table and migrate method.
-#
-# * Deleted version-checking logic.
-#
-# * Deleted superfluous echos.
-
-module Migrate_2_0_31
-  VERSIONS = {
-    :compatible => true,
-    :non_compatible => false
-  }
-
-  def self.migrate(type)
-    total = 0
-    fixed_total = 0
-    if type == :compatible
-      applications = db.collection('applications')
-      #domains = db.collection('domains')
-      #cloud_users = db.collection('cloud_users')
-      query = { }
-      selection = {:fields => ["component_instances.cartridge_name",
-                               "component_instances.component_properties",
-                               "component_instances._id",
-                               "name",
-                               "domain_id"], :timeout => false}
-      applications.find(query, selection) do |cursor|
-        cursor.each do |app|
-          print "."
-          total += 1
-          fixed_total += 1
-        end
-      end
-      puts "\nMigrated #{fixed_total}/#{total} applications"
-    end
-  end
-end
-
-###############################################################################
-# The 2.0.32 migration code is taken from li repo, stage-2.0.32 branch,
-# rhc-broker/script/rhc-admin-migrate-datastore.  Changes:
-#
-# * Wrapped the script in a module.
-# * Commented out postrelease steps, since they were not run for this release
-#   per https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.32#Comment14
-
-module Migrate_2_0_32
-  VERSIONS = {
-    :compatible => false,
-    :non_compatible => true,
-    :prerelease => true #,
-    #:postrelease => true
-  }
-
-  CARTRIDGE_CHANGES = [{"old_name" => "phpmyadmin-3.4", "new_name" => "phpmyadmin-3", "old_version" => "3.4", "new_version" => "3"},
-                       {"old_name" => "jbosseap-6.0", "new_name" => "jbosseap-6", "old_version" => "6.0", "new_version" => "6"},
-                       {"old_name" => "jenkins-1.4", "new_name" => "jenkins-1", "old_version" => "1.4", "new_version" => "1"},
-                       {"old_name" => "jenkins-client-1.4", "new_name" => "jenkins-client-1", "old_version" => "1.4", "new_version" => "1"},
-                       {"old_name" => "switchyard-0.6", "new_name" => "switchyard-0", "old_version" => "0.6", "new_version" => "0"}]
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-      ensure_members_index
-      create_domain_members
-      create_application_members
-    #when :postrelease
-      #update_gears
-      #verify_gears
-    when :non_compatible
-      ensure_members_index
-      create_domain_members
-      create_application_members
-      adjust_cartridge_versions
-    end
-  end
-
-  def self.verify_gears
-    query = { "scalable" => true, "group_instances.gears.port_interfaces" => { "$exists" => false }  }
-    count = db["applications"].find(query).count
-    puts "ERROR: Verification of gear migration failed. Count: #{count}" if count!=0 
-  end
-
-  def self.update_gears
-    start_time = (Time.now.to_f * 1000).to_i
-    gear_map = OpenShift::ApplicationContainerProxy.get_all_gears_endpoints
-    total_time = (Time.now.to_f * 1000).to_i - start_time
-    puts "Time to get all gears from nodes: #{total_time.to_f/1000}s"
-    puts "Total gears found on the nodes: #{gear_map.length}"
-
-    selection = {:fields => ["group_instances.gears.uuid"], :timeout => false}
-    OpenShift::DataStore.find(:applications, {"scalable" => true}, selection) do |app|
-      gi_index = -1
-      app["group_instances"].each do |gi|
-        gi_index += 1
-        gear_index = -1
-        gi['gears'].each do |g|
-          gear_index += 1
-          endpoints = gear_map[g["uuid"]]
-          updated_port_interfaces = endpoints.map do |ep|
-            cart = CartridgeCache.find_cartridge(ep["cartridge_name"])
-            { 
-              "_id" => BSON::ObjectId.new,
-              "cartridge_name" => cart.name,
-              "external_address" => ep['external_address'],
-              "external_port" => ep['external_port'],
-              "internal_address" => ep['internal_address'],
-              "internal_port" => ep['internal_port']
-            }
-          end 
-          filter = {"group_instances.#{gi_index}.gears.#{gear_index}.uuid" => g["uuid"]}
-          update_query = {"$set" => {"group_instances.#{gi_index}.gears.#{gear_index}.port_interfaces" => updated_port_interfaces}}
-          db["applications"].update(filter, update_query)
-        end 
-      end
-    end
-  end
-
-  #
-  # Update old cartridge names to be simpler
-  #
-  def self.adjust_cartridge_versions
-    CARTRIDGE_CHANGES.each do |cart_change|
-      puts "Updating cartridge #{cart_change['old_name']} to #{cart_change['new_name']}"
-
-      print "Updating component instances for all applications...\t"
-      update_component_instances(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating group overrides for all applications...\t"
-      update_group_overrides(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating cartridge version for all applications...\t"
-      update_cartridge_version(cart_change['new_name'], cart_change['old_version'], cart_change['new_version'])
-      puts "Done."
-
-      print "Updating cartridge version for premium cartridges in usage...\t"
-      update_premium_cart_version(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Verifying cartridge update for all applications...\t"
-      missed_update_count = verify_migration(cart_change['old_name'], cart_change['new_name'], cart_change['old_version'])
-      puts missed_update_count == 0 ? "Successful." : "Failed."
-      puts ""
-    end
-  end
-
-
-  def self.update_component_instances(old_cart_name, new_cart_name)
-    ci_index = 0
-    ci_search_count = 1
-    while ci_search_count > 0 do
-      filter = {"component_instances.#{ci_index}.cartridge_name" => old_cart_name}
-      update_query = {"$set" => {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
-                                 "component_instances.#{ci_index}.component_name" => new_cart_name}}
-      db["applications"].update(filter, update_query, { :multi => true })
-
-      ci_index += 1
-      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_group_overrides(old_cart_name, new_cart_name)
-    # Update all the cartridge names in group_overrides
-    go_index = 0
-    go_search_count = 1
-    while go_search_count > 0 do
-      component_index = 0
-      component_search_count = 1
-      while component_search_count > 0
-        filter = {"group_overrides.#{go_index}.components.#{component_index}.cart" => old_cart_name}
-        update_query = {"$set" => {"group_overrides.#{go_index}.components.#{component_index}.cart" => new_cart_name,
-                                   "group_overrides.#{go_index}.components.#{component_index}.comp" => new_cart_name}}
-        db["applications"].update(filter, update_query, { :multi => true })
-        component_index += 1
-        component_search_count = db["applications"].find({"group_overrides.#{go_index}.components.#{component_index}" => {"$exists" => true}}).count
-      end
-      go_index += 1
-      go_search_count = db["applications"].find({"group_overrides.#{go_index}.components.0" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_cartridge_version(new_cart_name, old_cart_version, new_cart_version)
-    ci_index = 0
-    ci_search_count = 1
-    while ci_search_count > 0 do
-      filter = {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
-                "component_instances.#{ci_index}.cartridge_vendor" => "redhat",
-                "component_instances.#{ci_index}.version" => old_cart_version}
-      update_query = {"$set" => {"component_instances.#{ci_index}.version" => new_cart_version}}
-      db["applications"].update(filter, update_query, { :multi => true })
-
-      ci_index += 1
-      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_premium_cart_version(old_cart_name, new_cart_name)
-    filter = {"cart_name" => old_cart_name}
-    update_query = {"$set" => {"cart_name" => new_cart_name}}
-
-    db["usage"].update(filter, update_query, { :multi => true })
-    db["usage_records"].update(filter, update_query, { :multi => true })
-  end
-
-  def self.verify_migration(old_cart_name, new_cart_name, old_cart_version)
-    missed_update_count = 0
-    missed_update_count += db["applications"].find({"component_instances.cartridge_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances.component_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.cart" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.comp" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances" => {"$elemMatch" => {"cartridge_name" => new_cart_name, "cartridge_vendor" => "redhat", "version" => old_cart_version}}}).count
-    missed_update_count += db["usage"].find({"cart_name" => old_cart_name}).count
-    missed_update_count += db["usage_records"].find({"cart_name" => old_cart_name}).count
-    
-    missed_update_count
-  end
-
-
-  def self.ensure_members_index
-    ['applications', 'domains'].each do |name|
-      db.collection(name).create_index([['members._id', Mongo::ASCENDING]])
-    end
-  end
-
-  #
-  # Populate the members array with the CloudUser that owns the domain.
-  #
-  # This is a reentrant call, intended to be used prior to release and then
-  # at release.
-  #
-  def self.create_domain_members
-    changed = 0
-    sizes = Rails.configuration.openshift[:gear_sizes].map(&:to_s)
-    col = db.collection('domains')
-    col.find({'members._id' => {'$exists' => false}}, {:fields => ['owner_id']}).each do |d|
-      col.update(
-        {'_id' => d['_id']},
-        {'$set' => {
-          # implicit members
-          'members' => [{
-            '_id' => d['owner_id'],
-            'r' => 'admin',
-            'n' => user_names[d['owner_id']],
-            'f' => [['owner', 'admin']],
-          }],
-          'allowed_gear_sizes' => sizes,
-        }}
-      )
-      changed += 1
-    end
-
-    puts "Domain members updated: #{changed}"
-  end
-
-  #
-  # Populate the members array with the CloudUser that owns the domain, but
-  # with the source of the member the domain.  Also set the domain_namespace
-  # for the owning domain and the owner_id of the user who owns the domain.
-  #
-  # This is a reentrant call, intended to be used prior to release and then
-  # at release.
-  #
-  def self.create_application_members
-    domains_to_owners = {}
-    puts "  Loading domain ownership into memory"
-    db.collection('domains').find({}, {:fields => ['owner_id', 'canonical_namespace']}).each do |d|
-      domains_to_owners[d['_id']] = [d['owner_id'], d['canonical_namespace']]
-    end
-
-    changed = 0
-
-    col = db.collection('applications')
-    col.find({'members._id' => {'$exists' => false}}, {:fields => ['owner_id', 'domain_id']}).each do |d|
-      owner_id, namespace = domains_to_owners[d['domain_id']]
-      col.update(
-        {'_id' => d['_id']},
-        {'$set' => {
-          # denormalized data
-          'owner_id' => owner_id,
-          'domain_namespace' => namespace,
-          # implicit members
-          'members' => [{
-            '_id' => owner_id,
-            'r' => 'admin',
-            'n' => user_names[owner_id],
-            'f' => [['domain', 'admin']],
-          }]
-        }}
-      )
-      changed += 1
-    end
-
-    puts "Application members updated: #{changed}"
-  end
-
-  #
-  # Helper for reverting the previously migrated values
-  #
-  def self.reset_incremental_updates
-    db.collection('domains').update({}, {"$unset" => {"members"  => 1}}, {"multi" => true})
-    db.collection('applications').update({}, {"$unset" => {"members"  => 1, 'domain_namespace' => 1, 'owner_id' => 1}}, {"multi" => true})
-  end
-
-  #
-  # Retrieve a map of CloudUser ids => login values for use
-  # as the names of the member fields.
-  #
-  def self.user_names
-    $user_names ||= begin
-      map = {}
-      puts "  Loading user names into memory"
-      db.collection('cloud_users').find({}, {:fields => ['login']}).each do |d|
-        map[d['_id']] = d['login']
-      end
-      map
-    end
-  end
-end
-
-###############################################################################
-# The 2.0.33 migration code is taken from li repo, stage-2.0.33 branch,
+# The 2.0.37 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.37),
 # rhc-broker/script/rhc-admin-migrate-datastore;
 #
 # * Wrapped the script in a module.
 
-module Migrate_2_0_33
+module Migrate_2_0_37
   VERSIONS = {
-    :compatible => false,
-    :non_compatible => true,
-    :prerelease => false,
-    :postrelease => false
+    :compatible => false,                                                                                      
+    :"non-compatible" => true,                                                                                 
+    :prerelease => false,                                                                                      
+    :postrelease => false,                                                                                     
+    :run_parallel => [:"non-compatible"]
   }
-
-  CARTRIDGE_CHANGES = [{"old_name" => "phpmyadmin-3", "new_name" => "phpmyadmin-4", "old_version" => "3", "new_version" => "4"}]
 
   def self.migrate(type)
     case type
     when :prerelease
     when :postrelease
-    when :non_compatible
-      adjust_cartridge_versions
-    end
-  end
-
-  #
-  # Update old cartridge names to be simpler
-  #
-  def self.adjust_cartridge_versions
-    CARTRIDGE_CHANGES.each do |cart_change|
-      puts "Updating cartridge #{cart_change['old_name']} to #{cart_change['new_name']}"
-
-      print "Updating component instances for all applications...\t"
-      update_component_instances(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating group overrides for all applications...\t"
-      update_group_overrides(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating cartridge version for all applications...\t"
-      update_cartridge_version(cart_change['new_name'], cart_change['old_version'], cart_change['new_version'])
-      puts "Done."
-
-      print "Updating cartridge version for premium cartridges in usage...\t"
-      update_premium_cart_version(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Verifying cartridge update for all applications...\t"
-      missed_update_count = verify_migration(cart_change['old_name'], cart_change['new_name'], cart_change['old_version'])
-      puts missed_update_count == 0 ? "Successful." : "Failed."
-      puts ""
-    end
-  end
-
-
-  def self.update_component_instances(old_cart_name, new_cart_name)
-    ci_index = 0
-    ci_search_count = 1
-    while ci_search_count > 0 do
-      filter = {"component_instances.#{ci_index}.cartridge_name" => old_cart_name}
-      update_query = {"$set" => {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
-                                 "component_instances.#{ci_index}.component_name" => new_cart_name}}
-      db["applications"].update(filter, update_query, { :multi => true })
-
-      ci_index += 1
-      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_group_overrides(old_cart_name, new_cart_name)
-    # Update all the cartridge names in group_overrides
-    go_index = 0
-    go_search_count = 1
-    while go_search_count > 0 do
-      component_index = 0
-      component_search_count = 1
-      while component_search_count > 0
-        filter = {"group_overrides.#{go_index}.components.#{component_index}.cart" => old_cart_name}
-        update_query = {"$set" => {"group_overrides.#{go_index}.components.#{component_index}.cart" => new_cart_name,
-                                   "group_overrides.#{go_index}.components.#{component_index}.comp" => new_cart_name}}
-        db["applications"].update(filter, update_query, { :multi => true })
-        component_index += 1
-        component_search_count = db["applications"].find({"group_overrides.#{go_index}.components.#{component_index}" => {"$exists" => true}}).count
-      end
-      go_index += 1
-      go_search_count = db["applications"].find({"group_overrides.#{go_index}.components.0" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_cartridge_version(new_cart_name, old_cart_version, new_cart_version)
-    ci_index = 0
-    ci_search_count = 1
-    while ci_search_count > 0 do
-      filter = {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
-                "component_instances.#{ci_index}.cartridge_vendor" => "redhat",
-                "component_instances.#{ci_index}.version" => old_cart_version}
-      update_query = {"$set" => {"component_instances.#{ci_index}.version" => new_cart_version}}
-      db["applications"].update(filter, update_query, { :multi => true })
-
-      ci_index += 1
-      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_premium_cart_version(old_cart_name, new_cart_name)
-    filter = {"cart_name" => old_cart_name}
-    update_query = {"$set" => {"cart_name" => new_cart_name}}
-
-    db["usage"].update(filter, update_query, { :multi => true })
-    db["usage_records"].update(filter, update_query, { :multi => true })
-  end
-
-  def self.verify_migration(old_cart_name, new_cart_name, old_cart_version)
-    missed_update_count = 0
-    missed_update_count += db["applications"].find({"component_instances.cartridge_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances.component_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.cart" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.comp" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances" => {"$elemMatch" => {"cartridge_name" => new_cart_name, "cartridge_vendor" => "redhat", "version" => old_cart_version}}}).count
-    missed_update_count += db["usage"].find({"cart_name" => old_cart_name}).count
-    missed_update_count += db["usage_records"].find({"cart_name" => old_cart_name}).count
-
-    missed_update_count
-  end
-end
-
-###############################################################################
-# The 2.0.34 migration code is taken from li repo, stage-2.0.34 branch,
-# rhc-broker/script/rhc-admin-migrate-datastore;
-#
-# * Wrapped the script in a module.
-#
-# * Renamed $app_op_group_types_map, $app_op_types_map, $domain_op_types_map,
-#   and $user_op_types_map to @@app_op_group_types_map, @@app_op_types_map,
-#   @@domain_op_types_map, and @@user_op_types_map, respectively.
-
-module Migrate_2_0_34
-  VERSIONS = {
-    :compatible => true,
-    :non_compatible => true,
-    :prerelease => false,
-    :postrelease => false
-  }
-
-  @@app_op_group_types_map = nil
-  @@app_op_types_map = nil
-  @@domain_op_types_map = nil
-  @@user_op_types_map = nil
-
-
-  def self.get_app_op_group_types_map
-    if @@app_op_group_types_map.nil?
-      @@app_op_group_types_map = {"change_members" => ChangeMembersOpGroup.to_s,
-                                 "update_configuration" => UpdateAppConfigOpGroup.to_s,
-                                 "add_features" => AddFeaturesOpGroup.to_s,
-                                 "remove_features" => RemoveFeaturesOpGroup.to_s,
-                                 "make_ha" => MakeAppHaOpGroup.to_s,
-                                 "update_component_limits" => UpdateCompLimitsOpGroup.to_s,
-                                 "delete_app" => DeleteAppOpGroup.to_s,
-                                 "remove_gear" => RemoveGearOpGroup.to_s,
-                                 "scale_by" => ScaleOpGroup.to_s,
-                                 "replace_all_ssh_keys" => ReplaceAllSshKeysOpGroup.to_s,
-                                 "add_alias" => AddAliasOpGroup.to_s,
-                                 "remove_alias" => RemoveAliasOpGroup.to_s,
-                                 "add_ssl_cert" => AddSslCertOpGroup.to_s,
-                                 "remove_ssl_cert" => RemoveSslCertOpGroup.to_s,
-                                 "patch_user_env_vars" => PatchUserEnvVarsOpGroup.to_s,
-                                 "add_broker_auth_key" => AddBrokerAuthKeyOpGroup.to_s,
-                                 "remove_broker_auth_key" => RemoveBrokerAuthKeyOpGroup.to_s,
-                                 "start_app" => StartAppOpGroup.to_s,
-                                 "stop_app" => StopAppOpGroup.to_s,
-                                 "restart_app" => RestartAppOpGroup.to_s,
-                                 "reload_app_config" => ReloadAppConfigOpGroup.to_s,
-                                 "tidy_app" => TidyAppOpGroup.to_s,
-                                 "start_feature" => StartFeatureOpGroup.to_s,
-                                 "stop_feature" => StopFeatureOpGroup.to_s,
-                                 "restart_feature" => RestartFeatureOpGroup.to_s,
-                                 "reload_feature_config" => ReloadFeatureConfigOpGroup.to_s,
-                                 "start_component" => StartCompOpGroup.to_s,
-                                 "stop_component" => StopCompOpGroup.to_s,
-                                 "restart_component" => RestartCompOpGroup.to_s,
-                                 "reload_component_config" => ReloadCompConfigOpGroup.to_s,
-                                 "execute_connections" => ExecuteConnectionsOpGroup.to_s
-                                }
-    end
-    return @@app_op_group_types_map
-  end
-
-  def self.get_app_op_types_map
-    if @@app_op_types_map.nil?
-      @@app_op_types_map = {"create_group_instance" => CreateGroupInstanceOp.to_s,
-                           "init_gear" => InitGearOp.to_s,
-                           "delete_gear" => DeleteGearOp.to_s,
-                           "destroy_group_instance" => DeleteGroupInstanceOp.to_s,
-                           "reserve_uid" => ReserveGearUidOp.to_s,
-                           "unreserve_uid" => UnreserveGearUidOp.to_s,
-                           "expose_port" => ExposePortOp.to_s,
-                           "new_component" => NewCompOp.to_s,
-                           "del_component" => DeleteCompOp.to_s,
-                           "add_component" => AddCompOp.to_s,
-                           "post_configure_component" => PostConfigureCompOp.to_s,
-                           "remove_component" => RemoveCompOp.to_s,
-                           "create_gear" => CreateGearOp.to_s,
-                           "track_usage" => TrackUsageOp.to_s,
-                           "register_dns" => RegisterDnsOp.to_s,
-                           "deregister_dns" => DeregisterDnsOp.to_s,
-                           "register_routing_dns" => RegisterRoutingDnsOp.to_s,
-                           "publish_routing_info" => PublishRoutingInfoOp.to_s,
-                           "destroy_gear" => DestroyGearOp.to_s,
-                           "start_component" => StartCompOp.to_s,
-                           "stop_component" => StopCompOp.to_s,
-                           "restart_component" => RestartCompOp.to_s,
-                           "reload_component_config" => ReloadCompConfigOp.to_s,
-                           "tidy_component" => TidyCompOp.to_s,
-                           "update_configuration" => UpdateAppConfigOp.to_s,
-                           "add_broker_auth_key" => AddBrokerAuthKeyOp.to_s,
-                           "remove_broker_auth_key" => RemoveBrokerAuthKeyOp.to_s,
-                           "set_group_overrides" => SetGroupOverridesOp.to_s,
-                           "execute_connections" => ExecuteConnectionsOp.to_s,
-                           "unsubscribe_connections" => UnsubscribeConnectionsOp.to_s,
-                           "set_gear_additional_filesystem_gb" => SetAddtlFsGbOp.to_s,
-                           "add_alias" => AddAliasOp.to_s,
-                           "remove_alias" => RemoveAliasOp.to_s,
-                           "add_ssl_cert" => AddSslCertOp.to_s,
-                           "remove_ssl_cert" => RemoveSslCertOp.to_s,
-                           "patch_user_env_vars" => PatchUserEnvVarsOp.to_s,
-                           "replace_all_ssh_keys" => ReplaceAllSshKeysOp.to_s
-                          }
-    end
-    return @@app_op_types_map
-  end
-
-  def self.get_domain_op_types_map
-    if @@domain_op_types_map.nil?
-    @@domain_op_types_map = {"change_members" => ChangeMembersDomainOp.to_s,
-                            "add_domain_ssh_keys" => AddSystemSshKeysDomainOp.to_s,
-                            "delete_domain_ssh_keys" => RemoveSystemSshKeysDomainOp.to_s,
-                            "add_env_variables" => AddEnvVarsDomainOp.to_s,
-                            "remove_env_variables" => RemoveEnvVarsDomainOp.to_s
-                           }
-    end
-    return @@domain_op_types_map
-  end
-
-  def self.get_user_op_types_map
-    if @@user_op_types_map.nil?
-      @@user_op_types_map = {"add_ssh_key" => AddSshKeysUserOp.to_s,
-                            "delete_ssh_key" => RemoveSshKeysUserOp.to_s
-                           }
-    end
-    return @@user_op_types_map
-  end
-
-  def self.get_updated_sets_for_app_ops(op, op_group_index, op_index, exclude_args=[])
-    op_types = get_app_op_types_map()
-    update_sets = {"pending_op_groups.#{op_group_index}.pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s]}
-    op["args"].each do |arg_key, arg_value|
-      unless exclude_args.include? arg_key
-        update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.#{arg_key}"] = arg_value
-      end
-    end if op["args"].present?
-    
-    update_sets
-  end
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-    when :postrelease
-    when :non_compatible
-      migrate_pending_ops
+    when :"non-compatible"
+      flatten_gears
     when :compatible
-      set_secret_token_for_apps
-      set_gear_id_for_app_ssh_keys
     end
   end
 
-  #
-  # Setting the gear ID as the component_id in app_ssh_keys so that they can be cleaned up when a gear is removed
-  #
-  def self.set_gear_id_for_app_ssh_keys
-    print "Setting app_ssh_keys.component_id to the gear id to which the ssh key belongs...\t"
-    filter_query = {"scalable" => true, 
-                    "app_ssh_keys" => { "$elemMatch" => { "$or" => [{ "component_id" => { "$exists" => false } }, 
-                                                                    { "component_id" => nil } ] } } }
-    selection = { fields: ["group_instances.gears._id", "app_ssh_keys._id", "app_ssh_keys.name", "app_ssh_keys.component_id"] }
-    db["applications"].find(filter_query, selection).each do |app|
+  def self.flatten_gears
+    puts "Running parallel migration : #{$parallel_index} of #{$num_processes}.."
+    if $parallel_index.nil? or ($parallel_index == 0)
+      db["applications"].drop_index("group_instances.gears.uuid_1") rescue nil 
+    end
+    filter = {}
+    selection = {:fields => ["group_instances", "gears"], :timeout => false, :read => :primary}
+    OpenShift::DataStore.find(:applications, filter, selection) do |app|
       begin
-        gear_id_list = app["group_instances"].map { |gi| gi["gears"].map { |g| g["_id"].to_s } }.flatten
-        app["app_ssh_keys"].each do |ssh_key|
-          if ssh_key["component_id"].nil?
-            ssh_key_gear_id = ssh_key["name"].gsub("application-", "")
-            if ssh_key_gear_id and gear_id_list.include? ssh_key_gear_id
-              ssh_key_filter_query = {"_id" => app["_id"], "app_ssh_keys._id" => ssh_key["_id"]}
-              update_query = {"$set" => {"app_ssh_keys.$.component_id" => BSON::ObjectId(ssh_key_gear_id.to_s)}}
-              db["applications"].update(ssh_key_filter_query, update_query)
-            end
-          end
-        end
-      rescue Exception=>e
-        puts e.message
-        puts e.backtrace
-      end
-    end
-    puts "Completed."
-  end
-
-  #
-  # Generate and set a secret token in all applications that don't have it
-  #
-  def self.set_secret_token_for_apps
-    filter_query = {"secret_token" => {"$exists" => false}}
-    app_filter_query = filter_query.dup
-    batch_index = 1
-    while true
-      documents_processed = 0
-      puts "Setting secret token for 1000 applications: Batch ##{batch_index}"
-      db["applications"].find(filter_query, {fields: [], limit: 1000}).each do |app|
-        puts "Setting secret token for application: #{app["_id"].to_s}"
-        secret_token = SecureRandom.urlsafe_base64(96, false)
-        app_filter_query["_id"] = BSON::ObjectId(app["_id"].to_s)
-        update_query = {"$set" => {"secret_token" => secret_token}}
-        db["applications"].update(app_filter_query, update_query)
-        
-        documents_processed += 1
-      end
-      break if documents_processed == 0
-      batch_index += 1
-    end
-  end
-
-  #
-  # Migrate all the pending ops to set the attributes and _type
-  #
-  def self.migrate_pending_ops
-    # migrate the op_groups and ops for all applications
-    op_group_index = 0
-    op_group_search_count = 1
-    while op_group_search_count > 0 do
-      filter = {"pending_op_groups.#{op_group_index}" => {"$exists" => true}}
-      db["applications"].find(filter, {fields: ["pending_op_groups"]}).each do |app|
-        puts "Migrating application: #{app['_id'].to_s}"
-
-        begin
-          migrate_app_pending_op_groups(app, op_group_index)
-        rescue
-          puts "Failed to migrate pending op group at index #{op_group_index} for application: #{app['_id'].to_s}"
-        end
-        
-        op_group = app["pending_op_groups"][op_group_index]
-        op_group["pending_ops"].each_with_index do |op, op_index|
-          begin
-            migrate_app_pending_ops(app, op_group_index, op_index)
-          rescue
-            puts "Failed to migrate pending op at index #{op_index} for op group at index #{op_group_index} for application: #{app['_id'].to_s}"
-          end
-        end if op_group["pending_ops"].present?
-      end
-      op_group_index += 1
-      op_group_search_count = db["applications"].find({"pending_op_groups.#{op_group_index}" => {"$exists" => true}}).count
-    end
-
-    # migrate the ops for all domains
-    op_index = 0
-    op_search_count = 1
-    while op_search_count > 0 do
-      filter = {"pending_ops.#{op_index}" => {"$exists" => true}, "pending_ops.#{op_index}._type" => {"$exists" => false}}
-      db["domains"].find(filter, {fields: ["pending_ops"]}).each do |domain|
-        puts "Migrating domain: #{domain['_id'].to_s}"
-        begin
-          migrate_domain_pending_ops(domain, op_index)
-        rescue
-          puts "Failed to migrate pending op at index #{op_index} for domain: #{domain['_id'].to_s}"
-        end
-      end
-      op_index += 1
-      op_search_count = db["domains"].find({"pending_ops.#{op_index}" => {"$exists" => true}}).count
-    end
-
-    # migrate the ops for all users
-    op_index = 0
-    op_search_count = 1
-    while op_search_count > 0 do
-      filter = {"pending_ops.#{op_index}" => {"$exists" => true}, "pending_ops.#{op_index}._type" => {"$exists" => false}}
-      db["cloud_users"].find(filter, {fields: ["pending_ops"]}).each do |user|
-        puts "Migrating user: #{user['_id'].to_s}"
-        begin
-          migrate_user_pending_ops(user, op_index)
-        rescue
-          puts "Failed to migrate pending op at index #{op_index} for user: #{user['_id'].to_s}"
-        end
-      end
-      op_index += 1
-      op_search_count = db["cloud_users"].find({"pending_ops.#{op_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  #
-  # Migrate the applications pending op groups to set the attributes and _type
-  #
-  def self.migrate_app_pending_op_groups(app, op_group_index)
-    op_types = get_app_op_group_types_map()
-    
-    op_group = app["pending_op_groups"][op_group_index]
-
-    # if _type exists, this record has already been migrated
-    return unless op_group["_type"].nil?
-    
-    filter_query = {"_id" => BSON::ObjectId(app["_id"].to_s), 
-                    "pending_op_groups.#{op_group_index}._id" => BSON::ObjectId(op_group["_id"].to_s)}
-
-    case op_group["op_type"].to_s
-    when "change_members"
-      update_query = {"$set" => {"pending_op_groups.#{op_group_index}._type" => op_types[op_group["op_type"].to_s],
-                                 "pending_op_groups.#{op_group_index}.members_added" => Array(op_group["args"]["added"]),
-                                 "pending_op_groups.#{op_group_index}.members_removed" => Array(op_group["args"]["removed"]),
-                                 "pending_op_groups.#{op_group_index}.roles_changed" => Array(op_group["args"]["changed"])}}
-      db["applications"].update(filter_query, update_query)
-    else
-      if op_types[op_group["op_type"].to_s].nil?
-        puts "Failed to migrate unhandled application pending_op_group type: #{op_group['op_type']}"
-      else
-        update_sets = {"pending_op_groups.#{op_group_index}._type" => op_types[op_group["op_type"].to_s]}
-        op_group["args"].each do |arg_key, arg_value|
-          update_sets["pending_op_groups.#{op_group_index}.#{arg_key}"] = arg_value
-        end if op_group["args"].present? 
-      
-        update_query = {"$set" => update_sets}
-        db["applications"].update(filter_query, update_query)
-      end
-    end
-  end
-
-  #
-  # Migrate the applications pending ops to set the attributes and _type
-  #
-  def self.migrate_app_pending_ops(app, op_group_index, op_index)
-    op_types = get_app_op_types_map()
-    
-    op_group = app["pending_op_groups"][op_group_index]
-    op = app["pending_op_groups"][op_group_index]["pending_ops"][op_index]
-    
-    # if _type exists, this record has already been migrated
-    return unless op["_type"].nil?
-    
-    filter_query = {"_id" => BSON::ObjectId(app["_id"].to_s), 
-                    "pending_op_groups.#{op_group_index}._id" => BSON::ObjectId(op_group["_id"].to_s),
-                    "pending_op_groups.#{op_group_index}.pending_ops.#{op_index}._id" => BSON::ObjectId(op["_id"].to_s)}
-
-    case op["op_type"].to_s
-    when "track_usage"
-      update_sets = get_updated_sets_for_app_ops(op, op_group_index, op_index, ["gear_ref"])
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.gear_id"] = op["args"]["gear_ref"]
-      update_query = {"$set" => update_sets}
-      db["applications"].update(filter_query, update_query)
-    when "set_group_overrides"
-      update_sets = get_updated_sets_for_app_ops(op, op_group_index, op_index, [])
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.saved_group_overrides"] = op["saved_values"]["group_overrides"]
-      update_query = {"$set" => update_sets}
-      db["applications"].update(filter_query, update_query)
-    when "set_gear_additional_filesystem_gb"
-      update_sets = get_updated_sets_for_app_ops(op, op_group_index, op_index, ["additional_filesystem_gb"])
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.addtl_fs_gb"] = op["args"]["additional_filesystem_gb"]
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.saved_addtl_fs_gb"] = op["saved_values"]["additional_filesystem_gb"]
-      update_query = {"$set" => update_sets}
-      db["applications"].update(filter_query, update_query)
-    when "patch_user_env_vars"
-      update_sets = get_updated_sets_for_app_ops(op, op_group_index, op_index, ["push"])
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.push_vars"] = op["args"]["push"] || false
-      update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.saved_user_env_vars"] = op["saved_values"]
-      update_query = {"$set" => update_sets}
-      db["applications"].update(filter_query, update_query)
-    else
-      if op_types[op["op_type"].to_s].nil?
-        puts "Failed to migrate unhandled application pending_op type: #{op['op_type']}"
-      else
-        update_sets = {"pending_op_groups.#{op_group_index}.pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s]}
-        op["args"].each do |arg_key, arg_value|
-          update_sets["pending_op_groups.#{op_group_index}.pending_ops.#{op_index}.#{arg_key}"] = arg_value
-        end if op["args"].present?
-      
-        update_query = {"$set" => update_sets}
-        db["applications"].update(filter_query, update_query)
-      end
-    end
-  end
-
-  #
-  # Migrate the domain pending ops to set the attributes and _type
-  #
-  def self.migrate_domain_pending_ops(domain, op_index)
-    op_types = get_domain_op_types_map()
-    
-    op = domain["pending_ops"][op_index]
-
-    if op.nil?
-      puts "Domain #{domain['_id'].to_s} has a null pending op"
-      return
-    end
-
-    filter_query = {"_id" => BSON::ObjectId(domain["_id"].to_s), 
-                    "pending_ops.#{op_index}._id" => BSON::ObjectId(op["_id"].to_s)}
-
-    case op["op_type"].to_s
-    when "change_members"
-      update_query = {"$set" => {"pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s],
-                                 "pending_ops.#{op_index}.members_added" => Array(op["args"]["added"]),
-                                 "pending_ops.#{op_index}.members_removed" => Array(op["args"]["removed"]),
-                                 "pending_ops.#{op_index}.roles_changed" => Array(op["args"]["changed"])}}
-      db["domains"].update(filter_query, update_query)
-    else
-      if op_types[op["op_type"].to_s].nil?
-        puts "Failed to migrate unhandled domain pending_op type: #{op['op_type']}"
-      else
-        update_sets = {"pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s]}
-        op["arguments"].each do |arg_key, arg_value|
-          update_sets["pending_ops.#{op_index}.#{arg_key}"] = arg_value
-        end if op["arguments"].present?
-      
-        update_query = {"$set" => update_sets}
-        db["domains"].update(filter_query, update_query)
-      end
-    end
-  end
-
-  #
-  # Migrate the user pending ops to set the attributes and _type
-  #
-  def self.migrate_user_pending_ops(user, op_index)
-    op_types = get_user_op_types_map()
-    
-    op = user["pending_ops"][op_index]
-
-    if op.nil?
-      puts "User #{user['_id'].to_s} has a null pending op"
-      return
-    end
-    
-    filter_query = {"_id" => BSON::ObjectId(user["_id"].to_s), 
-                    "pending_ops.#{op_index}._id" => BSON::ObjectId(op["_id"].to_s)}
-
-    case op["op_type"].to_s
-    when "add_ssh_key"
-      update_query = {"$set" => {"pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s],
-                                 "pending_ops.#{op_index}.keys_attrs" => [op["arguments"]]}}
-      db["cloud_users"].update(filter_query, update_query)
-    when "delete_ssh_key"
-      update_query = {"$set" => {"pending_ops.#{op_index}._type" => op_types[op["op_type"].to_s],
-                                 "pending_ops.#{op_index}.keys_attrs" => [op["arguments"]]}}
-      db["cloud_users"].update(filter_query, update_query)
-    end
-  end
-end
-
-###############################################################################
-# The 2.0.35 migration code is taken from li repo, stage-2.0.35 branch,
-# rhc-broker/script/rhc-admin-migrate-datastore;
-#
-# * Wrapped the script in a module.
-
-module Migrate_2_0_35
-  VERSIONS = {
-    :compatible => true,
-    :non_compatible => false,
-    :prerelease => false,
-    :postrelease => true
-  }
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-    when :postrelease
-      expose_haproxy_port
-      update_gears
-      verify_gears
-    when :non_compatible
-    when :compatible
-      add_max_domains_capability
-      update_application_config
-    end
-  end
-
-  def self.add_max_domains_capability
-    filter = {"plan_id" => "free", "capabilities.max_domains" => {"$exists" => false}}
-    update_query = {'$set' => {'capabilities.max_domains' => 1}}
-    db["cloud_users"].update(filter, update_query, { :multi => true })
-
-    filter = {"plan_id" => "silver", "capabilities.max_domains" => {"$exists" => false}}
-    update_query = {'$set' => {'capabilities.max_domains' => 3}}
-    db["cloud_users"].update(filter, update_query, { :multi => true })
-  end
-
-  def self.update_application_config
-      filter = {"config" => {"$exists" => false}}
-      update_query = {'$set' => {'config' => {'auto_deploy' => true, 'deployment_branch' => 'master', 'keep_deployments' => 1, 'deployment_type' => 'git'}}}
-      db["applications"].update(filter, update_query, { :multi => true })
-  end
-
-  def self.expose_haproxy_port
-    apps = Application.where(:scalable => true)
-    handle = {}
-    total = 0
-    exposed = 0
-    apps.each { |app|
-      total += 1
-      begin
-        hap_gear = app.get_app_dns_gear
-      rescue Exception=>e
-        puts "Failed to find app_dns gear for application #{app._id}"
-        next
-      end
-      ci = app.component_instances.find_by(cartridge_name: "haproxy-1.4")
-      hap_expose_job = hap_gear.get_expose_port_job(ci)
-      tag = ""
-      RemoteJob.add_parallel_job(handle, "", hap_gear, hap_expose_job)
-
-      if total%20==0
-        RemoteJob.execute_parallel_jobs(handle)
-        RemoteJob.get_parallel_run_results(handle) { |tag, gear, stdout, exit_code|
-          if exit_code!=0
-            puts "Error in executing parallel job for gear #{gear}"
-          else
-            exposed += 1
-          end
-        }
-        print "."
-        handle = {}
-      end
-    }
-
-    RemoteJob.execute_parallel_jobs(handle)
-    RemoteJob.get_parallel_run_results(handle) { |tag, gear, stdout, exit_code|
-      if exit_code!=0
-        puts "Error in executing parallel job for gear #{gear}"
-      else
-        exposed += 1
-      end
-    }
-    puts "Done migrating #{exposed}/#{total} applications."
-  end
-
-  def self.verify_gears
-    query = { "scalable" => true, "group_instances.gears.port_interfaces" => { "$exists" => false } }
-    count = db["applications"].find(query).count
-    puts "ERROR: Verification of gear migration failed. Count: #{count}" if count!=0
-  end
-
-  def self.update_gears
-    start_time = (Time.now.to_f * 1000).to_i
-    gear_map = OpenShift::ApplicationContainerProxy.get_all_gears_endpoints
-    total_time = (Time.now.to_f * 1000).to_i - start_time
-    puts "Time to get all gears from nodes: #{total_time.to_f/1000}s"
-    puts "Total gears found on the nodes: #{gear_map.length}"
-
-    selection = {:fields => ["group_instances.gears.uuid", "group_instances.gears.port_interfaces.protocols"], :timeout => false}
-    OpenShift::DataStore.find(:applications, {"scalable" => true}, selection) do |app|
-      begin
+        next if app["_id"].to_s.sum.modulo($num_processes)!=$parallel_index
+        next if app["gears"].is_a?(Array) and app["gears"].length>0
+        new_gears = []
+        updates = { "$set" => {}, "$unset" => {} }
         gi_index = -1
-        app["group_instances"].each do |gi|
+        app['group_instances'].each do |gi|
           gi_index += 1
-          gear_index = -1
-          gi['gears'].each do |g|
-            gear_index += 1
-            next if g["port_interfaces"] and g["port_interfaces"].any? { |pi| (not pi["protocols"].to_a.empty?) }
-            endpoints = gear_map[g["uuid"]]
-            next if endpoints.nil?
-            updated_port_interfaces = endpoints.map do |ep|
-              cart = CartridgeCache.find_cartridge(ep["cartridge_name"])
-              cart = CartridgeCache.find_cartridge(ep["cartridge_name"], Application.find_by(_id: app["_id"].to_s)) if cart.nil?
-              {
-                "_id" => BSON::ObjectId.new,
-                "cartridge_name" => cart.name,
-                "external_port" => ep['external_port'],
-                "internal_address" => ep['internal_address'],
-                "internal_port" => ep['internal_port'],
-                "protocols" => ep['protocols'],
-                "type" => ep['type'],
-                "mappings" => ep['mappings']
-              }
-            end
-            filter = {'_id' => app['_id'], "group_instances.#{gi_index}.gears.#{gear_index}.uuid" => g["uuid"]}
-            update_query = {"$set" => {"group_instances.#{gi_index}.gears.#{gear_index}.port_interfaces" => updated_port_interfaces}}
-            db["applications"].update(filter, update_query)
-          end if gi["gears"]
-        end if app["group_instances"]
-      rescue Exception=>e
-        puts "Failed to migrate app #{app['_id']} - #{e.message}"
+          gi['gears'].each do |gear|
+            new_gear = gear.deep_dup
+            new_gear["group_instance_id"] = BSON::ObjectId(gi["_id"].to_s)
+            new_gears << new_gear
+          end if gi['gears'].present?
+          updates["$unset"]["group_instances.#{gi_index}.gears"] = ""
+        end if app['group_instances'].present?
+        updates["$set"]["gears"] = new_gears
+        db['applications'].update({"_id" => BSON::ObjectId(app["_id"].to_s) }, updates)
+      rescue Exception => e
+        puts "Failed to migrate app_id: #{app['_id'].to_s}, Error: #{e.message}"
         puts e.backtrace.inspect
-        puts
       end
     end
-  end
-end
-
-###############################################################################
-# The 2.0.36 migration code is taken from li repo, stage branch (will be 
-# stage-2.0.36),
-# rhc-broker/script/rhc-admin-migrate-datastore;
-#
-# * Wrapped the script in a module.
-# * Removed refactor_user_capabilities migration, as it only applies to online
-# * Removed update_sparse_carts migration, since 1.2 carts did not have that feature
-
-module Migrate_2_0_36
-  VERSIONS = {
-    :compatible => true,
-    :non_compatible => false,
-    :prerelease => true,
-    :postrelease => false
-  }
-
-  def self.migrate(type)
-    case type
-    when :prerelease
-      #update_sparse_carts
-    when :postrelease
-    when :non_compatible
-    when :compatible
-      #refactor_user_capabilities
-    end
+    puts "Completed #{$parallel_index} of #{$num_processes} parallel tasks."
   end
   
 end
 
+###############################################################################
+# The 2.0.39 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.39),
+# rhc-broker/script/rhc-admin-migrate-datastore;
+#
+# * Wrapped the script in a module.
+
+module Migrate_2_0_39
+  VERSIONS = {
+    :compatible => false,
+    :"non-compatible" => true,
+    :prerelease => false,
+    :postrelease => false,
+    :run_parallel => []
+  }
+
+  def self.migrate(type)
+    case type
+    when :prerelease
+    when :postrelease
+    when :"non-compatible"
+      adjust_cartridge_versions
+    when :compatible
+    end
+  end
+
+  #
+  # Update old cartridge names to be simpler
+  #
+  def self.adjust_cartridge_versions
+    CARTRIDGE_CHANGES.each do |cart_change|
+      puts "Updating cartridge #{cart_change['old_name']} to #{cart_change['new_name']}"
+
+      print "Updating component instances for all applications...\t"
+      update_component_instances(cart_change['old_name'], cart_change['new_name'], cart_change['new_version'])
+      puts "Done."
+
+      print "Updating group overrides for all applications...\t"
+      update_group_overrides(cart_change['old_name'], cart_change['new_name'])
+      puts "Done."
+
+      print "Updating port interfaces for all application gears...\t"
+      update_port_interfaces(cart_change['old_name'], cart_change['new_name'])
+      puts "Done."
+
+      print "Updating cartridge version for premium cartridges in usage...\t"
+      update_premium_cart_version(cart_change['old_name'], cart_change['new_name'])
+      puts "Done."
+
+      print "Verifying cartridge update for all applications...\t"
+      missed_update_count = verify_migration(cart_change['old_name'], cart_change['new_name'], cart_change['old_version'])
+      puts missed_update_count == 0 ? "Successful." : "Failed."
+      puts ""
+    end
+  end
+
+
+  def self.update_component_instances(old_cart_name, new_cart_name, new_cart_version)
+    ci_index = 0
+    ci_search_count = 1
+    while ci_search_count > 0 do
+      filter = {"component_instances.#{ci_index}.cartridge_name" => old_cart_name}
+      update_query = {"$set" => {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
+                                 "component_instances.#{ci_index}.component_name" => new_cart_name,
+                                 "component_instances.#{ci_index}.version" => new_cart_version}}
+      db["applications"].update(filter, update_query, { :multi => true })
+
+      ci_index += 1
+      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.update_group_overrides(old_cart_name, new_cart_name)
+    # Update all the cartridge names in group_overrides
+    go_index = 0
+    go_search_count = 1
+    while go_search_count > 0 do
+      component_index = 0
+      component_search_count = 1
+      while component_search_count > 0
+        filter = {"group_overrides.#{go_index}.components.#{component_index}.cart" => old_cart_name}
+        update_query = {"$set" => {"group_overrides.#{go_index}.components.#{component_index}.cart" => new_cart_name,
+                                   "group_overrides.#{go_index}.components.#{component_index}.comp" => new_cart_name}}
+        db["applications"].update(filter, update_query, { :multi => true })
+        component_index += 1
+        component_search_count = db["applications"].find({"group_overrides.#{go_index}.components.#{component_index}" => {"$exists" => true}}).count
+      end
+      go_index += 1
+      go_search_count = db["applications"].find({"group_overrides.#{go_index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.update_port_interfaces(old_cart_name, new_cart_name)
+    # Update all the cartridge names in gear's port_interfaces
+    g_index = 0
+    g_search_count = 1
+    while g_search_count > 0 do
+      pi_index = 0
+      pi_search_count = 1
+      while pi_search_count > 0
+        filter = {"gears.#{g_index}.port_interfaces.#{pi_index}.cartridge_name" => old_cart_name}
+        update_query = {"$set" => {"gears.#{g_index}.port_interfaces.#{pi_index}.cartridge_name" => new_cart_name}}
+        db["applications"].update(filter, update_query, { :multi => true })
+        pi_index += 1
+        pi_search_count = db["applications"].find({"gears.#{g_index}.port_interfaces.#{pi_index}" => {"$exists" => true}}).count
+      end
+      g_index += 1
+      g_search_count = db["applications"].find({"gears.#{g_index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.update_premium_cart_version(old_cart_name, new_cart_name)
+    filter = {"cart_name" => old_cart_name}
+    update_query = {"$set" => {"cart_name" => new_cart_name}}
+
+    db["usage"].update(filter, update_query, { :multi => true })
+    db["usage_records"].update(filter, update_query, { :multi => true })
+  end
+
+  def self.verify_migration(old_cart_name, new_cart_name, old_cart_version)
+    missed_update_count = 0
+    missed_update_count += db["applications"].find({"component_instances.cartridge_name" => old_cart_name}).count
+    missed_update_count += db["applications"].find({"component_instances.component_name" => old_cart_name}).count
+    missed_update_count += db["applications"].find({"group_overrides.components.cart" => old_cart_name}).count
+    missed_update_count += db["applications"].find({"group_overrides.components.comp" => old_cart_name}).count
+    missed_update_count += db["applications"].find({"gears.port_interfaces.cartridge_name" => old_cart_name}).count
+    missed_update_count += db["applications"].find({"component_instances" => {"$elemMatch" => {"cartridge_name" => new_cart_name, "cartridge_vendor" => "redhat", "version" => old_cart_version}}}).count
+    missed_update_count += db["usage"].find({"cart_name" => old_cart_name}).count
+    missed_update_count += db["usage_records"].find({"cart_name" => old_cart_name}).count
+
+    missed_update_count
+  end
+  
+end
 
 ###############################################################################
 # Migration core code
