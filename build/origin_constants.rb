@@ -35,7 +35,7 @@ OPTIONS = {
   },
 }
 
-TYPE = "m1.large"
+TYPE = "m3.large"
 ZONE = 'us-east-1d'
 DISK_SIZE = 17
 VERIFIER_REGEXS = {}
