@@ -3,7 +3,7 @@
 set -xe
 
 if grep -q 'GEAR_UPGRADE_EXTENSION' /etc/openshift/node.conf; then
-  sed -i 's#GEAR_UPGRADE_EXTENSION#GEAR_UPGRADE_EXTENSION=/usr/libexec/openshift/gear_upgrade_extension#' /etc/openshift/node.conf
+  sed -i 's#^GEAR_UPGRADE_EXTENSION.*#GEAR_UPGRADE_EXTENSION=/usr/libexec/openshift/gear_upgrade_extension#' /etc/openshift/node.conf
 else
   printf '\n%s\n' 'GEAR_UPGRADE_EXTENSION=/usr/libexec/openshift/gear_upgrade_extension' >> /etc/openshift/node.conf
 fi

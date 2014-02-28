@@ -15,7 +15,7 @@ module OSEUpgrader
         #@params[:node_upgrader] ?
           #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ] :
           #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
-          %w[ pre outage rpms conf ]
+          %w[ pre outage rpms conf maintenance_mode ]
       end
 
       def run_upgrade_step_pre(state)

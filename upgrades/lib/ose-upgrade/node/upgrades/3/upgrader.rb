@@ -6,7 +6,7 @@ module OSEUpgrader
 
       def implemented_steps
         #%w[ pre outage rpms conf maintenance_mode test_gears_complete end_maintenance_mode ]
-        %w[ pre outage rpm conf ]
+        %w[ pre outage rpm conf maintenance_mode ]
       end
 
       def run_upgrade_step_pre(state)

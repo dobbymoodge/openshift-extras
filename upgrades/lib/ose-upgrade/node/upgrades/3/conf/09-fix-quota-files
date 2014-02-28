@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -xe
+
+conf=/etc/openshift/resource_limits.conf
+command cp -f $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# 2.0.37
+# We don't really know what the user may have customized.  However, if they
+# haven't changed the default we're going to set them to our new default.
+sed -i 's#^quota_files=40000$#quota_files=80000#' $conf

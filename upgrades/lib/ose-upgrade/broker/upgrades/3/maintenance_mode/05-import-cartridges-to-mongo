@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -xe
+
+# New in 2.1
+oo-admin-ctl-cartridge -c import-node --activate --obsolete
