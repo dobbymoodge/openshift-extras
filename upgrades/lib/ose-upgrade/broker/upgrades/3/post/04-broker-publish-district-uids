@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -xe
-
-# https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.34#Comment4
-oo-admin-ctl-district -c publish-uids

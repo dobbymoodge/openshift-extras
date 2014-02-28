@@ -1,5 +1,5 @@
 #!/bin/bash
-until [ -e /etc/openshift/upgrade/2/gear_upgrades_complete ]; do
+until [ -e /etc/openshift/upgrade/3/gear_upgrades_complete ]; do
   # since node upgrades should be non-interactive, just wait forever
   # until the broker finishes gear upgrades.
   echo "Waiting for gear upgrades to be completed."

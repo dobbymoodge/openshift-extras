@@ -28,6 +28,7 @@ module MCollective
         0  => "1.1",
         1  => "1.2",
         2  => "2.0",
+        3  => "2.1",
       }
 
       #
@@ -65,7 +66,7 @@ module MCollective
       def gear_upgrades_complete_action
         Log.instance.info("gear_upgrades_complete_action call / request = #{request.pretty_inspect}")
         require 'fileutils'
-        FileUtils.touch('/etc/openshift/upgrade/2/gear_upgrades_complete')
+        FileUtils.touch('/etc/openshift/upgrade/3/gear_upgrades_complete')
         reply[:exitcode] = 0
       end
 

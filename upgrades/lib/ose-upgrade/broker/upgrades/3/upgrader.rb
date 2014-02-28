@@ -15,7 +15,7 @@ module OSEUpgrader
         #@params[:node_upgrader] ?
           #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ] :
           #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
-          %w[ pre outage rpms conf maintenance_mode ]
+          %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ]
       end
 
       def run_upgrade_step_pre(state)
@@ -109,7 +109,7 @@ module OSEUpgrader
       def claim_upgrade_step(step, &block)
         # and because it requires the codebase, and ose-upgrade runs under native ruby,
         # we have to shell out to scl-ized script to determine this
-        lock = "oseupgrade_2_#{step}"
+        lock = "oseupgrade_3_#{step}"
         rc, o = run_script("#{File.dirname(__FILE__)}/step_lock #{lock}")
         return rc if rc != 0
         if o.match(/SKIP/)
