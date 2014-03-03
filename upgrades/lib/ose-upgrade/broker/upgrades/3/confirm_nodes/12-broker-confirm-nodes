@@ -6,7 +6,7 @@
 
 require 'mcollective'
 include MCollective::RPC
-UPGRADE_VERSION=2
+UPGRADE_VERSION=3
 
 def list_nodes
   puts "Loading the broker rails environment."
