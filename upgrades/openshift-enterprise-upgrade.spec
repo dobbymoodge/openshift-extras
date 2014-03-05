@@ -3,7 +3,7 @@ Name:      openshift-enterprise-upgrade
 # See VERSION_MAP in lib/ose-upgrade/main.rb for the mapping of upgrade
 # numbers to OpenShift Enterprise releases.
 # Set this to one lower for the pre-upgrade package
-%global upgrade_number 2
+%global upgrade_number 3
 
 # items that will likely be shared between RPMs
 Version:   2.1.0
