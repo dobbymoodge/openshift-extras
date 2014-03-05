@@ -1,3 +1,4 @@
+./cartridges/dependencies
 ./cartridges/openshift-origin-cartridge-cron/
 ./cartridges/openshift-origin-cartridge-diy/
 ./cartridges/openshift-origin-cartridge-jbosseap/
