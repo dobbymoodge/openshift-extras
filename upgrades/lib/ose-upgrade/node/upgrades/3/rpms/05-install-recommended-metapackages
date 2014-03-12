@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -xe
+
+declare pkgs=( )
+declare -a meta=(
+  jbosseap
+  jbossews
+  nodejs
+  perl
+  php
+  python
+  ruby
+)
+
+for p in ${meta[@]}
+do
+  if rpm -q openshift-origin-cartridge-$p 2>&1 > /dev/null
+  then
+    pkgs+=( openshift-origin-cartridge-dependencies-recommended-$p )
+  fi
+  echo $p
+done
+
+yum install -y ${pkgs[@]}
