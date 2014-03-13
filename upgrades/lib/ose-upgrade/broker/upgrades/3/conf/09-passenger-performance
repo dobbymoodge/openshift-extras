@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -xe
+
+# Backup broker.conf.
+conf='/var/www/openshift/broker/httpd/broker.conf'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# https://engineering.redhat.com/trac/Libra/wiki/Releases/2.0.41#Comment5abhgupta-DONE-tdawsonb9f8d5a
+# We don't really know what the user may have customized.  However, if they
+# haven't changed the default we're going to set them to our new default.
+sed -i 's#^PassengerMinInstances 2$#PassengerMinInstances 6#' $conf
+
+if ! grep "^PassengerPoolIdleTime" $conf 2>&1 > /dev/null
+then
+    cat <<EOF >> "$conf"
+# This is the maximum number of seconds that an application process may be idle
+# before then it will be shutdown in order to conserve memory.  The default is
+# 300 and by increasing it we are ensuring that low traffic periods do not
+# reduce the number of passenger instances and impact the service when traffic
+# picks up.  This is the value OpenShift Online uses.
+PassengerPoolIdleTime 600
+EOF
+fi
