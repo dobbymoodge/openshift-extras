@@ -72,7 +72,6 @@ module Migrate_2_0_37
     end
     puts "Completed #{$parallel_index} of #{$num_processes} parallel tasks."
   end
-  
 end
 
 ###############################################################################
@@ -85,9 +84,75 @@ end
 module Migrate_2_0_39
   VERSIONS = {
     :compatible => false,
+    :"non-compatible" => false,
+    :prerelease => true,
+    :postrelease => true,
+    :run_parallel => []
+  }
+
+  def self.migrate(type)
+    case type
+    when :prerelease
+      ensure_app_name_domain_unique_index
+    when :postrelease
+      ensure_app_name_domain_unique_index
+      drop_app_domain_index
+      drop_group_instances_gears_uuid_index
+      remove_component_start_stop_configure_orders
+    when :"non-compatible"
+    when :compatible
+    end
+  end
+
+  def self.ensure_app_name_domain_unique_index
+    print "Ensure new domain_id / canonical_name index on applications ... "
+    db.collection('applications').ensure_index([["domain_id", Mongo::ASCENDING], ["canonical_name", Mongo::ASCENDING]], :unique => true) and puts "done"
+    0
+  end
+
+  def self.drop_app_domain_index
+    print "Drop old domain_id index on applications ... "
+    db.collection('applications').drop_index("domain_id_1") and puts "done" rescue puts "not found"
+    0
+  end
+
+  def self.drop_group_instances_gears_uuid_index
+    print "Drop old group_instances_gears_uuid_1 index on applications ... "
+    db.collection('applications').drop_index("group_instances.gears.uuid_1") and puts "done" rescue puts "not found"
+    0
+  end
+
+  def self.remove_component_start_stop_configure_orders
+    ['component_configure_order', 'component_start_order', 'component_stop_order'].each do |s|
+      print "Remove empty or nil '#{s}' from all applications ... "
+      (r = db['applications'].update(
+        {'$and' => [
+          {s => {'$exists' => true}},
+          {"$or" => [
+            {s => {"$size" => 0}},
+            {s => {"$type" => 10}}, # null
+          ]}
+        ]},
+        {"$unset" => {s => true}},
+        {:multi => true, :w => 1} # force w = 1 to receive update count
+      )) and puts "#{r['n']} updated" rescue puts "failed #{$!} #{$!.backtrace.join("\n")}"
+    end
+  end
+end
+
+###############################################################################
+# The 2.0.40 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.40),
+# rhc-broker/script/rhc-admin-migrate-datastore;
+#
+# * Wrapped the script in a module.
+
+module Migrate_2_0_40
+  VERSIONS = {
+    :compatible => false,
     :"non-compatible" => true,
     :prerelease => false,
-    :postrelease => false,
+    :postrelease => true,
     :run_parallel => []
   }
 
@@ -95,119 +160,293 @@ module Migrate_2_0_39
     case type
     when :prerelease
     when :postrelease
+      set_aliases_for_ha_apps
+      alter_downloaded_cart_map
+      set_cartridge_id_on_component_instances
     when :"non-compatible"
-      adjust_cartridge_versions
+      # not needed because we don't ship the mongodb cartridge yet
+      #adjust_cartridge_versions
+      migrate_districts
     when :compatible
     end
   end
 
-  #
-  # Update old cartridge names to be simpler
-  #
-  def self.adjust_cartridge_versions
-    CARTRIDGE_CHANGES.each do |cart_change|
-      puts "Updating cartridge #{cart_change['old_name']} to #{cart_change['new_name']}"
+  def self.alter_downloaded_cart_map(depth=1)
+    puts "Removing downloaded_cart_map for all applications (attempt ##{depth}) ..."
+    warn = 0
+    migrated = 0
 
-      print "Updating component instances for all applications...\t"
-      update_component_instances(cart_change['old_name'], cart_change['new_name'], cart_change['new_version'])
-      puts "Done."
-
-      print "Updating group overrides for all applications...\t"
-      update_group_overrides(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating port interfaces for all application gears...\t"
-      update_port_interfaces(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Updating cartridge version for premium cartridges in usage...\t"
-      update_premium_cart_version(cart_change['old_name'], cart_change['new_name'])
-      puts "Done."
-
-      print "Verifying cartridge update for all applications...\t"
-      missed_update_count = verify_migration(cart_change['old_name'], cart_change['new_name'], cart_change['old_version'])
-      puts missed_update_count == 0 ? "Successful." : "Failed."
-      puts ""
-    end
-  end
-
-
-  def self.update_component_instances(old_cart_name, new_cart_name, new_cart_version)
-    ci_index = 0
-    ci_search_count = 1
-    while ci_search_count > 0 do
-      filter = {"component_instances.#{ci_index}.cartridge_name" => old_cart_name}
-      update_query = {"$set" => {"component_instances.#{ci_index}.cartridge_name" => new_cart_name,
-                                 "component_instances.#{ci_index}.component_name" => new_cart_name,
-                                 "component_instances.#{ci_index}.version" => new_cart_version}}
-      db["applications"].update(filter, update_query, { :multi => true })
-
-      ci_index += 1
-      ci_search_count = db["applications"].find({"component_instances.#{ci_index}" => {"$exists" => true}}).count
-    end
-  end
-
-  def self.update_group_overrides(old_cart_name, new_cart_name)
-    # Update all the cartridge names in group_overrides
-    go_index = 0
-    go_search_count = 1
-    while go_search_count > 0 do
-      component_index = 0
-      component_search_count = 1
-      while component_search_count > 0
-        filter = {"group_overrides.#{go_index}.components.#{component_index}.cart" => old_cart_name}
-        update_query = {"$set" => {"group_overrides.#{go_index}.components.#{component_index}.cart" => new_cart_name,
-                                   "group_overrides.#{go_index}.components.#{component_index}.comp" => new_cart_name}}
-        db["applications"].update(filter, update_query, { :multi => true })
-        component_index += 1
-        component_search_count = db["applications"].find({"group_overrides.#{go_index}.components.#{component_index}" => {"$exists" => true}}).count
+    db["applications"].find(
+      {
+        "$where" => 'for (i in this.downloaded_cart_map) return true; return false;'
+      },
+      :fields => ['_id', 'downloaded_cart_map', 'component_instances', 'pending_op_groups']
+    ).each do |app|
+      if app['pending_op_groups'].present?
+        warn += 1
+        puts "SKIP: Application #{app['_id']} has pending ops #{name} and can't be migrated."
+        next
       end
-      go_index += 1
-      go_search_count = db["applications"].find({"group_overrides.#{go_index}" => {"$exists" => true}}).count
-    end
-  end
+      next unless app['downloaded_cart_map'].present?
+      all = true
+      app['downloaded_cart_map'].each_pair do |_, data|
+        name = data['versioned_name']
+        if instance = app['component_instances'].detect{ |i| i['cartridge_name'] == name }
+          yaml = YAML.load(data["original_manifest"], safe: true)
+          yaml['Id'] = instance['_id'].to_s
+          text = OpenShift::Cartridge.new(yaml).to_descriptor.to_json
 
-  def self.update_port_interfaces(old_cart_name, new_cart_name)
-    # Update all the cartridge names in gear's port_interfaces
-    g_index = 0
-    g_search_count = 1
-    while g_search_count > 0 do
-      pi_index = 0
-      pi_search_count = 1
-      while pi_search_count > 0
-        filter = {"gears.#{g_index}.port_interfaces.#{pi_index}.cartridge_name" => old_cart_name}
-        update_query = {"$set" => {"gears.#{g_index}.port_interfaces.#{pi_index}.cartridge_name" => new_cart_name}}
-        db["applications"].update(filter, update_query, { :multi => true })
-        pi_index += 1
-        pi_search_count = db["applications"].find({"gears.#{g_index}.port_interfaces.#{pi_index}" => {"$exists" => true}}).count
+          result = db["applications"].update(
+            {"_id" => app['_id'], "component_instances._id" => instance['_id'], "pending_op_groups" => {"$size" => 0}},
+            {
+              "$set" => {
+                # matches what component_instance generates
+                "component_instances.$.manifest_text" => text,
+                "component_instances.$.manifest_url" => data['url'],
+                "component_instances.$.cartridge_id" => instance['_id'],
+              },
+            },
+            :w => 1) # w1 for update count
+          if result['n'] != 1
+            puts "WARNING: Application #{app['_id']} could not be updated."
+            all = false
+          end
+        else
+          puts "WARNING: Application #{app['_id']} has downloaded cart #{name} which does not have a corresponding component_instance.  May be corrupted."
+          all = false
+        end
       end
-      g_index += 1
-      g_search_count = db["applications"].find({"gears.#{g_index}" => {"$exists" => true}}).count
+      if all
+        result = db["applications"].update({"_id" => app['_id'], "pending_op_groups" => {"$size" => 0}}, {"$unset" => {"downloaded_cart_map" => ""}}, :w => 1)
+        if result['n'] != 1
+          puts "WARNING: Could not remove downloaded_cart_map from application #{app['_id']}."
+          warn += 1
+        else
+          migrated += 1
+        end
+      else
+        warn += 1
+      end
     end
+
+    if warn > 0
+      if depth <= 3
+        puts "  Migrated #{migrated} applications with downloadable cartridges"
+        puts "  Some applications had pending ops, retrying"
+        sleep 2
+        alter_downloaded_cart_map(depth+1)
+        return
+      else
+        puts "ERROR: Not all applications migrated after #{depth} tries, pending ops queue prevented changes."
+      end
+    else
+      # remove all downloaded_cart_map from all applications if everything succeeded
+      db["applications"].update({"pending_op_groups" => {"$size" => 0}}, {"$unset" => {"downloaded_cart_map" => ""}}, multi: true)
+    end
+    puts "  Migrated #{migrated} applications with downloadable cartridges"
   end
 
-  def self.update_premium_cart_version(old_cart_name, new_cart_name)
-    filter = {"cart_name" => old_cart_name}
-    update_query = {"$set" => {"cart_name" => new_cart_name}}
+  def self.set_cartridge_id_on_component_instances(depth=1)
+    puts "Ensuring all component instances have a cartridge_id (attempt ##{depth}) ..."
+    ids = {}
+    db['cartridge_types'].find({'priority' => {'$exists' => true}}, :fields => ['name']).each do |type|
+      ids[type['name']] = type['_id']
+    end
+    if ids.blank?
+      puts "ERROR: No active cartridges, cannot migrate"
+      return
+    end
 
-    db["usage"].update(filter, update_query, { :multi => true })
-    db["usage_records"].update(filter, update_query, { :multi => true })
+    warn = 0
+    migrated = 0
+    db["applications"].find({'component_instances' => {'$elemMatch' => {'cartridge_id' => {'$not' => {'$exists' => true}}}}},
+                            :fields => ['_id', 'component_instances', 'pending_op_groups']).each do |app|
+      if app['pending_op_groups'].present?
+        warn += 1
+        puts "SKIP: Application #{app['_id']} has pending ops #{name} and can't be migrated."
+        next
+      end
+      all = true
+      app['component_instances'].each do |instance|
+        next if instance['cartridge_id'].present?
+        id = ids[instance['cartridge_name']]
+        if id.blank?
+          puts "WARNING: Application #{app['_id']} has component instance with name #{instance['cartridge_name']} that isn't an active cartridge."
+          all = false
+          next
+        end
+        result = db["applications"].update(
+          {"_id" => app['_id'], "component_instances._id" => instance['_id'], "pending_op_groups" => {"$size" => 0}},
+          {"$set" => {"component_instances.$.cartridge_id" => id}},
+          :w => 1) # w1 for update count
+        if result['n'] != 1
+          puts "WARNING: Application #{app['_id']} could not be updated."
+          all = false
+        end
+      end
+      if all
+        migrated += 1
+      else
+        warn += 1
+      end
+    end
+    if warn > 0
+      if depth <= 3
+        puts "  Migrated #{migrated} applications"
+        puts "  Some applications had pending ops, retrying"
+        sleep 2
+        set_cartridge_id_on_component_instances(depth+1)
+        return
+      else
+        puts "ERROR: Not all applications migrated after #{depth} tries, pending ops queue prevented changes."
+      end
+    end
+    puts "  Migrated #{migrated} applications"
   end
 
-  def self.verify_migration(old_cart_name, new_cart_name, old_cart_version)
-    missed_update_count = 0
-    missed_update_count += db["applications"].find({"component_instances.cartridge_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances.component_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.cart" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"group_overrides.components.comp" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"gears.port_interfaces.cartridge_name" => old_cart_name}).count
-    missed_update_count += db["applications"].find({"component_instances" => {"$elemMatch" => {"cartridge_name" => new_cart_name, "cartridge_vendor" => "redhat", "version" => old_cart_version}}}).count
-    missed_update_count += db["usage"].find({"cart_name" => old_cart_name}).count
-    missed_update_count += db["usage_records"].find({"cart_name" => old_cart_name}).count
-
-    missed_update_count
-  end
+  def self.migrate_districts
+    old_districts_count = db["districts"].find({"server_identities" => {"$exists" => true}}).count
+ 
+    current_time = Time.now.utc
+    db["districts"].find({}, {:fields => ["_id", "active_server_identities_size", "server_identities"], :timeout => false}) do |mcursor| 
+      mcursor.each do |district|
+        # skip if district is already migrated, this will make district migration re-entrant.
+        next if district.has_key?("active_servers_size")
+ 
+        updates = {}
+        updates["$set"] = {"active_servers_size" => district["active_server_identities_size"]}
+        updates["$unset"] = {"active_server_identities_size" => ""}
+        new_servers = []
+ 
+        district["server_identities"].each do |server|
+          puts "Migrating: District (#{district['_id']}), Server (#{server['name']}), Active (#{server['active']}), Unresponsive (#{server['unresponsive']})"
+          si = {}
+          si['_id'] = BSON::ObjectId.new
+          si['name'] = server['name']
+          if server['active']
+            si['active'] = true
+          else
+            si['active'] = false
+          end
+          if server['unresponsive']
+            si['unresponsive'] = true
+          else
+            si['unresponsive'] = false
+          end
+          si['created_at'] = current_time
+          si['updated_at'] = current_time
+          new_servers << si
+        end if district["server_identities"].present?
+ 
+        updates["$set"]["servers"] = new_servers
+        updates["$unset"]["server_identities"] = ""
+        db["districts"].update({'_id' => district['_id']}, updates)
+      end
+    end if old_districts_count > 0
   
+    new_districts_count = db["districts"].find({"servers" => {"$exists" => true}}).count
+    if old_districts_count != new_districts_count
+      puts "Error: District migration Failed!, #Old districts: #{old_districts_count}, #New districts: #{new_districts_count}"
+      exit 1
+    else
+      puts "District migration Successful!"
+    end
+  end
+
+  #
+  # set the alias and SSL certificates in the secondary haproxy gears for HA applications 
+  #
+  def self.set_aliases_for_ha_apps
+    print "Sending alias and SSL cert info to secondary proxy gears for all HA apps...\t"
+    app_count = 0
+
+    # fetch the list of HA applications
+    Application.where({"scalable" => true, "ha" => true}).each do |app|
+      # check if the application has any aliases
+      if app.aliases.present?
+        # get the list of gears that have the haproxy cartridge
+        haproxy_gears = app.gears.select { |g| g.component_instances.select { |ci| ci.get_cartridge.is_web_proxy? }.present? }
+        if haproxy_gears.length > 1
+          app_count += 1
+          fqdns = app.aliases.map {|app_alias| app_alias.fqdn}
+          Application.run_in_application_lock(app) do
+            haproxy_gears.each do |ha_gear|
+              # the app_dns gear already has the alias information, so skip it
+              ha_gear.add_aliases(fqdns) unless ha_gear.app_dns
+              # also add the app-dns in the frontend map
+              ha_gear.frontend_reconnect(true) unless ha_gear.app_dns
+            end
+          end
+   
+          # check to see if any of the app aliases have SSL certificates
+          if app.aliases.select {|app_alias| app_alias.has_private_ssl_certificate}.present?
+            # get the app_dns gear
+            dns_haproxy_gear = haproxy_gears.select {|g| g.app_dns}.first
+            # fetch the cert information for all aliases for this app from the HAProxy gear
+            ssl_certs = dns_haproxy_gear.get_all_ssl_certs()
+            Application.run_in_application_lock(app) do
+              ssl_certs.each do |cert_info|
+                haproxy_gears.each do |ha_gear|
+                  # the app_dns gear already has the ssl cert information, so skip it
+                  ha_gear.add_ssl_cert(cert_info[0], cert_info[1], cert_info[2]) unless ha_gear.app_dns
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    puts "Done."
+    puts "Sent alias and SSL cert info for #{app_count} applications."
+  end
+end
+
+###############################################################################
+# The 2.0.41 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.41),
+# rhc-broker/script/rhc-admin-migrate-datastore;
+#
+# * Wrapped the script in a module.
+
+module Migrate_2_0_41
+  VERSIONS = {
+    :compatible => false,
+    :"non-compatible" => false,
+    :prerelease => false,
+    :postrelease => true,
+    :run_parallel => []
+  }
+
+  def self.migrate(type)
+    case type
+    when :prerelease
+    when :postrelease
+      update_ld_library_paths
+    when :"non-compatible"
+    when :compatible
+    end
+  end
+
+  def self.update_ld_library_paths
+    cart_filter = {
+      "component_instances.component_name" => ['mysql-5.5', 'postgresql-9.2']
+    }
+    app_ids = Application.where({"scalable" => true}).in(cart_filter).only('_id').map { |a|
+      a._id
+    }
+    puts "Executing execution hooks for #{app_ids.size} applications..."
+    app_count = 0
+    app_ids.each { |app_id|
+      begin
+        Application.find(app_id).execute_connections
+        app_count += 1
+      rescue => e
+        puts "Failed to execute_connections for #{app_id} (ERR: #{e.message})"
+      end
+    }
+    puts "Done."
+    puts "Updated LD_LIBRARY_PATH for #{app_count} applications."
+  end
 end
 
 ###############################################################################
