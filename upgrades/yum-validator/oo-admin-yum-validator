@@ -22,7 +22,7 @@ SUBS_NAME = {'unknown': '', 'rhsm': 'Red Hat Subscription Manager',
              'rhn': 'RHN Classic or RHN Satellite'}
 VALID_SUBS = SUBS_NAME.keys()[1:]
 ATTACH_ENTITLEMENTS_URL = 'https://access.redhat.com/site/articles/522923'
-VALID_OO_VERSIONS = ['1.2', '2.0']
+VALID_OO_VERSIONS = ['1.2', '2.0', '2.1']
 VALID_ROLES = ['node', 'broker', 'client', 'node-eap']
 
 def flatten_uniq(llist):
