@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -xe
+
+# https://github.com/openshift/origin-server/pull/4797
+# https://trello.com/c/q1ro2vDB/408-3-use-proxy-pass-for-virtual-hosts-plugin-instead-of-mod-rewrite
+if rpm -q rubygem-openshift-origin-frontend-apache-vhost; then
+        frontends=/etc/openshift/upgrade/3/upgrade-vhost-frontends.save
+	# These commands need to be in a separate stpe so that a failure on the
+	# --delete command doesn't cause us to rerun --save (thereby destroying
+	# the frontends)
+	oo-frontend-plugin-modify --save > $frontends
+fi
