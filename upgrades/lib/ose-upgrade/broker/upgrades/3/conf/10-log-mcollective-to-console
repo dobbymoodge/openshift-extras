@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -xe
+
+conf='/opt/rh/ruby193/root/etc/mcollective/client.cfg'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# Remove the old settings in case they were there
+sed -e '/logger_type/d' $conf
+sed -e '/loglevel/d' $conf
+
+cat <<EOF >> "$conf"
+
+# logger_type = file cannot be set for OpenShift Enterprise
+# https://bugzilla.redhat.com/show_bug.cgi?id=963332
+logger_type = console
+loglevel = warn
+EOF
+
+# Comment out the logfile so people don't get confused. It's actually only used
+# if logger_type = file.
+sed -i 's|^logfile = \(.*\)$|#logfile = \1|' $conf
