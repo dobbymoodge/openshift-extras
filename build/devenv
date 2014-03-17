@@ -596,7 +596,7 @@ priority= 1
 
           if options.install_required_packages?
             puts "Configuring Charlie"
-            ssh_pty(hostname, "sudo -s yum -y install charlie", 60 * 10, ssh_user)
+            ssh(hostname, "sudo -s yum -y install charlie", 60 * 10, true, 1, ssh_user)
             ssh(hostname, "sudo -s echo HOURS=6 > /etc/charlie.conf", 60 * 10, true, 1, ssh_user)
           end
 
