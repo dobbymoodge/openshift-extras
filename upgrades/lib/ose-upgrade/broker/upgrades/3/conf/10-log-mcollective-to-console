@@ -6,8 +6,8 @@ conf='/opt/rh/ruby193/root/etc/mcollective/client.cfg'
 command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
 
 # Remove the old settings in case they were there
-sed -e '/logger_type/d' $conf
-sed -e '/loglevel/d' $conf
+sed -i '/logger_type/d' $conf
+sed -i '/loglevel/d' $conf
 
 cat <<EOF >> "$conf"
 
