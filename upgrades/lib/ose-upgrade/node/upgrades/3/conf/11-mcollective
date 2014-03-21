@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -xe
+
+conf='/opt/rh/ruby193/root/etc/mcollective/server.cfg'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+# registerinternal shouldn't be needed with 2.4 (and we're doubting we ever
+# actually needed it.
+sed -i 's|^registerinterval\(.*\)$|#registerinterval\1|' $conf
+
+# 2.4 upgrade
+sed -i '/topicprefix/d' $conf
+sed -i 's|^direct_addressing.*$|direct_addressing = 0|' $conf
