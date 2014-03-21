@@ -19,7 +19,7 @@ EOF
 
 # Comment out the logfile so people don't get confused. It's actually only used
 # if logger_type = file.
-sed -i 's|^logfile = \(.*\)$|#logfile = \1|' $conf
+sed -i 's|^logfile\(.*\)$|#logfile\1|' $conf
 
 # 2.4 upgrade
 sed -i '/topicprefix/d' $conf
