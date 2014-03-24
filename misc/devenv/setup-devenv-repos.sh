@@ -23,13 +23,18 @@ gpgcheck=1
 EOF
 
 # TODO EPEL ships a broken rubygem-aws-sdk that requires a newer version of rubygem-httparty than exists in EPEL
+# TODO Technically we have the test dependencies puddle but I'm starting to
+# like not having things in our brew main brew that that isn't destined for
+# prod.  I'm thinking we should have a -test brew tag that we generate puddles
+# from.  For now I'm lowering the priority to 10 and have manually added the
+# correct mocha gem.
 cat > /etc/yum.repos.d/misc.repo <<EOF
 [misc]
 name=misc
 baseurl=https://mirror.openshift.com/enterprise/${1-enterprise-2.1}/misc/
 failovermethod=priority
 enabled=1
-priority=50
+priority=10
 gpgcheck=0
 gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
 ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
