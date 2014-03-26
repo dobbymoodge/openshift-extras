@@ -12,3 +12,10 @@ sed -i 's|^registerinterval\(.*\)$|#registerinterval\1|' $conf
 # 2.4 upgrade
 sed -i '/topicprefix/d' $conf
 sed -i 's|^direct_addressing.*$|direct_addressing = 0|' $conf
+
+cat <<EOF >> "$conf"
+
+plugin.activemq.heartbeat_interval = 30
+plugin.activemq.max_hbread_fails = 2
+plugin.activemq.max_hbrlck_fails = 2
+EOF

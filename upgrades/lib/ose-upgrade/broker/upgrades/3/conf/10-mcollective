@@ -11,6 +11,10 @@ sed -i '/loglevel/d' $conf
 
 cat <<EOF >> "$conf"
 
+plugin.activemq.heartbeat_interval = 30
+plugin.activemq.max_hbread_fails = 2
+plugin.activemq.max_hbrlck_fails = 2
+
 # logger_type = file cannot be set for OpenShift Enterprise
 # https://bugzilla.redhat.com/show_bug.cgi?id=963332
 logger_type = console
