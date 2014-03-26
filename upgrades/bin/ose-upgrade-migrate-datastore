@@ -41,7 +41,7 @@ module Migrate_2_0_37
   end
 
   def self.flatten_gears
-    puts "Running parallel migration : #{$parallel_index} of #{$num_processes}.."
+    #puts "Running parallel migration : #{$parallel_index} of #{$num_processes}.."
     if $parallel_index.nil? or ($parallel_index == 0)
       db["applications"].drop_index("group_instances.gears.uuid_1") rescue nil 
     end
@@ -49,7 +49,7 @@ module Migrate_2_0_37
     selection = {:fields => ["group_instances", "gears"], :timeout => false, :read => :primary}
     OpenShift::DataStore.find(:applications, filter, selection) do |app|
       begin
-        next if app["_id"].to_s.sum.modulo($num_processes)!=$parallel_index
+        #next if app["_id"].to_s.sum.modulo($num_processes)!=$parallel_index
         next if app["gears"].is_a?(Array) and app["gears"].length>0
         new_gears = []
         updates = { "$set" => {}, "$unset" => {} }
@@ -70,7 +70,8 @@ module Migrate_2_0_37
         puts e.backtrace.inspect
       end
     end
-    puts "Completed #{$parallel_index} of #{$num_processes} parallel tasks."
+    #puts "Completed #{$parallel_index} of #{$num_processes} parallel tasks."
+    puts "Completed flatten_gear migration."
   end
 end
 
@@ -83,7 +84,7 @@ end
 
 module Migrate_2_0_39
   VERSIONS = {
-    :compatible => false,
+    :compatible => true,
     :"non-compatible" => false,
     :prerelease => true,
     :postrelease => true,
@@ -101,6 +102,7 @@ module Migrate_2_0_39
       remove_component_start_stop_configure_orders
     when :"non-compatible"
     when :compatible
+      update_sshkeys
     end
   end
 
@@ -137,6 +139,204 @@ module Migrate_2_0_39
         {:multi => true, :w => 1} # force w = 1 to receive update count
       )) and puts "#{r['n']} updated" rescue puts "failed #{$!} #{$!.backtrace.join("\n")}"
     end
+  end
+
+  def self.update_sshkeys
+    start_time = Time.now.to_i
+
+    # updating application ssh keys
+    print "Setting _type for application ssh keys... "
+    set_app_sshkeys_type()
+    puts "Done."
+
+    print "Setting _id for application ssh keys... "
+    key_count, app_count = set_app_sshkeys_id()
+    puts "Done."
+    puts "Updated #{key_count} sshkeys across #{app_count} applications"
+    puts ""
+
+    # updating domain ssh keys
+    print "Setting _type for domain ssh keys... "
+    set_domain_sshkeys_type()
+    puts "Done."
+
+    print "Setting _id for domain ssh keys... "
+    key_count, domain_count = set_domain_sshkeys_id()
+    puts "Done."
+    puts "Updated #{key_count} sshkeys across #{domain_count} domains"
+    puts ""
+
+    # updating user ssh keys
+    print "Setting _type for user ssh keys... "
+    set_user_sshkeys_type()
+    puts "Done."
+
+    print "Setting _id for user ssh keys... "
+    key_count, user_count = set_user_sshkeys_id()
+    puts "Done."
+    puts "Updated #{key_count} sshkeys across #{user_count} users"
+    puts ""
+
+    puts "Time taken: #{Time.now.to_i - start_time} seconds"
+    puts ""
+
+    # verifying sshkey updates
+    print "Verifying updates for application ssh keys... "
+    missed_update_count = verify_app_sshkeys()
+    puts missed_update_count == 0 ? "Successful." : "Failed."
+
+    print "Verifying updates for domain ssh keys... "
+    missed_update_count = verify_domain_sshkeys()
+    puts missed_update_count == 0 ? "Successful." : "Failed."
+
+    print "Verifying updates for user ssh keys... "
+    missed_update_count = verify_user_sshkeys()
+    puts missed_update_count == 0 ? "Successful." : "Failed."
+    puts ""
+  end
+
+  def self.set_app_sshkeys_type()
+    index = 0
+    search_count = 1
+    while search_count > 0 do
+      filter = {"$or" => [{"app_ssh_keys.#{index}._type" => {"$exists" => false}},
+                          {"app_ssh_keys.#{index}._type" => nil}],
+                "app_ssh_keys.#{index}.content" => {"$exists" => true}}
+
+      update_query = {"$set" => {"app_ssh_keys.#{index}._type" => ApplicationSshKey.to_s}}
+      db["applications"].update(filter, update_query, { :multi => true })
+
+      index += 1
+      search_count = db["applications"].find({"app_ssh_keys.#{index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.set_app_sshkeys_id()
+    app_count = 0
+    key_count = 0
+    filter = {"app_ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}],
+                                                "content" => {"$exists" => true}}}}
+    db["applications"].find(filter, {fields: ["app_ssh_keys._id", "app_ssh_keys.name"]}).each do |app|
+      app_count += 1
+      index = -1
+      app["app_ssh_keys"].each do |sshkey|
+        index += 1
+        next if sshkey.has_key?("_id") and sshkey["_id"].present?
+        key_count += 1
+        sshkey_id = Moped::BSON::ObjectId.new.to_s
+        update_query = {"$set" => {"app_ssh_keys.#{index}._id" => BSON::ObjectId(sshkey_id)}}
+        db["applications"].update({"_id" => BSON::ObjectId(app["_id"].to_s)}, update_query)
+      end
+    end
+    return key_count, app_count
+  end
+
+  def self.verify_app_sshkeys
+    missed_update_count = 0
+
+    filter = {"app_ssh_keys" => {"$elemMatch" => {"$or" => [{"_type" => {"$exists" => false}}, {"_type" => nil}]}}}
+    missed_update_count += db["applications"].find(filter).count
+
+    filter = {"app_ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}]}}}
+    missed_update_count += db["applications"].find(filter).count
+
+    missed_update_count
+  end
+
+  def self.set_domain_sshkeys_type()
+    index = 0
+    search_count = 1
+    while search_count > 0 do
+      filter = {"$or" => [{"system_ssh_keys.#{index}._type" => {"$exists" => false}},
+                          {"system_ssh_keys.#{index}._type" => nil}],
+                "system_ssh_keys.#{index}.content" => {"$exists" => true}}
+
+      update_query = {"$set" => {"system_ssh_keys.#{index}._type" => SystemSshKey.to_s}}
+      db["domains"].update(filter, update_query, { :multi => true })
+
+      index += 1
+      search_count = db["domains"].find({"system_ssh_keys.#{index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.set_domain_sshkeys_id()
+    domain_count = 0
+    key_count = 0
+    filter = {"system_ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}],
+                                                   "content" => {"$exists" => true}}}}
+    db["domains"].find(filter, {fields: ["system_ssh_keys._id", "system_ssh_keys.name"]}).each do |domain|
+      domain_count += 1
+      index = -1
+      domain["system_ssh_keys"].each do |sshkey|
+        index += 1
+        next if sshkey.has_key?("_id") and sshkey["_id"].present?
+        key_count += 1
+        sshkey_id = Moped::BSON::ObjectId.new.to_s
+        update_query = {"$set" => {"system_ssh_keys.#{index}._id" => BSON::ObjectId(sshkey_id)}}
+        db["domains"].update({"_id" => BSON::ObjectId(domain["_id"].to_s)}, update_query)
+      end
+    end
+    return key_count, domain_count
+  end
+
+  def self.verify_domain_sshkeys
+    missed_update_count = 0
+
+    filter = {"system_ssh_keys" => {"$elemMatch" => {"$or" => [{"_type" => {"$exists" => false}}, {"_type" => nil}]}}}
+    missed_update_count += db["domains"].find(filter).count
+
+    filter = {"system_ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}]}}}
+    missed_update_count += db["domains"].find(filter).count
+
+    missed_update_count
+  end
+
+  def self.set_user_sshkeys_type()
+    index = 0
+    search_count = 1
+    while search_count > 0 do
+      filter = {"$or" => [{"ssh_keys.#{index}._type" => {"$exists" => false}},
+                          {"ssh_keys.#{index}._type" => nil}],
+                "ssh_keys.#{index}.content" => {"$exists" => true}}
+
+      update_query = {"$set" => {"ssh_keys.#{index}._type" => UserSshKey.to_s}}
+      db["cloud_users"].update(filter, update_query, { :multi => true })
+
+      index += 1
+      search_count = db["cloud_users"].find({"ssh_keys.#{index}" => {"$exists" => true}}).count
+    end
+  end
+
+  def self.set_user_sshkeys_id()
+    user_count = 0
+    key_count = 0
+    filter = {"ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}],
+                                            "content" => {"$exists" => true}}}}
+    db["cloud_users"].find(filter, {fields: ["ssh_keys._id", "ssh_keys.name"]}).each do |user|
+      user_count += 1
+      index = -1
+      user["ssh_keys"].each do |sshkey|
+        index += 1
+        next if sshkey.has_key?("_id") and sshkey["_id"].present?
+        key_count += 1
+        sshkey_id = Moped::BSON::ObjectId.new.to_s
+        update_query = {"$set" => {"ssh_keys.#{index}._id" => BSON::ObjectId(sshkey_id)}}
+        db["cloud_users"].update({"_id" => BSON::ObjectId(user["_id"].to_s)}, update_query)
+      end
+    end
+    return key_count, user_count
+  end
+
+  def self.verify_user_sshkeys
+    missed_update_count = 0
+
+    filter = {"ssh_keys" => {"$elemMatch" => {"$or" => [{"_type" => {"$exists" => false}}, {"_type" => nil}]}}}
+    missed_update_count += db["cloud_users"].find(filter).count
+
+    filter = {"ssh_keys" => {"$elemMatch" => {"$or" => [{"_id" => {"$exists" => false}}, {"_id" => nil}]}}}
+    missed_update_count += db["cloud_users"].find(filter).count
+
+    missed_update_count
   end
 end
 
@@ -450,6 +650,60 @@ module Migrate_2_0_41
 end
 
 ###############################################################################
+# The 2.0.42 migration code is taken from li repo, stage branch (will be 
+# stage-2.0.42),
+# rhc-broker/script/rhc-admin-migrate-datastore;
+#
+# * Wrapped the script in a module.
+
+module Migrate_2_0_42
+  VERSIONS = {
+    :compatible => false,
+    :"non-compatible" => true,
+    :prerelease => false,
+    :postrelease => true,
+    :run_parallel => []
+  }
+
+  def self.migrate(type)
+    puts "Starting migration: #{type}"
+    case type
+    when :prerelease
+    when :postrelease
+    when :"non-compatible"
+      migrate_cloud_users
+    when :compatible
+    end
+    puts "\nMigration complete"
+  end
+
+  def self.migrate_cloud_users
+    # Drop existing index on 'pending_ops' field
+    db["cloud_users"].drop_index("pending_ops.created_at_1") rescue nil
+
+    # Remove 'pending_ops' and add 'pending_op_groups' to cloud_users records
+    query = { "pending_ops.0" => { "$exists" => false }, "pending_op_groups" => { "$exists" => false } }
+    updates = {"$unset" => {"pending_ops" => ""}, "$set" => {"pending_op_groups" => []}}
+    db["cloud_users"].update(query, updates, { :multi => true })
+
+    # Migration validation
+    num_users_with_pending_ops = db["cloud_users"].find({"pending_ops.0" => { "$exists" => true }}).count
+    if num_users_with_pending_ops != 0
+      puts "Found #{num_users_with_pending_ops} users with pending ops. Please run 'oo-admin-clear-pending-ops -t 0' and retry the operation."
+      exit 1
+    end
+
+    num_users_without_pending_op_groups = db["cloud_users"].find({"pending_op_groups" => { "$exists" => false }}).count
+    if num_users_without_pending_op_groups != 0
+      puts "Found #{num_users_without_pending_op_groups} users with-out 'pending_op_groups' field."
+      puts "Migration failed, retry the operation and if the error persists then investigate the issue."
+      exit 2
+    end
+    puts "Cloud users migration done!"
+  end
+end
+
+###############################################################################
 # Migration core code
 #
 
@@ -504,7 +758,7 @@ if [opt['compatible'],opt['non-compatible'],opt['prerelease'],opt['postrelease']
   p_usage
 end
 
-type = ((opt['compatible'] and :compatible) or (opt['non-compatible'] and :non_compatible) or (opt['prerelease'] and :prerelease) or (opt['postrelease'] and :postrelease))
+type = ((opt['compatible'] and :compatible) or (opt['non-compatible'] and :"non-compatible") or (opt['prerelease'] and :prerelease) or (opt['postrelease'] and :postrelease))
 
 $:.unshift('/var/www/openshift/broker')
 require 'config/environment'
