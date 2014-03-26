@@ -1,4 +1,4 @@
-./cartridges/dependencies
+./cartridges/dependencies/
 ./cartridges/openshift-origin-cartridge-cron/
 ./cartridges/openshift-origin-cartridge-diy/
 ./cartridges/openshift-origin-cartridge-jbosseap/
@@ -11,6 +11,7 @@
 ./cartridges/openshift-origin-cartridge-perl/
 ./cartridges/openshift-origin-cartridge-php/
 ./cartridges/openshift-origin-cartridge-python/
+./logshifter/
 ./node-util/
 ./pam_openshift/
 ./port-proxy/
