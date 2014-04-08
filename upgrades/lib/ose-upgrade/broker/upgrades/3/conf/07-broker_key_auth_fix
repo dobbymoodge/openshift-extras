@@ -6,6 +6,5 @@ set -xe
 conf=`ls /var/www/openshift/broker/httpd/conf.d/openshift-origin-auth*.conf`
 command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
 
-sed -i 's/BrowserMatchNoCase.*passthrough/SetEnvIf broker_auth_key "^[A-Za-z0-9+\/=]+$" BROKER_AUTH=1/' $conf
-sed -i 's/Require env passthrough/Require env BROKER_AUTH/' $conf
-sed -i 's/Allow from env=passthrough/Allow from env=BROKER_AUTH/' $conf
+sed -i 's/BrowserMatchNoCase.*passthrough/SetEnvIf broker_auth_key "^[A-Za-z0-9+\/=]+$" passthrough=1/' $conf
+sed -i 's/local_traffic=1/passthrough=1/' $conf
