@@ -12,10 +12,9 @@ module OSEUpgrader
       def implemented_steps
         # Broker and node upgrade steps are run in lockstep; the former
         # must be a superset of the latter.
-        #@params[:node_upgrader] ?
-          #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ] :
-          #%w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
-          %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ]
+        @params[:node_upgrader] ?
+          %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears test_gears_complete end_maintenance_mode post ] :
+          %w[ pre outage rpms conf maintenance_mode pending_ops confirm_nodes data gears end_maintenance_mode post ]
       end
 
       def run_upgrade_step_pre(state)
