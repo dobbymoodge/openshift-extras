@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -xe
+
+conf='/etc/openshift/plugins.d/openshift-origin-msg-broker-mcollective.conf'
+command cp -f "$conf"{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+
+if grep "^DISTRICTS_ENABLED" $conf
+then
+	sed -i 's|^DISTRICTS_ENABLED.*$|DISTRICTS_ENABLED=true|' $conf
+else
+        cat <<EOF >> "$conf"
+DISTRICTS_ENABLED=true
+EOF
+fi
+
+if grep "^DISTRICTS_REQUIRE_FOR_APP_CREATE" $conf
+then
+	sed -i 's|^DISTRICTS_REQUIRE_FOR_APP_CREATE.*$|DISTRICTS_REQUIRE_FOR_APP_CREATE=true|' $conf
+else
+        cat <<EOF >> "$conf"
+DISTRICTS_REQUIRE_FOR_APP_CREATE=true
+EOF
+fi
