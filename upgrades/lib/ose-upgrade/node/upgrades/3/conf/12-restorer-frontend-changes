@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -xe
+
+conf=/etc/httpd/conf.d/000001_openshift_origin_node.conf
+if [ -e $conf ]; then
+  command cp -f $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+  if ! grep  openshift_restorer.include $conf; then
+    sed -i 's/\(include conf.d\/openshift_route.include\)/include conf.d\/openshift_restorer.include\n  \1/g' $conf
+  fi
+fi
+
+conf=/etc/httpd/conf.d/000001_openshift_origin_frontend_vhost.conf
+if [ -e $conf ]; then
+  command cp -f $conf{,.ugsave.`date +%Y-%m-%d-%H:%M:%S`}
+  if ! grep  openshift_restorer.include $conf; then
+    cat <<EOF >> $conf
+# Enable the restorer for idled applications.
+include conf.d/openshift_restorer.include
+EOF
+  fi
+fi
