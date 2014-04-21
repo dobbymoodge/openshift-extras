@@ -200,6 +200,110 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Mon Apr 21 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.0-1
+- bug 1085489 - mod-rewrite frontend: allow custom vhost to unidle
+  (bleanhar@redhat.com)
+- bug 1085489 - Restorer.pm (bleanhar@redhat.com)
+- Revert "Bug 1057538 - Districts are required by default"
+  (bleanhar@redhat.com)
+- Bug 1057538 - Districts are required by default (bleanhar@redhat.com)
+- Removing hardcoded steps (bleanhar@redhat.com)
+- Bug 1085343 - fixing typo (bleanhar@redhat.com)
+- Bug 1086402 - fix mcollective client.cfg permissions (bleanhar@redhat.com)
+- Bug 1085365 - new deployment could not be recorded after 2.0->2.1 upgrade.
+  (bleanhar@redhat.com)
+- Bug 1085376 - token does NOT work after 2.0->2.1 upgrade
+  (bleanhar@redhat.com)
+- Bug 1078819 - Fail to run jenkins build after 2.0->2.1 upgrade.
+  (bleanhar@redhat.com)
+- upgrade frontend: regenerate vhosts (lmeyer@redhat.com)
+- Bug 1084048 - cartridges need to be imported before the postrelease script
+  can run (bleanhar@redhat.com)
+- Adding missing sprint 37 migration method and fix for sprint 39
+  (bleanhar@redhat.com)
+- Bug 1081177 - Lots of ' activemq.rb:274:in `connection_headers' in standard
+  output (bleanhar@redhat.com)
+- Bug 1050449 - Make the Red Hat Support Tool a prerequisite of openshift-
+  enterprise-release (bleanhar@redhat.com)
+- Making a regex more flexible WRT whitespace (bleanhar@redhat.com)
+- Bug 1079365 - Upgrade to MCollective 2.4 (bleanhar@redhat.com)
+- Bug 1076525 - typo fix for mcollective console logging (bleanhar@redhat.com)
+- Regenerating the vhost frontends (bleanhar@redhat.com)
+- Bug 1076498 - oo-admin-yum-validator support for 2.0->2.1 upgrade
+  (bleanhar@redhat.com)
+- Bug 1076525 - Fix mcollective-client.log permissions (bleanhar@redhat.com)
+- Bug 1076449 - enable watchman (and fix some port proxy handling)
+  (bleanhar@redhat.com)
+- datastore upgrades for sprint 39, 40 and 41 (bleanhar@redhat.com)
+- Bug 1076125 - Update passenger settings to match recommendations from Online
+  (bleanhar@redhat.com)
+- Bug 1075773 - Installing the recommended metapackages (bleanhar@redhat.com)
+- Setting the version number correctly for new 2.1 installs
+  (bleanhar@redhat.com)
+- Fixing 12-broker-confirm-nodes' expected version (bleanhar@redhat.com)
+- Fixing typo (bleanhar@redhat.com)
+- importing the cartridges to mongo can only be done once everything is back up
+  (bleanhar@redhat.com)
+- all the rest of the steps (bleanhar@redhat.com)
+- maintenance_mode (bleanhar@redhat.com)
+- First pass at outage, rpm and conf (bleanhar@redhat.com)
+- bumping version (bleanhar@redhat.com)
+- first pass at ose-upgrade-migrate-datastore (bleanhar@redhat.com)
+- Adding support for upgrading to OSE 2.1 (bleanhar@redhat.com)
+- <upgrade> Fix version macro reference in spec file (jdetiber@redhat.com)
+
+* Mon Apr 21 2014 Brenton Leanhardt <bleanhar@redhat.com>
+- bug 1085489 - mod-rewrite frontend: allow custom vhost to unidle
+  (bleanhar@redhat.com)
+- bug 1085489 - Restorer.pm (bleanhar@redhat.com)
+- Revert "Bug 1057538 - Districts are required by default"
+  (bleanhar@redhat.com)
+- Bug 1057538 - Districts are required by default (bleanhar@redhat.com)
+- Removing hardcoded steps (bleanhar@redhat.com)
+- Bug 1085343 - fixing typo (bleanhar@redhat.com)
+- Bug 1086402 - fix mcollective client.cfg permissions (bleanhar@redhat.com)
+- Bug 1085365 - new deployment could not be recorded after 2.0->2.1 upgrade.
+  (bleanhar@redhat.com)
+- Bug 1085376 - token does NOT work after 2.0->2.1 upgrade
+  (bleanhar@redhat.com)
+- Bug 1078819 - Fail to run jenkins build after 2.0->2.1 upgrade.
+  (bleanhar@redhat.com)
+- upgrade frontend: regenerate vhosts (lmeyer@redhat.com)
+- Bug 1084048 - cartridges need to be imported before the postrelease script
+  can run (bleanhar@redhat.com)
+- Adding missing sprint 37 migration method and fix for sprint 39
+  (bleanhar@redhat.com)
+- Bug 1081177 - Lots of ' activemq.rb:274:in `connection_headers' in standard
+  output (bleanhar@redhat.com)
+- Bug 1050449 - Make the Red Hat Support Tool a prerequisite of openshift-
+  enterprise-release (bleanhar@redhat.com)
+- Making a regex more flexible WRT whitespace (bleanhar@redhat.com)
+- Bug 1079365 - Upgrade to MCollective 2.4 (bleanhar@redhat.com)
+- Bug 1076525 - typo fix for mcollective console logging (bleanhar@redhat.com)
+- Regenerating the vhost frontends (bleanhar@redhat.com)
+- Bug 1076498 - oo-admin-yum-validator support for 2.0->2.1 upgrade
+  (bleanhar@redhat.com)
+- Bug 1076525 - Fix mcollective-client.log permissions (bleanhar@redhat.com)
+- Bug 1076449 - enable watchman (and fix some port proxy handling)
+  (bleanhar@redhat.com)
+- datastore upgrades for sprint 39, 40 and 41 (bleanhar@redhat.com)
+- Bug 1076125 - Update passenger settings to match recommendations from Online
+  (bleanhar@redhat.com)
+- Bug 1075773 - Installing the recommended metapackages (bleanhar@redhat.com)
+- Setting the version number correctly for new 2.1 installs
+  (bleanhar@redhat.com)
+- Fixing 12-broker-confirm-nodes' expected version (bleanhar@redhat.com)
+- Fixing typo (bleanhar@redhat.com)
+- importing the cartridges to mongo can only be done once everything is back up
+  (bleanhar@redhat.com)
+- all the rest of the steps (bleanhar@redhat.com)
+- maintenance_mode (bleanhar@redhat.com)
+- First pass at outage, rpm and conf (bleanhar@redhat.com)
+- bumping version (bleanhar@redhat.com)
+- first pass at ose-upgrade-migrate-datastore (bleanhar@redhat.com)
+- Adding support for upgrading to OSE 2.1 (bleanhar@redhat.com)
+- <upgrade> Fix version macro reference in spec file (jdetiber@redhat.com)
+
 * Tue Jan 07 2014 Luke Meyer <lmeyer@redhat.com> 2.0.1-1
 - <ose-upgrade> test_gears_complete bug 1046012 (lmeyer@redhat.com)
 - <ose-upgrade> confirm_nodes bugs 1046013, 1046017 (lmeyer@redhat.com)
