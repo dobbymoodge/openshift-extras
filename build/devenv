@@ -211,7 +211,7 @@ priority= 1
         if BASE_OS == "fedora"
           "sudo -s #{command}"
         elsif(BASE_OS == "rhel" or BASE_OS == "centos")
-          "sudo -s /usr/bin/scl enable ruby193 \"#{command}\""
+          "sudo -s /usr/bin/scl enable ruby193 v8314 \"#{command}\";"
         end
       end
 
@@ -475,7 +475,7 @@ priority= 1
           cmd += " --include_stale" if options.clean_metadata
 
           if(BASE_OS == "rhel" or BASE_OS == "centos")
-            cmd = "scl enable ruby193 \"#{cmd}\""
+            cmd = "scl enable ruby193 v8314 \"#{cmd}\""
           end
           out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd}  2>&1 ", 60 * 15, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
@@ -552,10 +552,10 @@ priority= 1
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
             repo = 'rhui-REGION-rhel-server-rhscl'
-            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=1 #{repo} --save", 60 * 20, 
+            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, 
                            true, 1, ssh_user)
             repo = 'rhui-REGION-rhel-server-releases'
-            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=2 #{repo} --save", 60 * 20, 
+            out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 60 * 20, 
                            true, 1, ssh_user)
             out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt='#{repo}.exclude=tomcat6*' #{repo} --save", 60 * 20, 
                            true, 1, ssh_user)
@@ -566,7 +566,7 @@ priority= 1
             print_highlighted_output("Update Output", out)
             repos = ['rhui-REGION-jbeap-6-rhui-rhel-6-rpms', 'rhui-REGION-rhel-server-6-jbews2']
             repos.each do |repo|
-              out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=3 #{repo} --save", 
+              out, ret = ssh(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=4 #{repo} --save", 
                              60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
               print_highlighted_output("Update Output", out)
@@ -645,7 +645,7 @@ priority= 1
           # TODO: this doesn't need to run for install_from_source
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
-            out, ret = ssh(hostname, "sudo yum install -y ruby193 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "sudo yum install -y ruby193 v8314 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
             out, ret = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies - Puppet, Tito", out)
@@ -654,7 +654,7 @@ priority= 1
           puts "Installing pre-requisite packages"
           cmd = "build/devenv install_required_packages"
           if(BASE_OS == "rhel" or BASE_OS == "centos")
-            cmd = "scl enable ruby193 \"#{cmd}\""
+            cmd = "scl enable ruby193 v8314 \"#{cmd}\""
           end
           out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd} 2>&1 ", 60 * 20, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
@@ -705,7 +705,7 @@ EOF
               puts "Installing Origin packages..."
               cmd = "build/devenv local_build --clean-packages"
               if(BASE_OS == "rhel" or BASE_OS == "centos")
-                cmd = "scl enable ruby193 \"#{cmd}\""
+                cmd = "scl enable ruby193 v8314 \"#{cmd}\""
               end
               out, ret = ssh(hostname, "cd /data/#{DEV_TOOLS_EXT_REPO}; sudo -s #{cmd}  2>&1 ", 60 * 30, true, 1, ssh_user) if ret == 0
               print_and_exit(ret, out) if ret != 0

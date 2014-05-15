@@ -38,20 +38,20 @@ EOF
 
 cat > /etc/yum.repos.d/devenv.repo <<EOF
 # This repo is only needed when testing pre-release RHEL content
-[devenv]
-name=Devenv repo for Enterprise Linux 6 - $basearch
-baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
-failovermethod=priority
-enabled=1
-gpgcheck=0
-gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
-ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
-sslverify=0
-priority=2
-exclude=tomcat6*
-sslclientcert=/var/lib/yum/client-cert.pem
-sslclientkey=/var/lib/yum/client-key.pem
+#[devenv]
+#name=Devenv repo for Enterprise Linux 6 - $basearch
+#baseurl=https://mirror1.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
+#        https://mirror2.ops.rhcloud.com/enterprise/${1-enterprise-1.2}/rhel
+#failovermethod=priority
+#enabled=1
+#gpgcheck=0
+#gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+#ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+#sslverify=0
+#priority=3
+#exclude=tomcat6*
+#sslclientcert=/var/lib/yum/client-cert.pem
+#sslclientkey=/var/lib/yum/client-key.pem
 # We have to be careful that this only shadows the rhui RHEL when we actually need it
 
 # This repo is only needed when testing pre-release JBoss content
@@ -67,7 +67,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=3
+#priority=4
 
 # This repo is only needed when testing pre-release JBoss content
 #[devenv-jboss-ews]
@@ -82,7 +82,7 @@ sslclientkey=/var/lib/yum/client-key.pem
 #sslverify=0
 #sslclientcert=/var/lib/yum/client-cert.pem
 #sslclientkey=/var/lib/yum/client-key.pem
-#priority=3
+#priority=4
 
 [Test_Dependencies]
 name=Client repo for Enterprise Linux 6 - $basearch
@@ -119,7 +119,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [Infrastructure]
 name=Infrastructure repo for Enterprise Linux 6 - $basearch
@@ -132,7 +132,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [JBoss_EAP6_Cartridge]
 name=JBoss EAP6 Cartridge repo for Enterprise Linux 6 - $basearch
@@ -145,7 +145,7 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
 
 [Node]
 name=Node repo for Enterprise Linux 6 - $basearch
@@ -158,6 +158,19 @@ ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
 sslverify=0
 sslclientcert=/var/lib/yum/client-cert.pem
 sslclientkey=/var/lib/yum/client-key.pem
-priority=1
+priority=2
+
+[rhscl_compose]
+name=RHSCL compose repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.ops.rhcloud.com/enterprise/rhscl-1.1-rhel-6/x86_64
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=2
 
 EOF

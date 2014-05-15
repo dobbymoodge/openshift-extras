@@ -1,5 +1,5 @@
 # Global definitions
-AMI = {"us-east-1" => "ami-938c5dfa"}
+AMI = {"us-east-1" => "ami-15c59f7c"}
 TYPE = "m1.large"
 KEY_PAIR = "libra"
 ZONE = 'us-east-1d'
