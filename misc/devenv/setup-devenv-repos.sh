@@ -202,4 +202,17 @@ priority=2
 #sslclientkey=/var/lib/yum/client-key.pem
 #priority=2
 
+[rhscl_compose]
+name=RHSCL compose repo for Enterprise Linux 6 - \$basearch
+baseurl=https://mirror.ops.rhcloud.com/enterprise/rhscl-1.1-rhel-6/x86_64
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-beta
+ggpkey=https://mirror1.ops.rhcloud.com/libra/RPM-GPG-KEY-redhat-release
+sslverify=0
+sslclientcert=/var/lib/yum/client-cert.pem
+sslclientkey=/var/lib/yum/client-key.pem
+priority=2
+
 EOF

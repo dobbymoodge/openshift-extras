@@ -417,7 +417,7 @@ rm -rf #{working_dirs}
 #{clone_commands}
 
 pushd #{DEV_TOOLS_EXT_REPO} > /dev/null
-  echo build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} | sudo scl enable ruby193 - 2>&1
+  echo build/devenv update#{options.verbose? ? ' --verbose' : ''} #{options.clean_metadata? ? ' --include_stale' : ''} | sudo scl enable ruby193 v8314 - 2>&1
 popd > /dev/null
 
 #{options.clean_metadata? ? "yum update -y rhc *openshift* 2>&1;" : ''}
@@ -525,7 +525,7 @@ mkdir -p /tmp/tito
             cmd += %{
 pushd /data/#{DEV_TOOLS_EXT_REPO} > /dev/null
   echo "Building all packages on the server..."
-  sudo -s scl enable ruby193 "build/devenv local_build --clean-packages"
+  sudo -s scl enable ruby193 v8314 "build/devenv local_build --clean-packages"
 popd > /dev/null
 }
           elsif options.install_required_packages?
@@ -552,7 +552,7 @@ popd
             end
             cmd += %{
 pushd /data/#{DEV_TOOLS_EXT_REPO}
-  sudo -s scl enable ruby193 "build/devenv install_required_packages" 2>&1
+  sudo -s scl enable ruby193 v8314 "build/devenv install_required_packages" 2>&1
 popd
 sudo -s rm -rf /etc/puppet/modules &&
 sudo -s mkdir -p /etc/puppet/modules &&

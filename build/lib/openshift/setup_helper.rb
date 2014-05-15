@@ -35,7 +35,7 @@ module SetupHelper
     BUILD_GEM_REQUIREMENTS.each do |gem_name, version|
       if version.nil? or version.empty?
         if(base_os == "rhel" or base_os == "centos")
-          `scl enable ruby193 "gem list -i #{gem_name}"`
+          `scl enable ruby193 v8314 "gem list -i #{gem_name}"`
         else
           `gem list -i #{gem_name}`
         end
@@ -44,7 +44,7 @@ module SetupHelper
         system "yum install -y '#{scl_prefix}rubygem-#{gem_name}'" unless is_installed
       else
         if(base_os == "rhel" or base_os == "centos")
-          `scl enable ruby193 "gem list -i #{gem_name} -v #{version}"`
+          `scl enable ruby193 v8314 "gem list -i #{gem_name} -v #{version}"`
         else
           `gem list -i #{gem_name} -v #{version}`
         end
@@ -54,7 +54,7 @@ module SetupHelper
         success = run "yum install -y '#{scl_prefix}rubygem-#{gem_name} = #{version}'"
         unless success
           if(base_os == "rhel" or base_os == "centos")
-            system "scl enable ruby193 \"gem install #{gem_name} -v #{version}\""
+            system "scl enable ruby193 v8314 \"gem install #{gem_name} -v #{version}\""
           else
             system "gem install #{gem_name} -v #{version}"
           end
