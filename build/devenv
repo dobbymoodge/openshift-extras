@@ -647,7 +647,7 @@ priority= 1
             puts "Install build script dependencies"
             out, ret = ssh(hostname, "sudo yum install -y ruby193 v8314 scl-utils ruby193-rubygem-aws-sdk ruby193-rubygem-parseconfig", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
-            out, ret = ssh(hostname, "sudo yum install -y --enablerepo=puppetlabs-products --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "sudo yum install -y --enablerepo=epel --disablerepo=Node puppet-2.7.21 tito", 60 * 15, true, 1, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies - Puppet, Tito", out)
           end
         
