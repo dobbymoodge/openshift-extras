@@ -92,7 +92,7 @@ module Origin
     method_option :update_packages, :type => :boolean, :desc => "Run yum update before install?"
     method_option :incremental, :type => :boolean, :desc => "Build only the changed packages"
     def local_build
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       
       if options.incremental
