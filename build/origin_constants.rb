@@ -6,7 +6,7 @@ require 'rubygems'
 
 OPTIONS = {
   "rhel"   => {
-    "amis"            => {"us-east-1" =>"ami-7b0c6312"},
+    "amis"            => {"us-east-1" =>"ami-15c59f7c"},
     "devenv_name"     => "enterprise",
     "ssh_user"        => "ec2-user",
     "ignore_packages" => [
