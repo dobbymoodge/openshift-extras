@@ -6,7 +6,7 @@ require 'rubygems'
 
 OPTIONS = {
   "fedora" => {
-    "amis"            => {"us-east-1" =>"ami-6145cc08"},
+    "amis"            => {"us-east-1" =>"ami-15c59f7c"},
     "devenv_name"     => "oso-fedora",
     "ssh_user"        => "ec2-user",    
     "ignore_packages" => [
