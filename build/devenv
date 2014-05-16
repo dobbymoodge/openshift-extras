@@ -572,6 +572,11 @@ sudo -s rm -rf /etc/puppet/modules &&
 sudo -s mkdir -p /etc/puppet/modules &&
 sudo -s puppet module install puppetlabs/stdlib &&
 sudo -s puppet module install puppetlabs/ntp &&
+sudo -s puppet module install rharrison/lokkit &&
+sudo -s puppet module install blentz/selinux_types &&
+sudo -s puppet module install puppetlabs/haproxy &&
+sudo -s puppet module install arioch/keepalived &&
+sudo -s puppet module install duritong/sysctl &&
 sudo -s ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin
 }
           else
@@ -677,11 +682,11 @@ cat<<EOF > ~#{options.ssh_user}/configure_origin.pp
 \\\$keyfile="/var/named/Kdev.rhcloud.com.*.key"
 \\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
 class { "openshift_origin" :
-  node_public_hostname               => \\\$ec2_public_hostname,
+  node_hostname                      => \\\$ec2_public_hostname,
   domain                             => "dev.rhcloud.com",
-  conf_named_upstream_dns            => ["172.16.0.23"],
+  conf_nameserver_upstream_dns       => ["172.16.0.23"],
   bind_key                           => \\\$key,
-  register_host_with_named           => true,
+  register_host_with_nameserver      => true,
   node_unmanaged_users               => ["#{options.ssh_user}"],
   install_method                     => 'none',
   development_mode                   => true,
@@ -690,7 +695,7 @@ class { "openshift_origin" :
   conf_console_session_secret        => "devenv_secret",
   conf_valid_gear_sizes              => ['small', 'medium'],
   conf_broker_multi_haproxy_per_node => true,
-  node_frontend_plugins              => ['apache-mod-rewrite', 'nodejs-websocket',
+  node_frontend_plugins              => ['apache-vhost', 'nodejs-websocket',
                                          'haproxy-sni-proxy'],
   install_cartridges                 => ['cron','diy','haproxy','mongodb',
                                          'nodejs','perl','php','postgresql',
