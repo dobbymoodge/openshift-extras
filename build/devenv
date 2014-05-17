@@ -343,9 +343,9 @@ priority= 1
               # Remove sub_user_test from broker integration tests, only works with mongo plugin
               ssh(hostname, "rm /data/openshift-test/broker/test/integration/sub_user_test.rb", 60, false, 2, SSH_USER)
 
-              test_queues[0] << ["OpenShift Broker Integration", "cd /data/openshift-test/broker; sudo -s cp /var/www/openshift/broker/Gemfile.lock . ;" + wrap_test_command("bundle install --local") + ";" + wrap_test_command("bundle exec rake test:integration")]
+              test_queues[0] << ["OpenShift Broker Integration", "cd /data/openshift-test/broker; sudo -s cp /var/www/openshift/broker/Gemfile.lock . ;" + wrap_test_command("bundle install --local") + wrap_test_command("bundle exec rake test:integration")]
               # TODO: BROKEN
-              #test_queues[2] << ["OpenShift Broker Functional", "cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock ." + wrap_test_command("bundle install --local") + ";" + wrap_test_command("bundle exec rake test:functionals")]
+              #test_queues[2] << ["OpenShift Broker Functional", "cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock ." + wrap_test_command("bundle install --local") + wrap_test_command("bundle exec rake test:functionals")]
               # TODO: BROKEN
               #test_queues[3] << ["Broker Cucumber", wrap_test_command("cucumber #{BROKER_CUCUMBER_OPTIONS} -t @broker /data/openshift-test/tests")]
             end
