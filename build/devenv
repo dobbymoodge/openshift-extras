@@ -695,7 +695,7 @@ class { "openshift_origin" :
   conf_console_session_secret        => "devenv_secret",
   conf_valid_gear_sizes              => ['small', 'medium'],
   conf_broker_multi_haproxy_per_node => true,
-  node_frontend_plugins              => ['apache-vhost', 'nodejs-websocket',
+  node_frontend_plugins              => ['apache-mod-rewrite', 'nodejs-websocket',
                                          'haproxy-sni-proxy'],
   install_cartridges                 => ['cron','diy','haproxy','mongodb',
                                          'nodejs','perl','php','postgresql',
