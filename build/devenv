@@ -763,6 +763,12 @@ EOF
         print_and_exit(ret, out) if ret != 0
         out, ret = ssh(hostname, "sudo -s RAILS_ENV=test oo-admin-ctl-cartridge -c import-node --activate --obsolete", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
+
+        # create default district
+        puts "Creating default district (if it doesn't already exist)"
+        out, ret = ssh(hostname, "sudo -s oo-admin-ctl-district -p small -n default-small -c add-node --available", 60 * 20, true, 1, ssh_user)
+        print_highlighted_output( "Create district", out)
+
       end
 
       def restart_services
