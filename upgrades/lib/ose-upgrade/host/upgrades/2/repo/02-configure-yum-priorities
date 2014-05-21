@@ -2,6 +2,37 @@
 
 set -xe
 
+# First, verify that we have a valid 1.2 configuration
+if ! /usr/bin/oo-admin-yum-validator --oo-version 1.2 --report-all; then
+   echo "ERROR: There was a problem detected with the repository configuration, running oo-admin-yum-validator --ose-version 1.2 --fix-all should clear up any repository configuration problems."
+   exit 1
+fi
+
+# Verify we have the necessary rhscl 1.1 package versions to perform the upgrade
+declare -A packages
+packages[scl-utils]="20120927 11.el6_5"
+packages[ruby193-ruby]="1.9.3.484 49.el6"
+packages[v8314-v8]="3.14.5.10 3.6.el6"
+
+for package in "${!packages[@]}"; do
+  pkg_ver_rel=( ${packages[$package]} )
+  pkg_ver=${pkg_ver_rel[0]}
+  pkg_rel=${pkg_ver_rel[1]}
+
+
+  if ! inst_pkg_ver_rel=( $(rpm -q ${package} --qf '%{VERSION} %{RELEASE}\n') ); then
+    echo "ERROR: Package ${package} not found. ose-upgrade should only be run on a fully updated installation of OpenShift Enterprise 1.2."
+    exit 1
+  fi
+  inst_pkg_ver=${inst_pkg_ver_rel[0]}
+  inst_pkg_rel=${inst_pkg_ver_rel[1]}
+
+  if [ $(python -c "import rpmUtils.miscutils; print(rpmUtils.miscutils.compareEVR(('${package}', '${inst_pkg_ver}', '${inst_pkg_rel}'), ('${package}', '${pkg_ver}', '${pkg_rel}')) >= 0)") == 'False' ]; then
+    echo "ERROR: Package ${package} version needs to be greater than ${pkg_ver}-${pkg_rel}. ose-upgrade should only be run on a fully updated installation of OpenShift Enterprise 1.2."
+    exit 1
+  fi
+done
+
 # It's OK for oo-admin-yum-validator to return a bunch of errors; it
 # does that even if it fixes things.
 /usr/bin/oo-admin-yum-validator --oo-version 2.0 --fix-all || :
