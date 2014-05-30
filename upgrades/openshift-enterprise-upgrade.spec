@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.2
+Version:   2.0.3
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Fri May 30 2014 dobbymoodge <jolamb@redhat.com> 2.0.3-1
+- ose-upgrade: Fix mcollective client.cfg permissions (jolamb@redhat.com)
+
 * Wed May 21 2014 Jason DeTiberus <jdetiber@redhat.com> 2.0.2-1
 - <ose-upgrade> rhscl-1.1 updates (jdetiber@redhat.com)
 * Tue Jan 07 2014 Luke Meyer <lmeyer@redhat.com> 2.0.1-1
