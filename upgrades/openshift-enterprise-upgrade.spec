@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.0
+Version:   2.1.1
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -200,6 +200,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Fri May 30 2014 dobbymoodge <jolamb@redhat.com> 2.1.1-1
+- ose-upgrade: Fix mcollective client.cfg permissions (jolamb@redhat.com)
+
 * Mon Apr 21 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.0-1
 - bug 1085489 - mod-rewrite frontend: allow custom vhost to unidle
   (bleanhar@redhat.com)
