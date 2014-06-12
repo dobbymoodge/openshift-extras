@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.1
+Version:   2.1.2
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -200,6 +200,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Thu Jun 12 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.2-1
+- Bug 1097844 - oo-admin-yum-validator doesn't detect OSE version 2.1 under RHN
+  (jolamb@redhat.com)
+
 * Fri May 30 2014 dobbymoodge <jolamb@redhat.com> 2.1.1-1
 - ose-upgrade: Fix mcollective client.cfg permissions (jolamb@redhat.com)
 
