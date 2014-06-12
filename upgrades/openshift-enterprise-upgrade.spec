@@ -154,7 +154,6 @@ subscription-manager or RHN classic as the RPM delivery mechanism.
 %yumv_lib
 %yumv_etc
 %config(noreplace) %yumv_etc/repos.ini
-%config(noreplace) %yumv_etc/beta2.ini
 %defattr(0500,root,root,700)
 %_bindir/oo-admin-yum-validator
 %{_mandir}/man8/oo-admin-yum-validator.8.gz
