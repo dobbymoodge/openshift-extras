@@ -6,8 +6,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.2
-Release:   2%{?dist}
+Version:   2.1.3
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -199,6 +199,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Wed Jun 25 2014 Jason DeTiberus <jdetiber@redhat.com> 2.1.3-1
+- oo-admin-yum-validator: Fix string in guess_ose (miciah.masters@gmail.com)
+
 * Thu Jun 12 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.2-2
 - beta2.ini was no longer needed (bleanhar@redhat.com)
 
