@@ -769,6 +769,10 @@ EOF
         out, ret = ssh(hostname, "sudo -s oo-admin-ctl-district -p small -n default-small -c add-node --available", 60 * 20, true, 1, ssh_user)
         print_highlighted_output( "Create district", out)
 
+        # install openshift-origin-cartridge-dependencies-optional-php
+        puts "Installing openshift-origin-cartridge-dependencies-optional-php"
+        out, ret = ssh(hostname, "sudo -s yum -y install openshift-origin-cartridge-dependencies-optional-php", 60 * 20, true, 1, ssh_user)
+
       end
 
       def restart_services
