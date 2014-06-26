@@ -90,4 +90,116 @@ documented in the release tickets.  Check the Git history for the installation
 scripts in the openshift-extras repository and to important configuration files
 in the origin-server repository for items that may not be in release tickets.
 
+### Bootstrapping the upgrade process ###
+One interesting part of the upgrade is when the process switches from one
+version of the codebase to the other.  Take the 2.0->2.1 upgrade for example.
+Part of the upgrade starts on the 2.0 codebase then swithes to the 2.1
+codebase.  Thus far this has always happened in the `begin` step.
+
+For the 2.0->2.1 upgrade the `begin` step actually runs in the 2.0 version of
+the ose-upgrade tool.  The most important step it run is to configure the
+machine to the 2.1 channels and install the 2.1 version of ose-upgrade.
+
+Another interesting bootstrapping step is handled by
+`/etc/openshift/upgrade/state.yaml`.  As the name suggests that where the state
+of the state machine is kept.  If a machine is freshly installed with 2.1 it
+will have a state.yaml that looks like this:
+
+    --- 
+    steps: 
+      host: 
+        begin: 
+          status: NONE
+    status: COMPLETE
+    number: 3
+
+That is handled in the installation of `openshift-enterprise-release`.  If RPM
+detects that no `state.yml` exists it assumes that it's a new installation and
+markes the corresponding upgrade complete by running the following command in
+the RPM %post:
+
+    ose-upgrade --complete %{upgrade_number} >& /dev/null  
+
+The number is set in the spec file and corresponds to the mapping stored in
+main.rb:
+
+    VERSION_MAP = {
+        0  => "1.1",
+        1  => "1.2",
+        2  => "2.0",
+        3  => "2.1",
+    }
+
+This is why it's absolutely critical for the version of
+`openshift-enterprise-release` to match the version that is actually installed.
+If somehow someone installed OSE 2.0 without installing the 2.0 version of
+`openshift-enterprise-release` they would have no state file.  If they then
+managed to install the 2.1 version of the package the state file would record
+that the 2.1 upgrade was already complete.  To fix that they would have to
+manually edit the state file.  Thankfully, the way channels are configured in
+OSE should not allow this to happen.  However, more and more customers will
+likely begin sync'ing the content from RHN and in doing so expose themselves to
+this sort of error.
+
+Taking a look at a machine that failed to upgrade 2.0 to 2.1.  We can see the
+state.yam looks quite different:
+
+    ---
+    steps:
+      broker:
+        outage:
+          previous_status: UPGRADING
+          status: COMPLETE
+        pre:
+          previous_status: UPGRADING
+          status: COMPLETE
+        rpms:
+          status: NONE
+      node:
+        outage:
+          previous_status: UPGRADING
+          status: COMPLETE
+        pre:
+          previous_status: UPGRADING
+          status: COMPLETE
+        rpms:
+          previous_status: UPGRADING
+          status: FAILED
+      host:
+        begin:
+          previous_status: UPGRADING
+          status: COMPLETE
+    run_scripts:
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/node/upgrades/3/outage/03-node-shutdown-services: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/pre/04-broker-migrate-datastore-prerelease: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/host/upgrades/3/repo/01-new-repos: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/pre/02-broker-clear-most-pending-ops: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/step_lock oseupgrade_3_pre: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/node/upgrades/3/rpms/04-both-yum-update: FAILED
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/node/upgrades/3/pre/02-node-backup-conf-files: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/step_lock oseupgrade_3_pre done: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/pre/02-broker-backup-conf-files: COMPLETE
+      /usr/lib/ruby/site_ruby/1.8/ose-upgrade/broker/upgrades/3/outage/03-broker-shutdown-services: COMPLETE
+    number: 3
+    status: STARTED
+
 ### Structure of `ose-upgrade` ###
+`ose-upgrade` implements a state machine.  The executable is
+`./upgrades/bin/ose-upgrade`.  Aside from parsing options the most important
+thing is does is call `lib/ose-upgrade/main.rb` which in turn calls
+`lib/ose-upgrade.rb`.  Those files implement the majored of the state machine
+framework.
+
+From there the main thing to know is that we can implement classes for each
+type of upgrade.  For example the `Broker` class tells the framework how to
+load the scripts under `lib/ose-upgrade/broker/upgrades/`.  The frame then
+looks for the `upgrade.rb` script that corresponds to the upgrade version (3 in
+the example above).  The `upgrade.rb` script tells the framework about the
+steps that are needed.  Those steps correspond to directories under
+`lib/ose-upgrade/broker/upgrades/$version`.  Inside those directories are
+scripts that will be called by the framework.  The nice thing is that this
+allows the scripts to be written in virtually any language.  The scripts
+themselves are executed in lexical order.
+
+The state machine keeps track of exit status of each script.  The scripts
+themselves must be reentrant.
