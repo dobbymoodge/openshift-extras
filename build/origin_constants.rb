@@ -28,7 +28,6 @@ OPTIONS = {
       'rubygem-openshift-origin-dns-route53',
       'rubygem-openshift-origin-frontend-apache-vhost',
       'openshift-origin-port-proxy',
-      'openshift-origin-cartridge-dependencies-optional-*',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@not-enterprise',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@not-enterprise',
