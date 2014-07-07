@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# This step is currently unused for repo based installs.  The migration to using
+# oo-admin-yum-validator for repo priority configuration for rhn/rhsm installs
+# does not support yum repo based configurations.
+
+# Removed as a solution for: https://bugzilla.redhat.com/show_bug.cgi?id=1101489
+
+# In the future, if support is added to oo-admin-yum-validator, this step can be
+# symlinked to the rhn 03-configure-yum-repos step
+
+# Alternatively, support can be re-added by manually configuring priorities for
+# the repos.
+
