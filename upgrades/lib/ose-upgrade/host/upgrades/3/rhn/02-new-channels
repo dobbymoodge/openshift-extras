@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# update RHN classic channels
+if [ X$RHN_USER == X -o X$RHN_PASS == X ]
+then
+  echo '$RHN_USER and $RHN_PASS must be defined'
+  exit 1
+fi
+
+for i in infrastructure node jbosseap rhc
+do
+  old_channel=rhel-x86_64-server-6-ose-2.0-$i
+  new_channel=rhel-x86_64-server-6-ose-2.1-$i
+  if rhn-channel --list | grep -q $old_channel
+  then
+    echo "Unsubscribing $old_channel and subscribing $new_channel."
+    echo "rhn-channel --add --channel $new_channel"' --user $RHN_USER --password $RHN_PASS'
+    rhn-channel --add --channel $new_channel --user $RHN_USER --password $RHN_PASS || exit 1
+    echo "rhn-channel --remove --channel $old_channel"' --user $RHN_USER --password $RHN_PASS'
+    rhn-channel --remove --channel $old_channel --user $RHN_USER --password $RHN_PASS || exit 1
+  fi
+done
+
+yum clean all
+
+exit 0
