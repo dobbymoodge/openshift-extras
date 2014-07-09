@@ -4,7 +4,7 @@ set -xe
 
 # First, verify that we have a valid 1.2 configuration
 if ! /usr/bin/oo-admin-yum-validator --oo-version 1.2 --report-all; then
-   echo "ERROR: There was a problem detected with the repository configuration, running oo-admin-yum-validator --ose-version 1.2 --fix-all should clear up any repository configuration problems."
+   echo "ERROR: There was a problem detected with the repository configuration. Running 'oo-admin-yum-validator --ose-version 1.2 --fix-all' will attempt to correct your repository configuration."
    exit 1
 fi
 
@@ -20,7 +20,7 @@ for package in "${!packages[@]}"; do
   pkg_rel=${pkg_ver_rel[1]}
 
 
-  if ! inst_pkg_ver_rel=( $(rpm -q ${package} --qf '%{VERSION} %{RELEASE}\n') ); then
+  if ! inst_pkg_ver_rel=( $(rpm -q ${package} --qf '%{VERSION} %{RELEASE}') ); then
     echo "ERROR: Package ${package} not found. ose-upgrade should only be run on a fully updated installation of OpenShift Enterprise 1.2."
     exit 1
   fi
@@ -28,15 +28,8 @@ for package in "${!packages[@]}"; do
   inst_pkg_rel=${inst_pkg_ver_rel[1]}
 
   if [ $(python -c "import rpmUtils.miscutils; print(rpmUtils.miscutils.compareEVR(('${package}', '${inst_pkg_ver}', '${inst_pkg_rel}'), ('${package}', '${pkg_ver}', '${pkg_rel}')) >= 0)") == 'False' ]; then
-    echo "ERROR: Package ${package} version needs to be greater than ${pkg_ver}-${pkg_rel}. ose-upgrade should only be run on a fully updated installation of OpenShift Enterprise 1.2."
+    echo "ERROR: Package ${package} version needs to be equal to or greater than ${pkg_ver}-${pkg_rel}. ose-upgrade should only be run on a fully updated installation of OpenShift Enterprise 1.2."
     exit 1
   fi
 done
 
-# It's OK for oo-admin-yum-validator to return a bunch of errors; it
-# does that even if it fixes things.
-/usr/bin/oo-admin-yum-validator --oo-version 2.0 --fix-all || :
-
-# Now we run oo-admin-yum-validator again though to make sure that
-# there are no errors remaining, and this time we heed the exit code.
-/usr/bin/oo-admin-yum-validator --oo-version 2.0 --report-all
