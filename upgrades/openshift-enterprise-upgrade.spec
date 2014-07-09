@@ -5,7 +5,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 1
 
 # items that will likely be shared between RPMs
-Version:   1.2.7.1
+Version:   1.2.9
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,11 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 
 
 %changelog
+* Wed Jul 09 2014 Jason DeTiberus <jdetiber@redhat.com> 1.2.9-1
+- <ose-upgrade> refactor rhn channel config setup (jdetiber@redhat.com)
+- <upgrade> Do not run yum-validator for manually configured repos
+  (jdetiber@redhat.com)
+
 * Wed May 21 2014 Jason DeTiberus <jdetiber@redhat.com> 1.2.7.1-1
 - <ose-upgrade> rhscl-1.1 updates (jdetiber@redhat.com)
 
