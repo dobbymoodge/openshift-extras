@@ -4,7 +4,7 @@ set -xe
 
 # First, verify that we have a valid 2.0 configuration
 if ! /usr/bin/oo-admin-yum-validator --oo-version 2.0 --report-all; then
-  echo "ERROR: There was a problem detected with the repository configuration. Running 'oo-admin-yum-validator --ose-version 1.2 --fix-all' will attempt to correct your repository configuration."
+  echo "ERROR: There was a problem detected with the repository configuration. Running 'oo-admin-yum-validator --oo-version 2.0 --fix-all' will attempt to correct your repository configuration."
   exit 1
 fi
 
