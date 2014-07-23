@@ -6,8 +6,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.4
-Release:   2%{?dist}
+Version:   2.1.4a
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -199,6 +199,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Wed Jul 23 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.4a-1
+- The way tito builds the source forces us to change the version number
+  whenever changes are made
+
 * Tue Jul 15 2014 Jason DeTiberus <jdetiber@redhat.com> 2.1.4-2
 - ose-upgrade: fix inaccurate error message (jolamb@redhat.com)
 
