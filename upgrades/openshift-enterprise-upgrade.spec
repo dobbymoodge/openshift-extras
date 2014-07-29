@@ -6,8 +6,8 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 2
 
 # items that will likely be shared between RPMs
-Version:   2.0.7
-Release:   2%{?dist}
+Version:   2.0.8
+Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
 BuildArch: noarch
@@ -199,6 +199,11 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Tue Jul 29 2014 dobbymoodge <jolamb@redhat.com> 2.0.8-1
+- Bug 1102915 - Incorrect mcollective log location Set to correct defautl
+  /var/log/openshift/node/ruby193-mcollective.log
+  (tiwillia@talos.usersys.redhat.com)
+
 * Tue Jul 15 2014 Jason DeTiberus <jdetiber@redhat.com> 2.0.7-2
 - ose-upgrade: fix inaccurate error message (jolamb@redhat.com)
 
