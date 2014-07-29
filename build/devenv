@@ -219,6 +219,62 @@ priority= 1
         puts "Done"
       end
 
+      def fuse_test_impl(tag, hostname, instance, conn, options, image_id=nil)
+        begin
+          validate_instance(hostname, 4)
+          disable_charlie(hostname) if options.disable_charlie?
+
+          mcollective_logs(hostname) if options.mcollective_logs?
+
+          idle_all_gears(hostname) unless options.official?
+
+          reset_test_dir(hostname)
+
+          broker_profiler(hostname) if options.profile_broker?
+          
+          puts "Uploading fuse rpm"
+          rpm_path = File.expand_path("/var/tmp/openshift-origin-cartridge-fuse-6.1.0.redhat.387-3.el6op.noarch.rpm")
+          scp_to(hostname, rpm_path, "/tmp", 240)
+          output, exit_code = ssh(hostname, "rpm -i #{rpm_path}", 240, true)        
+          print_highlighted_output('Install Fuse RPM Output', output)
+          exit 1 unless exit_code == 0
+          output, exit_code = ssh(hostname, "oo-broker --non-interactive oo-admin-ctl-cartridge -c import-node --activate", 240, true)
+          print_highlighted_output('Import Fuse Cartridge Output', output)
+          exit 1 unless exit_code == 0
+
+          
+          queue=[]
+          queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"],nil,nil, 'openshift-test/tests')          
+          all_pass &= run_tests_with_retry([queue], hostname, 'root', false)
+          exit 1 unless all_pass
+          validate_instance(hostname, 4)
+          if options.official?
+            image_id = image_id ? image_id : instance.image_id
+            # Mark the image as verified
+            image = conn.images[image_id]
+            verify_image(image)
+
+#            puts "Sending QE ready email..."
+#            begin
+#              send_verified_email(image_id, image.name)
+#            rescue Exception => e
+#              puts "Failed sending email with message: #{e.message}"
+#            end
+          elsif !options.terminate?
+            idle_all_gears(hostname)
+          end
+
+          broker_profiler(hostname, enable=false) if options.profile_broker?
+
+
+        ensure
+          download_artifacts(hostname) if options.terminate?
+          if options.terminate?
+            terminate_instance(instance)
+          end
+        end
+      end
+
       def test_impl(tag, hostname, instance, conn, options, image_id=nil)
         begin
           validate_instance(hostname, 4)
