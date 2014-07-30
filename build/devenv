@@ -117,7 +117,14 @@ module Origin
           puts "Done"
         end
 
-        find_and_build_specs
+        begin
+          find_and_build_specs
+        rescue Exception => e
+          puts e.message
+          puts e.backtrace.inspect if options.verbose?
+          exit 1
+        end
+
 
         FileUtils.rm_rf "/data/origin-rpms"
         FileUtils.rm_rf "/data/origin-srpms"
