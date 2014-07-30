@@ -220,32 +220,50 @@ priority= 1
       end
 
       def fuse_test_impl(tag, hostname, instance, conn, options, image_id=nil)
-        begin
+        begin        
           validate_instance(hostname, 4)
-          disable_charlie(hostname) if options.disable_charlie?
-
           mcollective_logs(hostname) if options.mcollective_logs?
-
           idle_all_gears(hostname) unless options.official?
-
-          reset_test_dir(hostname)
+          reset_test_dir(hostname, false, options.ssh_user)
 
           broker_profiler(hostname) if options.profile_broker?
+
+          # Some of the tests expect quickstarts.json to be non-empty
+          qs_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/quickstarts.json")
+          scp_to(hostname, qs_path, "~/", 60*10, 5, ssh_user)
+          ssh(hostname, "sudo mv ~/quickstarts.json /etc/openshift/", 60 * 2, true, 1, options.ssh_user)
+
+          # Some of the tests require that DEFAULT_MAX_GEARS be set to 3
+          ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
+              60 * 2, true, 1, options.ssh_user) 
           
+          # test dependencies only
+          ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
+          ssh(hostname, "sudo yum install -y ruby193-rubygem-net-scp ruby193-ruby-mysql ruby193-rubygem-fakefs", 60 * 5, true, 1, ssh_user)
+
+          # non-test dependencies that should be required by cartridges
+          ssh(hostname, "sudo yum install -y python-virtualenv python27-python-virtualenv python33-python-virtualenv mod_wsgi python27-mod_wsgi python33-mod_wsgi jboss-eap6-modules jboss-eap6-index jbossas-product-eap", 60 * 5, true, 1, ssh_user)
+
           puts "Uploading fuse rpm"
-          rpm_path = File.expand_path("/var/tmp/openshift-origin-cartridge-fuse-6.1.0.redhat.387-3.el6op.noarch.rpm")
-          scp_to(hostname, rpm_path, "/tmp", 240)
-          output, exit_code = ssh(hostname, "rpm -i #{rpm_path}", 240, true)        
+          rpm_path = File.expand_path("/var/opt/fuse/*.rpm")
+          scp_to(hostname, rpm_path, "/tmp", 4800, 2, ssh_user)
+          output, exit_code = ssh(hostname, "sudo rpm -i /tmp/*rpm", 240, true, 1, ssh_user)        
           print_highlighted_output('Install Fuse RPM Output', output)
           exit 1 unless exit_code == 0
-          output, exit_code = ssh(hostname, "oo-broker --non-interactive oo-admin-ctl-cartridge -c import-node --activate", 240, true)
+          output, exit_code = ssh(hostname, "sudo oo-admin-ctl-cartridge -c import-node --activate", 240, true, 1, ssh_user)
           print_highlighted_output('Import Fuse Cartridge Output', output)
           exit 1 unless exit_code == 0
-
+          output, exit_code = ssh(hostname, "sudo sed -i s/quota_blocks=1048576/quota_blocks=2048576/ /etc/openshift/resource_limits.conf", 240, true, 1, ssh_user)
+          print_highlighted_output('Update node resource limits', output)
+          exit 1 unless exit_code == 0
+          output, exit_code = ssh(hostname, "sudo service ruby193-mcollective restart", 240, true, 1, ssh_user)
+          print_highlighted_output('Restart node', output)
+          exit 1 unless exit_code == 0
+          
           
           queue=[]
-          queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"],nil,nil, 'openshift-test/tests')          
-          all_pass &= run_tests_with_retry([queue], hostname, 'root', false)
+          queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"])
+          all_pass &= run_tests_with_retry([queue], hostname, 'ec2-user', false)
           exit 1 unless all_pass
           validate_instance(hostname, 4)
           if options.official?
@@ -268,10 +286,20 @@ priority= 1
 
 
         ensure
-          download_artifacts(hostname) if options.terminate?
-          if options.terminate?
-            terminate_instance(instance)
-          end
+          # add frontend config for any gears that may be left over from testing
+          ssh(hostname, "sudo bash -c \"/usr/bin/oo-frontend-plugin-modify --rebuild --confirm\"", 120, false, 1, options.ssh_user)
+
+          # reset quickstarts.json back to an empty list
+          ssh(hostname, 'sudo bash -c echo "[]" > /etc/openshift/quickstarts.json', 60 * 2, true, 1, options.ssh_user) 
+
+          # reset DEFAULT_MAX_GEARS="100"
+          ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"100\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart', 
+              60 * 2, true, 1, options.ssh_user) 
+
+          #download_artifacts(hostname) if options.terminate?
+          #if options.terminate?
+          #  terminate_instance(instance)
+          #end
         end
       end
 
