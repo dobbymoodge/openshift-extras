@@ -219,7 +219,7 @@ priority= 1
         puts "Done"
       end
 
-      def fuse_test_impl(tag, hostname, instance, conn, options, image_id=nil)
+      def xpaas_test_impl(tag, hostname, instance, conn, options, image_id=nil)
         begin        
           validate_instance(hostname, 4)
           mcollective_logs(hostname) if options.mcollective_logs?
@@ -244,14 +244,14 @@ priority= 1
           # non-test dependencies that should be required by cartridges
           ssh(hostname, "sudo yum install -y python-virtualenv python27-python-virtualenv python33-python-virtualenv mod_wsgi python27-mod_wsgi python33-mod_wsgi jboss-eap6-modules jboss-eap6-index jbossas-product-eap", 60 * 5, true, 1, ssh_user)
 
-          puts "Uploading fuse rpm"
-          rpm_path = File.expand_path("/var/opt/fuse/*.rpm")
+          puts "Uploading xpaas rpms"
+          rpm_path = File.expand_path("/var/opt/xpaas/*.rpm")
           scp_to(hostname, rpm_path, "/tmp", 4800, 2, ssh_user)
           output, exit_code = ssh(hostname, "sudo rpm -i /tmp/*rpm", 240, true, 1, ssh_user)        
-          print_highlighted_output('Install Fuse RPM Output', output)
+          print_highlighted_output('Install xpaas RPM Output', output)
           exit 1 unless exit_code == 0
-          output, exit_code = ssh(hostname, "sudo oo-admin-ctl-cartridge -c import-node --activate", 240, true, 1, ssh_user)
-          print_highlighted_output('Import Fuse Cartridge Output', output)
+          output, exit_code = ssh(hostname, "sudo oo-admin-ctl-cartridge -c import-node --activate", 240, true, 5, ssh_user)
+          print_highlighted_output('Import xpaas Cartridge Output', output)
           exit 1 unless exit_code == 0
           output, exit_code = ssh(hostname, "sudo sed -i s/quota_blocks=1048576/quota_blocks=2048576/ /etc/openshift/resource_limits.conf", 240, true, 1, ssh_user)
           print_highlighted_output('Update node resource limits', output)
@@ -263,8 +263,8 @@ priority= 1
           
           queue=[]
           queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"])
-          all_pass &= run_tests_with_retry([queue], hostname, 'ec2-user', false)
-          exit 1 unless all_pass
+          #queue << build_cucumber_command("xPaas Tests", ["@xpaas"])
+          run_tests_with_retry([queue], hostname, options.ssh_user, ["~@not-enterprise"])
           validate_instance(hostname, 4)
           if options.official?
             image_id = image_id ? image_id : instance.image_id
@@ -296,10 +296,10 @@ priority= 1
           ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"100\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart', 
               60 * 2, true, 1, options.ssh_user) 
 
-          #download_artifacts(hostname) if options.terminate?
-          #if options.terminate?
-          #  terminate_instance(instance)
-          #end
+          download_artifacts(hostname) if options.terminate?
+          if options.terminate?
+            terminate_instance(instance)
+          end
         end
       end
 
