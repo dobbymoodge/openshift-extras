@@ -262,8 +262,8 @@ priority= 1
           
           
           queue=[]
-          queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"])
-          #queue << build_cucumber_command("xPaas Tests", ["@xpaas"])
+          #queue << build_cucumber_command("Fuse Tests", ["@cartridge_fuse"])
+          queue << build_cucumber_command("xPaaS Tests", ["@xpaas"])
           run_tests_with_retry([queue], hostname, options.ssh_user, ["~@not-enterprise"])
           validate_instance(hostname, 4)
           if options.official?
