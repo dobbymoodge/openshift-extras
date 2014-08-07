@@ -228,21 +228,6 @@ priority= 1
 
           broker_profiler(hostname) if options.profile_broker?
 
-          # Some of the tests expect quickstarts.json to be non-empty
-          qs_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/quickstarts.json")
-          scp_to(hostname, qs_path, "~/", 60*10, 5, ssh_user)
-          ssh(hostname, "sudo mv ~/quickstarts.json /etc/openshift/", 60 * 2, true, 1, options.ssh_user)
-
-          # Some of the tests require that DEFAULT_MAX_GEARS be set to 3
-          ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
-              60 * 2, true, 1, options.ssh_user) 
-          
-          # test dependencies only
-          ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
-          ssh(hostname, "sudo yum install -y ruby193-rubygem-net-scp ruby193-ruby-mysql ruby193-rubygem-fakefs", 60 * 5, true, 1, ssh_user)
-
-          # non-test dependencies that should be required by cartridges
-          ssh(hostname, "sudo yum install -y python-virtualenv python27-python-virtualenv python33-python-virtualenv mod_wsgi python27-mod_wsgi python33-mod_wsgi jboss-eap6-modules jboss-eap6-index jbossas-product-eap", 60 * 5, true, 1, ssh_user)
 
           puts "Uploading xpaas rpms"
           rpm_path = File.expand_path("/var/opt/xpaas/*.rpm")
@@ -857,6 +842,21 @@ EOF
         puts "Installing openshift-origin-cartridge-dependencies-optional-php"
         out, ret = ssh(hostname, "sudo -s yum -y install openshift-origin-cartridge-dependencies-optional-php", 60 * 20, true, 1, ssh_user)
 
+        # Some of the tests expect quickstarts.json to be non-empty
+        qs_path = File.expand_path(File.dirname(__FILE__) + "/../misc/devenv/quickstarts.json")
+        scp_to(hostname, qs_path, "~/", 60*10, 5, ssh_user)
+        ssh(hostname, "sudo mv ~/quickstarts.json /etc/openshift/", 60 * 2, true, 1, options.ssh_user)
+
+        # Some of the tests require that DEFAULT_MAX_GEARS be set to 3
+        ssh(hostname, 'sudo sed -i "s/^DEFAULT_MAX_GEARS=.*/DEFAULT_MAX_GEARS=\"3\"/" /etc/openshift/broker-dev.conf; sudo service openshift-broker restart',
+            60 * 2, true, 1, options.ssh_user) 
+          
+        # test dependencies only
+        ssh(hostname, "sudo yum install -y --disableplugin=priorities ruby193-rubygem-mocha", 60 * 5, true, 1, ssh_user)
+        ssh(hostname, "sudo yum install -y ruby193-rubygem-net-scp ruby193-ruby-mysql ruby193-rubygem-fakefs", 60 * 5, true, 1, ssh_user)
+
+        # non-test dependencies that should be required by cartridges
+        ssh(hostname, "sudo yum install -y python-virtualenv python27-python-virtualenv python33-python-virtualenv mod_wsgi python27-mod_wsgi python33-mod_wsgi jboss-eap6-modules jboss-eap6-index jbossas-product-eap", 60 * 5, true, 1, ssh_user)
       end
 
       def restart_services
