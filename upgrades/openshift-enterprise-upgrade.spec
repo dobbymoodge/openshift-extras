@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.4a
+Version:   2.1.5
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,14 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Fri Aug 08 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.5-1
+- Merge remote-tracking branch 'origin/enterprise-2.1' into enterprise-2.1
+  (bleanhar@redhat.com)
+- Merge pull request #83 from tiwillia/enterprise-2.1 (jolamb@redhat.com)
+- Bug 1102915 - Incorrect mcollective log location Set to correct defautl
+  /var/log/openshift/node/ruby193-mcollective.log
+  (tiwillia@talos.usersys.redhat.com)
+
 * Wed Jul 23 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.4a-1
 - The way tito builds the source forces us to change the version number
   whenever changes are made
