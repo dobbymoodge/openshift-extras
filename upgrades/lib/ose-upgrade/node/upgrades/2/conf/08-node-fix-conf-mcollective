@@ -19,7 +19,7 @@ command rm -f /etc/mcollective/facts.yaml.rpmsave
 #  * Update the location of facts.yaml.
 #
 sed -i /opt/rh/ruby193/root/etc/mcollective/server.cfg \
-  -e '/^\s*logfile\s*=\s*/ s,/var/log/mcollective.log,/var/log/ruby193-mcollective.log,' \
+  -e '/^\s*logfile\s*=\s*/ s,/var/log/mcollective.log,/var/log/openshift/node/ruby193-mcollective.log,' \
   -e '/^\s*plugin\.yaml\s*=\s*/ s,/etc/mcollective/facts.yaml,/opt/rh/ruby193/root/etc/mcollective/facts.yaml,'
 
 # Make sure that the log file at the new location has the correct
