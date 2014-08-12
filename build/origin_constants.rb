@@ -17,7 +17,6 @@ OPTIONS = {
       'openshift-origin-cartridge-abstract',
       'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-mariadb',
-      'openshift-origin-cartridge-mongodb',
       'openshift-origin-cartridge-switchyard',
       'openshift-origin-util',
       'rubygem-openshift-origin-auth-kerberos',
