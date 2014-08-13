@@ -556,6 +556,7 @@ echo SUCCESS
             puts "Setting up yum priorities..."
             ssh_pty(hostname, "sudo -s yum -y install yum-plugin-priorities", 60 * 20, ssh_user)
             repo = 'rhui-REGION-rhel-server-rhscl'
+            ssh_pty(hostname, "sudo -s yum-config-manager --enable #{repo}", 60 * 20, ssh_user)
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=10 #{repo} --save", 60 * 20, ssh_user)
             repo = 'rhui-REGION-rhel-server-releases'
             ssh_pty(hostname, "sudo -s yum-config-manager --setopt=#{repo}.priority=20 #{repo} --save", 60 * 20, ssh_user)
@@ -783,11 +784,11 @@ EOF
         # Configure httpd virtual host for binary artifacts
         # Needed for binary deployment tests
         puts "Configuring Virtual Host for binary artifact deployment tests"
-        out, ret = ssh(hostname, "sudo -s mkdir -p /var/www/html/binaryartifacts; sudo chmod 775 /var/www/html/binaryartifacts", 60 * 10, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo -s mkdir -p /var/www/html/binaryartifacts && sudo chmod 775 /var/www/html/binaryartifacts", 60 * 10, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
         binartifacts_path = File.expand_path(File.dirname(__FILE__) + "/../misc/binaryartifacts.conf")
         scp_to(hostname, binartifacts_path, "~/", 60*10, 5, ssh_user)
-        out, ret = ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d; sudo restorecon /etc/httpd/conf.d; sudo service httpd restart", 60 * 20, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo -s mv binaryartifacts.conf /etc/httpd/conf.d && sudo chmod 664 /etc/httpd/conf.d/binaryartifacts.conf && sudo restorecon -r /etc/httpd/conf.d && sudo service httpd restart", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
 
         # reset the eth0 network config to add the dns entries
