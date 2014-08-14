@@ -235,14 +235,14 @@ priority= 1
           output, exit_code = ssh(hostname, "sudo rpm -i /tmp/*rpm", 240, true, 1, ssh_user)        
           print_highlighted_output('Install xpaas RPM Output', output)
           exit 1 unless exit_code == 0
-          output, exit_code = ssh(hostname, "sudo oo-admin-ctl-cartridge -c import-node --activate", 240, true, 5, ssh_user)
-          print_highlighted_output('Import xpaas Cartridge Output', output)
-          exit 1 unless exit_code == 0
           output, exit_code = ssh(hostname, "sudo sed -i s/quota_blocks=1048576/quota_blocks=2048576/ /etc/openshift/resource_limits.conf", 240, true, 1, ssh_user)
           print_highlighted_output('Update node resource limits', output)
           exit 1 unless exit_code == 0
           output, exit_code = ssh(hostname, "sudo service ruby193-mcollective restart", 240, true, 1, ssh_user)
           print_highlighted_output('Restart node', output)
+          exit 1 unless exit_code == 0
+          output, exit_code = ssh(hostname, "sudo oo-admin-ctl-cartridge -c import-node --activate", 240, true, 5, ssh_user)
+          print_highlighted_output('Import xpaas Cartridge Output', output)
           exit 1 unless exit_code == 0
           
           
