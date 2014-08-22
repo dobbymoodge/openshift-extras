@@ -238,6 +238,12 @@ priority= 1
           output, exit_code = ssh(hostname, "sudo sed -i s/quota_blocks=1048576/quota_blocks=2048576/ /etc/openshift/resource_limits.conf", 240, true, 1, ssh_user)
           print_highlighted_output('Update node resource limits', output)
           exit 1 unless exit_code == 0
+          output, exit_code = ssh(hostname, "sudo sh -c \"echo PORTS_PER_USER=15 >> /etc/openshift/node.conf\"", 240, true, 1, ssh_user)
+          print_highlighted_output('Update node port limit', output)
+          exit 1 unless exit_code == 0
+          output, exit_code = ssh(hostname, "sudo sed -i s/2307/2307,2308,2309,2310,2311,2312/ /etc/openshift/node-plugins.d/openshift-origin-frontend-haproxy-sni-proxy.conf", 240, true, 1, ssh_user)
+          print_highlighted_output('Update sni port list', output)
+          exit 1 unless exit_code == 0
           output, exit_code = ssh(hostname, "sudo service ruby193-mcollective restart", 240, true, 1, ssh_user)
           print_highlighted_output('Restart node', output)
           exit 1 unless exit_code == 0
