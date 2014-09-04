@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.5
+Version:   2.1.6
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,9 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Thu Sep 04 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.6-1
+- 
+
 * Fri Aug 08 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.5-1
 - Merge remote-tracking branch 'origin/enterprise-2.1' into enterprise-2.1
   (bleanhar@redhat.com)
