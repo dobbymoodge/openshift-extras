@@ -35,7 +35,7 @@ OPTIONS = {
 
 TYPE = "m3.large"
 ZONE = 'us-east-1d'
-DISK_SIZE = 17
+DISK_SIZE = 25
 VERIFIER_REGEXS = {}
 TERMINATE_REGEX = /terminate/
 VERIFIED_TAG = "qe-ready"
@@ -74,7 +74,7 @@ ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO, DEV_TOOLS_EX
 ACCEPT_DEVENV_SCRIPT = 'true'
 
 if (Gem.loaded_specs['aws-sdk'].version <=> Gem::Version.create('1.10')) > 0
-  DEVICE_MAPPING = [{:device_name => '/dev/sda1', :ebs => {:volume_size => DISK_SIZE}}]
+  DEVICE_MAPPING = [{:device_name => '/dev/sda1', :ebs => {:volume_size => DISK_SIZE, :volume_type => 'gp2', :delete_on_termination => true}}]
 else
   DEVICE_MAPPING = {'/dev/sda1' => { 'volume_size' => DISK_SIZE}}
 end
@@ -87,7 +87,7 @@ end
 
 def def_constants(base_os="rhel")
   Object.const_set(:AMI, OPTIONS[base_os]["amis"]) unless Object.const_defined?(:AMI)
-  Object.const_set(:SSH_USER, OPTIONS[base_os]["ssh_user"]) unless Object.const_defined?(:SSH_USER)  
+  Object.const_set(:SSH_USER, OPTIONS[base_os]["ssh_user"]) unless Object.const_defined?(:SSH_USER)
   Object.const_set(:DEVENV_NAME, OPTIONS[base_os]["devenv_name"]) unless Object.const_defined?(:DEVENV_NAME)
   Object.const_set(:IGNORE_PACKAGES, OPTIONS[base_os]["ignore_packages"]) unless Object.const_defined?(:IGNORE_PACKAGES)
   Object.const_set(:CUCUMBER_OPTIONS, OPTIONS[base_os]["cucumber_options"]) unless Object.const_defined?(:CUCUMBER_OPTIONS)
