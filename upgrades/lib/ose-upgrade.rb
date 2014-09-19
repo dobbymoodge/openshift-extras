@@ -158,11 +158,22 @@ module OSEUpgrader
         verbose "skipping #{script} -- already ran successfully"
         return 0, ""
       end
-      verbose "running #{script}"
-      output = `#{script} 2>&1`
+      verbose "running #{script}:"
+      verbose "--BEGIN OUTPUT--"
+      output = ""
+      # run the command, displaying output immediately and recording it for logs / error msg
+      IO.popen("stdbuf -oL -eL #{script} 2>&1") do |pipe|
+        pipe.each do |line|
+          output += line
+          puts line if @params[:verbose]
+        end
+      end
+      Logger.log(output)
+      verbose "--END #{script} OUTPUT--"
+
       rc = $?.exitstatus
       if $?.success?
-        verbose "#{script} ran without error:\n--BEGIN OUTPUT--\n#{output}\n--END #{script} OUTPUT--"
+        verbose "#{script} ran without error."
         script_status[script] = 'COMPLETE'
       else
         do_fail "#{script} had errors:\n--BEGIN OUTPUT--\n#{output}\n--END #{script} OUTPUT--"
