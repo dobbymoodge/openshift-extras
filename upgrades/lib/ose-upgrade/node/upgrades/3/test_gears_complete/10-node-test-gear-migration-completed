@@ -2,7 +2,7 @@
 until [ -e /etc/openshift/upgrade/3/gear_upgrades_complete ]; do
   # since node upgrades should be non-interactive, just wait forever
   # until the broker finishes gear upgrades.
-  echo "Waiting for gear upgrades to be completed."
+  echo "Waiting for 'ose-upgrade gears' step on the broker to be completed."
   sleep 30
 done
 exit 0
