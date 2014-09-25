@@ -6,7 +6,7 @@ Name:      openshift-enterprise-upgrade
 %global upgrade_number 3
 
 # items that will likely be shared between RPMs
-Version:   2.1.6
+Version:   2.1.7
 Release:   1%{?dist}
 License:   ASL 2.0
 URL:       http://openshift.redhat.com
@@ -199,6 +199,10 @@ This contains mechanisms for upgrading an OpenShift Enterprise node host.
 %{upgrade_path}/ose-upgrade/node.rb
 
 %changelog
+* Thu Sep 25 2014 Scott Dodson <sdodson@redhat.com> 2.1.7-1
+- node upgrade: improve test_gears_complete msg (lmeyer@redhat.com)
+- ose-upgrade: display script output while running (lmeyer@redhat.com)
+
 * Thu Sep 04 2014 Brenton Leanhardt <bleanhar@redhat.com> 2.1.6-1
 - 
 
