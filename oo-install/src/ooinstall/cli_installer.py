@@ -244,7 +244,8 @@ Notes:
 @click.option('--unattended', '-u', is_flag=True, default=False)
 @click.option('--master', '-m', 'masters', multiple=True, callback=validate_hostname)
 @click.option('--node', '-n', 'nodes', multiple=True, callback=validate_hostname)
-def main(configuration, ansible_playbook_directory, ansible_config, ansible_log_path, deployment_type, unattended, masters, nodes):
+@click.option('--ansible-ssh-user', 'ansible_ssh_user', default=None)
+def main(configuration, ansible_playbook_directory, ansible_config, ansible_log_path, deployment_type, unattended, masters, nodes, ansible_ssh_user):
     # TODO - Config settings precedence needs to be handled more generally
     oo_cfg = OOConfig(configuration)
     if not ansible_playbook_directory:
@@ -282,7 +283,16 @@ https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.h
     if not click.confirm("Are you ready to continue?  y/Y to confirm, or n/N to abort"):
         sys.exit()
 
-    oo_cfg.settings['ansible_ssh_user'] = get_ansible_ssh_user()
+    if not oo_cfg.settings.setdefault('ansible_ssh_user', ansible_ssh_user):
+        if unattended:
+            raise click.BadOptionUsage('ansible_ssh_user',
+                                       'For unattended installs, '
+                                       'openshift_ssh_user must be specified '
+                                       'on the command line or from the '
+                                       'config file '
+                                       '{}'.format(oo_cfg.config_path))
+        else:
+            oo_cfg.settings['ansible_ssh_user'] = get_ansible_ssh_user()
     click.clear()
 
     # TODO: Currently this blows away cmdline settings for
@@ -320,6 +330,8 @@ https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.h
     nodes = list(set(masters + nodes))
     oo_cfg.settings['nodes'] = nodes
 
+    oo_cfg.save_to_disk()
+
     # TODO: Technically we should make sure all the hosts are listed in the
     # validated facts.
     if not 'validated_facts' in oo_cfg.settings:
@@ -332,7 +344,6 @@ https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.h
         if validated_facts:
             oo_cfg.settings['validated_facts'] = validated_facts
 
-    oo_cfg.save_to_disk()
 
     click.echo('Ready to run installation process.')
     message = """
