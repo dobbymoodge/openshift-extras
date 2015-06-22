@@ -242,9 +242,9 @@ Notes:
               type=click.Choice(['enterprise', 'origin']),
               default='enterprise')
 @click.option('--unattended', '-u', is_flag=True, default=False)
-# TODO: This probably needs to be updated now that hosts -> masters/nodes
-@click.option('--host', '-h', 'hosts', multiple=True, callback=validate_hostname)
-def main(configuration, ansible_playbook_directory, ansible_config, ansible_log_path, deployment_type, unattended, hosts):
+@click.option('--master', '-m', 'masters', multiple=True, callback=validate_hostname)
+@click.option('--node', '-n', 'nodes', multiple=True, callback=validate_hostname)
+def main(configuration, ansible_playbook_directory, ansible_config, ansible_log_path, deployment_type, unattended, masters, nodes):
     # TODO - Config settings precedence needs to be handled more generally
     oo_cfg = OOConfig(configuration)
     if not ansible_playbook_directory:
@@ -285,9 +285,12 @@ https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.h
     oo_cfg.settings['ansible_ssh_user'] = get_ansible_ssh_user()
     click.clear()
 
-    # TODO: figure out what this does
-    masters = oo_cfg.settings.setdefault('masters', hosts)
-    nodes = oo_cfg.settings.setdefault('nodes', hosts)
+    # TODO: Currently this blows away cmdline settings for
+    # masters/nodes if any are set in the config file. We should look
+    # into merging/prompting/allowing an override flag/something other
+    # than silently trashing user input
+    masters = oo_cfg.settings.setdefault('masters', masters)
+    nodes = oo_cfg.settings.setdefault('nodes', nodes)
     # TODO: Remove duplicate logic here
     if not masters:
         if unattended:
