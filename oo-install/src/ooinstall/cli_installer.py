@@ -135,14 +135,10 @@ environment can be overridden exporting the VISUAL environment variable.
         if hosts:
             for i, h in enumerate(hosts):
                 click.echo("{}) ".format(i+1) + h)
-            response = click.prompt("Please confirm the following {}.  y/Y to confirm, or n/N to edit".format(host_type), default='n')
-            response = response.lower()
-            if response == 'y':
+            if click.confirm("Please confirm the following {}. y/Y to confirm, or n/N to edit".format(host_type)):
                 break
         else:
-            response = click.prompt("No {} entered.  y/Y to confirm, or n/N to edit".format(host_type), default='n')
-            response = response.lower()
-            if response == 'y':
+            if click.confirm("No {} entered. y/Y to confirm, or n/N to edit".format(host_type)):
                 break
         click.clear()
 
@@ -283,9 +279,7 @@ For more information on installation prerequisites please see:
 https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.html
 """
     click.echo(message)
-    response = click.prompt("Are you ready to continue?  y/Y to confirm, or n/N to abort", default='n')
-    response = response.lower()
-    if not response == 'y':
+    if not click.confirm("Are you ready to continue?  y/Y to confirm, or n/N to abort"):
         sys.exit()
 
     oo_cfg.settings['ansible_ssh_user'] = get_ansible_ssh_user()
@@ -342,9 +336,7 @@ https://docs.openshift.com/enterprise/latest/admin_guide/install/prerequisites.h
 If changes are needed to the values recorded by the installer please update {}.
 """.format(oo_cfg.config_path)
     click.echo(message)
-    response = click.prompt('Proceed? y/Y to confirm, or n/N to exit', default='y')
-    response = response.lower()
-    if not response == 'y':
+    if not click.confirm('Proceed? y/Y to confirm, or n/N to exit', default=True):
         sys.exit()
 
     error = install_transactions.run_main_playbook(masters, nodes)
