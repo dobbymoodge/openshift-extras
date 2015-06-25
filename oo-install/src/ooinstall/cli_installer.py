@@ -7,7 +7,7 @@ from ooinstall import OOConfig
 
 def validate_ansible_dir(ctx, param, path):
     if not path:
-        raise click.BadParameter("An ansible path must be provided".format(path))
+        raise click.BadParameter("An ansible path must be provided")
     return path
     # if not os.path.exists(path)):
     #     raise click.BadParameter("Path \"{}\" doesn't exist".format(path))
